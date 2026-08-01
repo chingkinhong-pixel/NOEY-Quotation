@@ -41,17 +41,28 @@ export default function App() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // DEBUG: 增加错误拦截和日志，确保查询出错能被捕获
       const resCab = await supabase.from('materials_cabinet').select('*').order('name');
       if (resCab.error) throw resCab.error;
       
       const resDoor = await supabase.from('materials_door').select('*').order('name');
       if (resDoor.error) throw resDoor.error;
       
-      // 修复致命错误：移除了 created_at 排序，因为表中没有这个字段，会导致查询静默失败
+      // === 最小化 Debug 探针注入区 ===
       const resUpg = await supabase.from('upgrade_items').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true });
-      if (resUpg.error) throw resUpg.error;
-      console.log('📦 [DEBUG] Fetch Upgrades Result:', resUpg.data); // 业务排查日志
+      
+      // 测试 3: 如果查询失败，直接显示 Supabase error.message
+      if (resUpg.error) {
+        console.error("upgrade_items 查询失败:", resUpg.error);
+        showToast('读取失败: ' + resUpg.error.message, 'error');
+        throw resUpg.error;
+      }
+      
+      // 测试 1 & 2: 页面加载 upgrade_items 后，console.log 输出数量和第一条数据
+      console.log("upgrade_items数量:", resUpg.data ? resUpg.data.length : 0);
+      if (resUpg.data && resUpg.data.length > 0) {
+        console.log("第一条升级项目:", resUpg.data[0]);
+      }
+      // === Debug 探针结束 ===
 
       const resRule = await supabase.from('pricing_rules').select('*').limit(1);
       if (resRule.error) throw resRule.error;
@@ -163,19 +174,15 @@ export default function App() {
       };
 
       if (editId) { 
-        const { data, error } = await supabase.from('upgrade_items').update(payload).eq('id', editId).select(); 
-        console.log('📤 [DEBUG] Update Result:', data, error);
+        const { error } = await supabase.from('upgrade_items').update(payload).eq('id', editId); 
         if (error) throw error;
         showToast('修改成功'); 
       } else { 
-        // 使用 .select() 可以让 Supabase 把新增后的完整数据返回给我们在 data 里
-        const { data, error } = await supabase.from('upgrade_items').insert([payload]).select(); 
-        console.log('📤 [DEBUG] Insert Result:', data, error);
+        const { error } = await supabase.from('upgrade_items').insert([payload]); 
         if (error) throw error;
         showToast('新增成功'); 
       }
       
-      // 清空表单，并主动拉取最新列表
       setUpgradeForm({ name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price', unit: '㎡', unit_price: '', sort_order: 0, status: true, description: '', image_url: '', is_standard_item: false, allow_manual_edit: true });
       setEditId(null); 
       fetchData();
@@ -196,7 +203,6 @@ export default function App() {
     } catch (err) { showToast('更新失败: ' + err.message, 'error'); }
   };
 
-  // 严格要求：彻底下架物理删除，改为停用切换
   const handleToggleUpgradeStatus = async (item) => {
     try {
       const { error } = await supabase.from('upgrade_items').update({ status: !item.status }).eq('id', item.id);
@@ -261,7 +267,6 @@ export default function App() {
       <div className="flex-1 overflow-y-auto p-10 relative">
         {isLoading && <div className="absolute top-6 right-10 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-xs font-bold shadow animate-pulse z-50 flex items-center gap-2"><span className="animate-spin text-lg">↻</span> 通讯中...</div>}
         
-        {/* === 视图 1: V2.3 升级与工艺库 (核心排查点) === */}
         {currentView === 'upgrade' && (
           <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
             <div className="flex justify-between items-end mb-2">
@@ -377,7 +382,6 @@ export default function App() {
           </div>
         )}
 
-        {/* === 视图 2: 柜体管理 === */}
         {currentView === 'cabinet' && (
           <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
             <h2 className="text-2xl font-black text-gray-800 tracking-wider">柜体材料库</h2>
@@ -390,7 +394,7 @@ export default function App() {
                 <div><label className="block text-xs font-bold text-gray-500 mb-2">无门板补偿系数</label><div className="flex gap-2"><input required type="number" step="0.01" value={cabinetForm.no_door_factor} onChange={e=>setCabinetForm({...cabinetForm, no_door_factor:e.target.value})} className="w-full border-2 border-gray-200 p-2 rounded-lg focus:border-black focus:outline-none" /><button type="submit" className="bg-black text-white px-6 rounded-lg font-bold hover:bg-gray-800 whitespace-nowrap shadow">{editId ? '保存' : '添加'}</button></div></div>
               </form>
             </div>
-            {/* 列表略化显示 */}
+            
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200 text-xs uppercase tracking-wider"><tr><th className="p-4">材料名称</th><th className="p-4">标准单价</th><th className="p-4">浅柜单价</th><th className="p-4">无门补偿系数</th><th className="p-4 text-center">操作</th></tr></thead>
@@ -402,7 +406,6 @@ export default function App() {
           </div>
         )}
 
-        {/* === 视图 3: 门板管理 === */}
         {currentView === 'door' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <h2 className="text-2xl font-black text-gray-800 tracking-wider">基础门板库</h2>
@@ -415,7 +418,7 @@ export default function App() {
                 <div><button type="submit" className="w-full bg-black text-white p-2 rounded-lg font-bold shadow">{editId ? '保存' : '添加'}</button></div>
               </form>
             </div>
-            {/* 列表略化显示 */}
+            
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200 text-xs uppercase tracking-wider"><tr><th className="p-4">门板名称</th><th className="p-4">类型</th><th className="p-4">单价</th><th className="p-4 text-center">操作</th></tr></thead>
@@ -427,7 +430,6 @@ export default function App() {
           </div>
         )}
 
-        {/* === 视图 4: 规则引擎参数 === */}
         {currentView === 'rules' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <h2 className="text-2xl font-black text-gray-800 tracking-wider">全局计价引擎规则</h2>
@@ -461,15 +463,3 @@ export default function App() {
     </div>
   );
 }
-```
-
-### 🔬 全新测试方法：
-
-为了让您亲眼看到排查结果，请配合浏览器“开发者工具”测试：
-1. 打开网页，按下键盘上的 **`F12`** 键，选择 **Console (控制台)** 标签页。
-2. 登录进系统，进入“✨ V2.3 升级工艺库”。
-3. 按照您的原样填写一个项目（如：玻璃门），点击“确认写入”。
-4. **注意看您的浏览器控制台 (Console)**：
-   * 会打印出 `📤 [DEBUG] Insert Result:`，如果没报错，代表数据库成功存入了！
-   * 紧接着会打印出 `📦 [DEBUG] Fetch Upgrades Result:`，这就代表系统重新拉取了刚存入的列表！
-5. 再看页面下方，刚刚因为报错被吞掉的“玻璃门”一定闪亮登场了！
