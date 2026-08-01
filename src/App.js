@@ -11,9 +11,10 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [currentView, setCurrentView] = useState('upgrade'); // 默认进升级项目库方便测试
+  const [currentView, setCurrentView] = useState('upgrade'); 
   const [isLoading, setIsLoading] = useState(false);
 
+  // 核心数据状态
   const [cabinets, setCabinets] = useState([]);
   const [doors, setDoors] = useState([]);
   const [upgrades, setUpgrades] = useState([]);
@@ -24,14 +25,15 @@ export default function App() {
   const [editId, setEditId] = useState(null); 
   const [cabinetForm, setCabinetForm] = useState({ name: '', base_price: '', shallow_price: '', no_door_factor: '' });
   const [doorForm, setDoorForm] = useState({ name: '', door_type: '普通门板', base_price: '' });
-  
-  // V2.3 升级项目表单结构
   const [upgradeForm, setUpgradeForm] = useState({
     name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', 
     upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price',
     unit: '㎡', unit_price: '', sort_order: 0, status: true,
     description: '', image_url: '', is_standard_item: false, allow_manual_edit: true
   });
+
+  // 删除确认弹窗状态
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, table: '', id: null, name: '' });
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -47,22 +49,15 @@ export default function App() {
       const resDoor = await supabase.from('materials_door').select('*').order('name');
       if (resDoor.error) throw resDoor.error;
       
-      // === 最小化 Debug 探针注入区 ===
       const resUpg = await supabase.from('upgrade_items').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true });
-      
-      // 测试 3: 如果查询失败，直接显示 Supabase error.message
       if (resUpg.error) {
         console.error("upgrade_items 查询失败:", resUpg.error);
         showToast('读取失败: ' + resUpg.error.message, 'error');
         throw resUpg.error;
       }
       
-      // 测试 1 & 2: 页面加载 upgrade_items 后，console.log 输出数量和第一条数据
       console.log("upgrade_items数量:", resUpg.data ? resUpg.data.length : 0);
-      if (resUpg.data && resUpg.data.length > 0) {
-        console.log("第一条升级项目:", resUpg.data[0]);
-      }
-      // === Debug 探针结束 ===
+      if (resUpg.data && resUpg.data.length > 0) console.log("第一条升级项目:", resUpg.data[0]);
 
       const resRule = await supabase.from('pricing_rules').select('*').limit(1);
       if (resRule.error) throw resRule.error;
@@ -71,7 +66,6 @@ export default function App() {
       if (resDoor.data) setDoors(resDoor.data);
       if (resUpg.data) setUpgrades(resUpg.data);
       
-      // 规则表处理
       if (resRule.data && resRule.data.length > 0) {
         setRules(resRule.data[0]);
       } else {
@@ -120,6 +114,39 @@ export default function App() {
     }
   };
 
+  // ================= 核心删除引擎 =================
+  const triggerDelete = (table, id, name) => {
+    setDeleteConfirm({ show: true, table, id, name });
+  };
+
+  const executeDelete = async () => {
+    const { table, id } = deleteConfirm;
+    try {
+      setIsLoading(true);
+      
+      // 预留的未来校验逻辑：直接执行物理删除。
+      // 如果该数据已经被未来的 quotes 明细表使用（外键约束），Supabase 会返回特定错误码 (如 23503)
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      
+      if (error) {
+        // 如果报外键冲突错误，提示必须改为停用
+        if (error.code === '23503') {
+          throw new Error('该项目已经被历史报价使用，无法删除，请改为停用。');
+        }
+        throw error;
+      }
+      
+      showToast('✅ 物理删除成功！');
+      setDeleteConfirm({ show: false, table: '', id: null, name: '' });
+      fetchData(); // 刷新当前列表
+    } catch (err) {
+      showToast('删除失败: ' + err.message, 'error');
+      setDeleteConfirm({ show: false, table: '', id: null, name: '' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveCabinet = async (e) => {
     e.preventDefault();
     try {
@@ -158,19 +185,13 @@ export default function App() {
     e.preventDefault();
     try {
       const payload = { 
-        name: upgradeForm.name, 
-        upgrade_category: upgradeForm.upgrade_category, 
-        calculation_type: upgradeForm.calculation_type,
-        upgrade_effect_type: upgradeForm.upgrade_effect_type,
+        name: upgradeForm.name, upgrade_category: upgradeForm.upgrade_category, 
+        calculation_type: upgradeForm.calculation_type, upgrade_effect_type: upgradeForm.upgrade_effect_type,
         replace_calculation_mode: upgradeForm.upgrade_effect_type === 'replace' ? upgradeForm.replace_calculation_mode : null,
-        unit: upgradeForm.unit, 
-        unit_price: parseFloat(upgradeForm.unit_price) || 0, 
-        sort_order: parseInt(upgradeForm.sort_order) || 0,
-        status: upgradeForm.status,
-        description: upgradeForm.description,
-        is_standard_item: upgradeForm.is_standard_item, 
-        allow_manual_edit: upgradeForm.allow_manual_edit,
-        image_url: upgradeForm.image_url || ''
+        unit: upgradeForm.unit, unit_price: parseFloat(upgradeForm.unit_price) || 0, 
+        sort_order: parseInt(upgradeForm.sort_order) || 0, status: upgradeForm.status,
+        description: upgradeForm.description, is_standard_item: upgradeForm.is_standard_item, 
+        allow_manual_edit: upgradeForm.allow_manual_edit, image_url: upgradeForm.image_url || ''
       };
 
       if (editId) { 
@@ -182,14 +203,9 @@ export default function App() {
         if (error) throw error;
         showToast('新增成功'); 
       }
-      
       setUpgradeForm({ name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price', unit: '㎡', unit_price: '', sort_order: 0, status: true, description: '', image_url: '', is_standard_item: false, allow_manual_edit: true });
-      setEditId(null); 
-      fetchData();
-    } catch (err) { 
-      console.error("Save Upgrade Error:", err);
-      showToast('保存失败: ' + (err.message || JSON.stringify(err)), 'error'); 
-    }
+      setEditId(null); fetchData();
+    } catch (err) { showToast('保存失败: ' + (err.message || JSON.stringify(err)), 'error'); }
   };
 
   const handleSaveRules = async (e) => {
@@ -198,8 +214,7 @@ export default function App() {
       if (!rules.id) return;
       const { error } = await supabase.from('pricing_rules').update(rules).eq('id', rules.id);
       if (error) throw error;
-      showToast('全局引擎规则更新成功！'); 
-      fetchData();
+      showToast('全局引擎规则更新成功！'); fetchData();
     } catch (err) { showToast('更新失败: ' + err.message, 'error'); }
   };
 
@@ -207,8 +222,7 @@ export default function App() {
     try {
       const { error } = await supabase.from('upgrade_items').update({ status: !item.status }).eq('id', item.id);
       if (error) throw error;
-      showToast(item.status ? '✅ 已停用该项目 (保留历史记录)' : '✅ 已重新启用该项目');
-      fetchData();
+      showToast(item.status ? '✅ 已停用该项目' : '✅ 已重新启用该项目'); fetchData();
     } catch (err) { showToast('操作失败: ' + err.message, 'error'); }
   };
 
@@ -243,6 +257,25 @@ export default function App() {
   return (
     <div className="flex h-screen bg-gray-100 font-sans overflow-hidden">
       
+      {/* 删除确认专属弹窗 (ERP 级别样式) */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-rose-100">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-2xl">⚠️</div>
+              <h3 className="text-xl font-black text-gray-900 tracking-wide">危险操作确认</h3>
+            </div>
+            <p className="text-gray-600 mb-6 font-medium leading-relaxed">
+              确定删除 <span className="font-bold text-rose-600 mx-1">[{deleteConfirm.name}]</span> 吗？删除操作将直接从数据库抹除，<span className="underline decoration-rose-400 decoration-2 underline-offset-4">删除后无法恢复</span>。
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setDeleteConfirm({show: false, table: '', id: null, name: ''})} className="px-6 py-3 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">放弃取消</button>
+              <button onClick={executeDelete} className="px-6 py-3 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200">确定永久删除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 左侧导航栏 */}
       <div className="w-64 bg-gray-900 text-white flex flex-col shadow-2xl z-20">
         <div className="p-6 border-b border-gray-800">
@@ -267,6 +300,7 @@ export default function App() {
       <div className="flex-1 overflow-y-auto p-10 relative">
         {isLoading && <div className="absolute top-6 right-10 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-xs font-bold shadow animate-pulse z-50 flex items-center gap-2"><span className="animate-spin text-lg">↻</span> 通讯中...</div>}
         
+        {}
         {currentView === 'upgrade' && (
           <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
             <div className="flex justify-between items-end mb-2">
@@ -328,7 +362,7 @@ export default function App() {
                 </div>
                 
                 <div className="flex justify-between items-center pt-4 border-t border-gray-100 mt-6">
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-500 cursor-pointer"><input type="checkbox" checked={upgradeForm.status} onChange={e=>setUpgradeForm({...upgradeForm, status:e.target.checked})} className="w-5 h-5 accent-emerald-500 rounded" /> {upgradeForm.status ? <span className="text-emerald-600">此项目处于启用状态</span> : <span className="text-rose-500">此项目将被设为停用隐藏</span>}</label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-500 cursor-pointer"><input type="checkbox" checked={upgradeForm.status} onChange={e=>setUpgradeForm({...upgradeForm, status:e.target.checked})} className="w-5 h-5 accent-emerald-500 rounded" /> {upgradeForm.status ? <span className="text-emerald-600">此项目处于启用状态</span> : <span className="text-amber-500">此项目将被设为停用隐藏</span>}</label>
                   <div className="flex gap-4">
                     {editId && <button type="button" onClick={() => {setEditId(null); setUpgradeForm({ name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price', unit: '㎡', unit_price: '', sort_order: 0, status: true, description: '', image_url: '', is_standard_item: false, allow_manual_edit: true });}} className="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors">取消</button>}
                     <button type="submit" className="bg-black text-white px-10 py-3 rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-transform active:scale-95 text-lg">{editId ? '保存全部修改' : '确认写入工艺库'}</button>
@@ -368,10 +402,11 @@ export default function App() {
                         {item.upgrade_effect_type === 'modify_base_price' && <span className="text-purple-700 bg-purple-50 px-2 py-1.5 rounded text-xs font-bold border border-purple-100">修基础价</span>}
                         {item.upgrade_effect_type === 'manual' && <span className="text-gray-700 bg-gray-100 px-2 py-1.5 rounded text-xs font-bold border border-gray-200">人工调整</span>}
                       </td>
-                      <td className="p-4 text-center">{item.status ? <span className="text-emerald-600 font-bold">启用</span> : <span className="text-rose-500 font-bold">停用</span>}</td>
-                      <td className="p-4 text-center space-x-3">
+                      <td className="p-4 text-center">{item.status ? <span className="text-emerald-600 font-bold">启用</span> : <span className="text-amber-500 font-bold">停用</span>}</td>
+                      <td className="p-4 text-center">
                         <button onClick={() => {setEditId(item.id); setUpgradeForm(item);}} className="text-blue-600 font-bold hover:underline">编辑</button>
-                        <button onClick={() => handleToggleUpgradeStatus(item)} className={`font-bold hover:underline ${item.status ? 'text-rose-500' : 'text-emerald-600'}`}>{item.status ? '停用' : '启用'}</button>
+                        <button onClick={() => handleToggleUpgradeStatus(item)} className={`font-bold hover:underline ml-3 ${item.status ? 'text-amber-500' : 'text-emerald-600'}`}>{item.status ? '停用' : '启用'}</button>
+                        <button onClick={() => triggerDelete('upgrade_items', item.id, item.name)} className="text-rose-600 font-bold hover:underline ml-3">删除</button>
                       </td>
                     </tr>
                   ))}
@@ -382,6 +417,7 @@ export default function App() {
           </div>
         )}
 
+        {}
         {currentView === 'cabinet' && (
           <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
             <h2 className="text-2xl font-black text-gray-800 tracking-wider">柜体材料库</h2>
@@ -399,13 +435,25 @@ export default function App() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200 text-xs uppercase tracking-wider"><tr><th className="p-4">材料名称</th><th className="p-4">标准单价</th><th className="p-4">浅柜单价</th><th className="p-4">无门补偿系数</th><th className="p-4 text-center">操作</th></tr></thead>
                 <tbody className="divide-y divide-gray-100">
-                  {cabinets.map(item => (<tr key={item.id} className="hover:bg-gray-50 transition-colors"><td className="p-4 font-bold">{item.name}</td><td className="p-4">¥{item.base_price}</td><td className="p-4">¥{item.shallow_price}</td><td className="p-4 text-rose-600">× {item.no_door_factor}</td><td className="p-4 text-center"><button onClick={() => {setEditId(item.id); setCabinetForm(item);}} className="text-blue-600 font-bold hover:underline">编辑</button></td></tr>))}
+                  {cabinets.map(item => (
+                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4 font-bold">{item.name}</td>
+                      <td className="p-4">¥{item.base_price}</td>
+                      <td className="p-4">¥{item.shallow_price}</td>
+                      <td className="p-4 text-rose-600">× {item.no_door_factor}</td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => {setEditId(item.id); setCabinetForm(item);}} className="text-blue-600 font-bold hover:underline">编辑</button>
+                        <button onClick={() => triggerDelete('materials_cabinet', item.id, item.name)} className="text-rose-600 font-bold hover:underline ml-4">删除</button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
+        {}
         {currentView === 'door' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <h2 className="text-2xl font-black text-gray-800 tracking-wider">基础门板库</h2>
@@ -423,13 +471,24 @@ export default function App() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-500 font-bold border-b border-gray-200 text-xs uppercase tracking-wider"><tr><th className="p-4">门板名称</th><th className="p-4">类型</th><th className="p-4">单价</th><th className="p-4 text-center">操作</th></tr></thead>
                 <tbody className="divide-y divide-gray-100">
-                  {doors.map(item => (<tr key={item.id} className="hover:bg-gray-50 transition-colors"><td className="p-4 font-bold">{item.name}</td><td className="p-4">{item.door_type}</td><td className="p-4">{item.door_type==='无门板'?'-':`¥${item.base_price}`}</td><td className="p-4 text-center"><button onClick={() => {setEditId(item.id); setDoorForm(item);}} className="text-blue-600 font-bold hover:underline">编辑</button></td></tr>))}
+                  {doors.map(item => (
+                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4 font-bold">{item.name}</td>
+                      <td className="p-4">{item.door_type}</td>
+                      <td className="p-4">{item.door_type==='无门板'?'-':`¥${item.base_price}`}</td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => {setEditId(item.id); setDoorForm(item);}} className="text-blue-600 font-bold hover:underline">编辑</button>
+                        <button onClick={() => triggerDelete('materials_door', item.id, item.name)} className="text-rose-600 font-bold hover:underline ml-4">删除</button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
+        {}
         {currentView === 'rules' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <h2 className="text-2xl font-black text-gray-800 tracking-wider">全局计价引擎规则</h2>
