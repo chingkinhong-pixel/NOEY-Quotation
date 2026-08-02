@@ -486,9 +486,9 @@ export default function App() {
                             ) : (
                               <>
                                 <input type="number" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-xl" />
-                                {isExcessDrawer && (() => {
+                               {isExcessDrawer && (() => {
                                   const w = parseFloat(activeCabinet?.width) || 0;
-                                  const standard = Math.ceil(w / 1000);
+                                  const standard = Math.max(1, Math.round(w / 1000));
                                   const input = parseFloat(upgradeModal.inputQty) || 0;
                                   const excess = Math.max(0, input - standard);
                                   const cost = excess * parseFloat(upgradeModal.selectedItem.unit_price || 0);
