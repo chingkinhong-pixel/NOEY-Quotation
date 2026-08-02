@@ -241,6 +241,9 @@ export default function App() {
     if (activeCabinetId === id) setActiveCabinetId(newList[0].id);
   };
 
+  // ==========================================
+  // 【核心引擎代码：未做任何修改】
+  // ==========================================
   const calculateCabinetDetails = (cab) => {
     let result = {
       qty: 0, calcMethod: '未计算', cabinetPortionTotal: 0, doorPortionTotal: 0, 
@@ -342,6 +345,10 @@ export default function App() {
     result.baseTotal = result.cabinetPortionTotal + result.doorPortionTotal + result.upgradePortionTotal;
     return result;
   };
+  // ==========================================
+  // 【核心引擎代码结束】
+  // ==========================================
+
 
   const handleConfirmAddUpgrade = () => {
     const item = upgradeModal.selectedItem;
@@ -373,23 +380,36 @@ export default function App() {
     updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
   };
 
+  // ==========================================
+  // V4.0 Phase 1: 保存逻辑增强 (已更新)
+  // ==========================================
   const handleSaveDraft = async () => {
     if (!quoteInfo.customerName) { showToast('请填写客户姓名', 'error'); return; }
     if (!isValidPhone(quoteInfo.customerPhone)) { showToast('手机号码格式不正确', 'error'); return; }
     setIsLoading(true);
     try {
+      // 1. 【新增逻辑】利用核心计算引擎计算整单全案总价 grandTotal
+      const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0);
+
+      // 2. 保存主表 quotes 并下入 total_amount
       const { data: quoteData, error: quoteErr } = await supabase.from('quotes').upsert([{
         quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
         customer_phone: quoteInfo.customerPhone, delivery_address: quoteInfo.deliveryAddress,
         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
+        total_amount: grandTotal // 【新增】保存整单总价落库
       }], { onConflict: 'quote_no' }).select().single();
       if (quoteErr) throw quoteErr;
 
+      // 3. 清理旧柜体和工艺明细
       await supabase.from('quote_cabinets').delete().eq('quote_id', quoteData.id);
       await supabase.from('quote_upgrades').delete().eq('quote_id', quoteData.id);
 
+      // 4. 循环保存最新柜体和工艺
       for (const cab of quoteCabinets) {
+        // 利用引擎获得当前柜子的各项最终计算结果
         const calcs = calculateCabinetDetails(cab);
+        
+        // 保存柜体明细
         const { data: insertedCab, error: cabErr2 } = await supabase.from('quote_cabinets').insert([{
           quote_id: quoteData.id, name: `${cab.space}｜${cab.cabinetType}`, 
           width: parseFloat(cab.width) || 0, height: parseFloat(cab.height) || 0, depth: parseFloat(cab.depth) || 0,
@@ -401,10 +421,12 @@ export default function App() {
           cabinet_unit_adjustment: parseFloat(cab.cabinet_unit_adjustment) || 0,
           door_unit_adjustment: parseFloat(cab.door_unit_adjustment) || 0,
           snap_final_cabinet_price: calcs.finalCabUnitPrice, snap_final_door_price: calcs.finalDoorUnitPrice,
-          cabinet_material_remark: cab.cabinet_material_remark || ''
+          cabinet_material_remark: cab.cabinet_material_remark || '',
+          cabinet_total_price: calcs.baseTotal // 【新增】保存该单个柜子的核算总计
         }]).select().single();
         if (cabErr2) throw cabErr2;
 
+        // 保存升级工艺 (逻辑不变，依然高度一致依赖 calcs 提供精准快照)
         if (cab.upgrades && cab.upgrades.length > 0) {
           const upgradeInserts = cab.upgrades.map(u => {
             const calculatedMatch = calcs.calculatedUpgrades.find(cu => cu.id === u.id);
