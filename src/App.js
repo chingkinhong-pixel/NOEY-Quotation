@@ -304,8 +304,8 @@ export default function App() {
       if (upg.calculation_type === '按柜宽自动算') {
         calcQty = w / 1000; 
         inputQty = calcQty;
-      } else if (upg.calculation_type === '超额抽屉规则') {
-        let standard = Math.ceil(w / 1000);
+      } else if (upg.calculation_type === '超额抽屉规则' || upg.calculation_type === 'excess_drawer') {
+        let standard = Math.max(1, Math.round(w / 1000));
         calcQty = Math.max(0, inputQty - standard);
       } else if (upg.upgrade_effect_type === 'replace') {
         let baseArea = (upg.manual_door_area !== '' && upg.manual_door_area !== null && !isNaN(parseFloat(upg.manual_door_area))) 
