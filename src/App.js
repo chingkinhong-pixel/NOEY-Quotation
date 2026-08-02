@@ -1,49 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import * as LucideIcons from 'lucide-react';
 
-// 专属配置：自动清理 URL，确保连接无误
 const rawSupabaseUrl = 'https://muwzdigtehcperweliyg.supabase.co/rest/v1/'; 
 const supabaseKey = 'sb_publishable_SGHvdmqpvo3Z6GekTtk4cA_PcvbDGpd';
 const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function App() {
+  // 1. 全局状态
+  const [currentView, setCurrentView] = useState('home'); // home, admin-login, admin, sales
   const [currentUser, setCurrentUser] = useState(null);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [currentView, setCurrentView] = useState('workspace'); // workspace, admin, my-quotes
   const [isLoading, setIsLoading] = useState(false);
 
-  // 基础数据字典状态
-  const [cabinetsData, setCabinetsData] = useState([]);
-  const [doorsData, setDoorsData] = useState([]);
-  const [upgradesData, setUpgradesData] = useState([]);
-  const [rulesData, setRulesData] = useState({
-    id: null, standard_depth: 600, shallow_depth: 295, height_threshold: 1000, minimum_area: 1, minimum_width: 1000
+  // 2. 基础数据字典状态
+  const [cabinets, setCabinets] = useState([]);
+  const [doors, setDoors] = useState([]);
+  const [upgrades, setUpgrades] = useState([]);
+  const [rules, setRules] = useState({ 
+    id: null, standard_depth: 600, shallow_depth: 295, height_threshold: 1000, minimum_area: 1, minimum_width: 1000 
   });
 
-  // 当前报价单主表信息
-  const [activeQuote, setActiveQuote] = useState({
-    id: null,
-    quote_no: '',
-    customer_name: '',
-    customer_phone: '',
-    delivery_address: '',
-    status: '编辑中',
-    cabinets: [] // 柜体明细列表
+  // 3. 后台管理台专属状态
+  const [adminView, setAdminView] = useState('upgrade'); 
+  const [editId, setEditId] = useState(null); 
+  const [adminLoginForm, setAdminLoginForm] = useState({ username: '', password: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, table: '', id: null, name: '' });
+  const [cabinetForm, setCabinetForm] = useState({ name: '', base_price: '', shallow_price: '', no_door_factor: '' });
+  const [doorForm, setDoorForm] = useState({ name: '', door_type: '普通门板', base_price: '' });
+  const [upgradeForm, setUpgradeForm] = useState({
+    name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', 
+    upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price',
+    unit: '㎡', unit_price: '', sort_order: 0, status: true,
+    description: '', image_url: '', is_standard_item: false, allow_manual_edit: true,
+    combo_type: 'single', upgrade_material: '', upgrade_style: '', upgrade_specification: '',
+    minimum_quantity: 0, combo_children: []
   });
 
-  // 选中的柜体 (左侧正在编辑的柜体)
+  // 4. 销售工作台专属状态
+  const [quoteInfo, setQuoteInfo] = useState({ 
+    quoteNo: '', customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中' 
+  });
+  const [quoteCabinets, setQuoteCabinets] = useState([]);
   const [activeCabinetId, setActiveCabinetId] = useState(null);
-
-  // 升级项弹窗状态
   const [upgradeModal, setUpgradeModal] = useState({
-    show: false,
-    selectedItem: null,
-    inputQty: '',
-    manualDoorArea: '',
-    unitPriceAdj: ''
+    isOpen: false, activeCategory: '门板升级', selectedItem: null, inputQty: '', inputRemark: '',
+    unit_price_adjustment: 0, manual_door_area: ''
   });
 
   const showToast = (message, type = 'success') => {
@@ -51,747 +53,796 @@ export default function App() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 
-  const fetchData = async () => {
+  const generateQuoteNo = () => {
+    const date = new Date();
+    const yy = String(date.getFullYear()).slice(2);
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let randomStr = '';
+    for(let i=0; i<4; i++) randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+    return `NYGN${yy}${mm}${dd}${randomStr}`;
+  };
+
+  const isValidPhone = (phone) => {
+    return /^1[3-9]\d{9}$/.test(phone);
+  };
+
+  const fetchDictionaries = async () => {
     setIsLoading(true);
     try {
-      const resCab = await supabase.from('materials_cabinet').select('*').order('name');
-      const resDoor = await supabase.from('materials_door').select('*').order('name');
-      const resUpg = await supabase.from('upgrade_items').select('*').order('name');
-      const resRule = await supabase.from('pricing_rules').select('*').limit(1);
-
-      if (resCab.data) setCabinetsData(resCab.data);
-      if (resDoor.data) setDoorsData(resDoor.data);
-      if (resUpg.data) setUpgradesData(resUpg.data);
-      if (resRule.data && resRule.data.length > 0) setRulesData(resRule.data[0]);
-    } catch (error) {
-      showToast('数据读取失败', 'error');
+      const [resCab, resDoor, resUpg, resRule] = await Promise.all([
+        supabase.from('materials_cabinet').select('*').order('name'),
+        supabase.from('materials_door').select('*').order('name'),
+        supabase.from('upgrade_items').select('*').order('sort_order').order('name'),
+        supabase.from('pricing_rules').select('*').limit(1)
+      ]);
+      if (resCab.data) setCabinets(resCab.data);
+      if (resDoor.data) setDoors(resDoor.data);
+      if (resUpg.data) setUpgrades(resUpg.data);
+      if (resRule.data && resRule.data.length > 0) setRules(resRule.data[0]);
+    } catch (err) {
+      showToast('数据字典加载失败', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (currentUser) fetchData();
-  }, [currentUser]);
+    if (currentView === 'admin' || currentView === 'sales') fetchDictionaries();
+  }, [currentView]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleAdminLogin = async (e) => {
+    e.preventDefault(); setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('employees')
-        .select('*').eq('username', loginForm.username).eq('password', loginForm.password).single();
+      const { data: empCheck, error: empError } = await supabase.from('employees').select('id').limit(1);
+      if (empError && empError.code !== '42P01') throw empError;
+      if (!empCheck || empCheck.length === 0) {
+        if (adminLoginForm.username === 'admin' && adminLoginForm.password === 'admin123') {
+          await supabase.from('employees').insert([{ username: 'admin', password: 'admin123', name: '超级管理员', role: 'admin' }]);
+        }
+      }
+      const { data, error } = await supabase.from('employees').select('*').eq('username', adminLoginForm.username).eq('password', adminLoginForm.password).single();
       if (error || !data) throw new Error('账号或密码错误');
-      setCurrentUser(data);
-      showToast(`欢迎, ${data.name}`);
-    } catch (error) {
-      showToast(error.message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
+      if (!data.status) throw new Error('账号已被停用');
+      setCurrentUser(data); setCurrentView('admin'); fetchDictionaries();
+    } catch (error) { showToast(error.message, 'error'); } finally { setIsLoading(false); }
   };
 
-  const generateOrderNo = () => {
-    const dateStr = new Date().toISOString().slice(2,10).replace(/-/g,''); // YYMMDD
-    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4位随机
-    return `NYGN${dateStr}${randomStr}`;
+  const triggerDelete = (table, id, name) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('权限不足：仅超级管理员可执行物理删除', 'error'); return;
+    }
+    setDeleteConfirm({ show: true, table, id, name });
   };
 
-  // 核心计价引擎：根据当前所有参数重算单个柜子的金额
-  const calculateCabinetDetails = (cabinet) => {
-    const w = parseFloat(cabinet.width) || 0;
-    const h = parseFloat(cabinet.height) || 0;
-    const d = parseFloat(cabinet.depth) || 0;
-    
-    // 1. 获取柜体和门板基础物料数据
-    const cabMat = cabinetsData.find(c => c.id === cabinet.cabinet_mat_id);
-    const doorMat = doorsData.find(d => d.id === cabinet.door_mat_id);
+  const executeDelete = async () => {
+    const { table, id } = deleteConfirm;
+    try {
+      setIsLoading(true);
+      let checkTable = ''; let checkColumn = '';
+      if (table === 'materials_cabinet') { checkTable = 'quote_cabinets'; checkColumn = 'cabinet_mat_id'; }
+      else if (table === 'materials_door') { checkTable = 'quote_cabinets'; checkColumn = 'door_mat_id'; }
+      else if (table === 'upgrade_items') { checkTable = 'quote_upgrades'; checkColumn = 'upgrade_item_id'; }
 
-    // 2. 算量判定 (面积 or 延米)
-    let calcMode = '按面积㎡';
-    let baseArea = 0;
-    
-    if (h > rulesData.height_threshold) {
-      const actualArea = (w * h) / 1000000;
-      baseArea = Math.max(actualArea, rulesData.minimum_area);
-      calcMode = '按面积㎡';
-    } else {
-      const actualMeter = w / 1000;
-      baseArea = Math.max(actualMeter, rulesData.minimum_width / 1000);
-      calcMode = '按延米';
-    }
-
-    // 默认门板面积 = 柜体面积
-    const defaultDoorArea = baseArea;
-
-    // 3. 计算最终核算单价 (基础 + 调价)
-    const cabFinalPrice = cabMat ? (parseFloat(cabMat.base_price) + parseFloat(cabinet.cabinet_unit_adjustment || 0)) : 0;
-    const cabShallowPrice = cabMat ? (parseFloat(cabMat.shallow_price) + parseFloat(cabinet.cabinet_unit_adjustment || 0)) : 0;
-    const doorFinalPrice = doorMat ? (parseFloat(doorMat.base_price) + parseFloat(cabinet.door_unit_adjustment || 0)) : 0;
-
-    // 4. 深度规则引擎
-    let cabinetBaseTotal = 0;
-    let doorBaseTotal = 0;
-
-    if (cabMat) {
-      if (cabinet.no_door) {
-        // 无门板
-        const base = (d <= rulesData.shallow_depth) ? cabShallowPrice : cabFinalPrice;
-        const depthRatio = (d > rulesData.standard_depth) ? (d / rulesData.standard_depth) : 1;
-        cabinetBaseTotal = base * (cabMat.no_door_factor || 1) * depthRatio * baseArea;
-      } else {
-        // 有门板
-        const base = (d <= rulesData.shallow_depth) ? cabShallowPrice : cabFinalPrice;
-        const depthRatio = (d > rulesData.standard_depth) ? (d / rulesData.standard_depth) : 1;
-        cabinetBaseTotal = base * depthRatio * baseArea;
-        doorBaseTotal = doorFinalPrice * defaultDoorArea;
-      }
-    }
-
-    // 5. 升级工艺循环计算 (严格执行 V3.3 规则)
-    let upgradesTotal = 0;
-    const calculatedUpgrades = (cabinet.upgrades || []).map(upg => {
-      
-      const itemData = upgradesData.find(u => u.id === upg.upgrade_item_id);
-      if (!itemData) return upg;
-
-      // 算出单项最终价格
-      const finalUnitPrice = parseFloat(itemData.unit_price || 0) + parseFloat(upg.unit_price_adjustment || 0);
-      let calculatedQty = 0;
-      let lineTotal = 0;
-
-      // --- 规则提取 ---
-      const inputQty = parseFloat(upg.input_quantity || 0);
-      const minQty = parseFloat(itemData.minimum_quantity || 0);
-
-      const isExcessDrawer = itemData.calculation_type === 'excess_drawer' || itemData.calculation_type === '超额抽屉规则';
-      const isAutoWidth = itemData.calculation_type === 'auto_width' || itemData.calculation_type === '按柜宽自动算';
-      const isManualAmount = itemData.calculation_type === 'manual_amount' || itemData.calculation_type === '人工输入金额';
-
-      if (isExcessDrawer) {
-        // 修正点: 超额抽屉计费规则 (CEIL 向上取整，限制最低为1个)
-        const standardQty = Math.max(1, Math.ceil(w / 1000));
-        calculatedQty = Math.max(0, inputQty - standardQty);
-        lineTotal = calculatedQty * finalUnitPrice; // add_cost
-
-      } else if (isAutoWidth) {
-        calculatedQty = Math.max(w / 1000, minQty);
-        lineTotal = calculatedQty * finalUnitPrice;
-
-      } else if (isManualAmount || itemData.upgrade_effect_type === 'manual') {
-        calculatedQty = 1;
-        lineTotal = inputQty; // 直接使用输入的金额
-
-      } else {
-        // 面积、延米、按个、按套 等
-        if (itemData.upgrade_effect_type === 'replace') {
-           // Replace 专属面积逻辑
-           const areaToUse = parseFloat(upg.manual_door_area) > 0 ? parseFloat(upg.manual_door_area) : defaultDoorArea;
-           calculatedQty = Math.max(areaToUse, minQty);
-           // 必须扣底价
-           const baseDoorPrice = doorMat ? parseFloat(doorMat.base_price) : 0;
-           lineTotal = calculatedQty * (finalUnitPrice - baseDoorPrice);
-        } else {
-           // Add_cost 或 Difference
-           calculatedQty = Math.max(inputQty, minQty);
-           lineTotal = calculatedQty * finalUnitPrice;
+      if (checkTable && checkColumn) {
+        const { data: refData, error: refError } = await supabase.from(checkTable).select('id').eq(checkColumn, id).limit(1);
+        if (refError && refError.code !== '42P01') throw refError;
+        if (refData && refData.length > 0) {
+          throw new Error('此数据已被历史报价冻结关联，禁止物理删除！请使用“停用”功能。');
         }
       }
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) throw error;
+      showToast('✅ 物理删除成功');
+      setDeleteConfirm({ show: false, table: '', id: null, name: '' });
+      fetchDictionaries(); 
+    } catch (err) {
+      showToast('删除中止: ' + err.message, 'error');
+      setDeleteConfirm({ show: false, table: '', id: null, name: '' });
+    } finally { setIsLoading(false); }
+  };
 
-      upgradesTotal += lineTotal;
+  const handleSaveCabinet = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { name: cabinetForm.name, base_price: parseFloat(cabinetForm.base_price), shallow_price: parseFloat(cabinetForm.shallow_price), no_door_factor: parseFloat(cabinetForm.no_door_factor) };
+      if (editId) { await supabase.from('materials_cabinet').update(payload).eq('id', editId); showToast('修改成功'); } 
+      else { await supabase.from('materials_cabinet').insert([payload]); showToast('新增成功'); }
+      setCabinetForm({ name: '', base_price: '', shallow_price: '', no_door_factor: '' }); setEditId(null); fetchDictionaries();
+    } catch (err) { showToast('保存失败', 'error'); }
+  };
 
-      return {
-        ...upg,
-        calculated_quantity: calculatedQty,
-        snap_final_unit_price: finalUnitPrice,
-        snap_original_unit_price: itemData.unit_price,
-        snap_base_door_price: doorMat ? doorMat.base_price : 0,
-        snap_upgrade_effect_type: itemData.upgrade_effect_type,
-        snap_upgrade_name: itemData.name,
-        total_amount: lineTotal
+  const handleSaveDoor = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { name: doorForm.name, door_type: doorForm.door_type, base_price: parseFloat(doorForm.base_price) || 0 };
+      if (editId) { await supabase.from('materials_door').update(payload).eq('id', editId); showToast('修改成功'); } 
+      else { await supabase.from('materials_door').insert([payload]); showToast('新增成功'); }
+      setDoorForm({ name: '', door_type: '普通门板', base_price: '' }); setEditId(null); fetchDictionaries();
+    } catch (err) { showToast('保存失败', 'error'); }
+  };
+
+  const handleSaveUpgrade = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { 
+        name: upgradeForm.name, upgrade_category: upgradeForm.upgrade_category, 
+        calculation_type: upgradeForm.calculation_type, upgrade_effect_type: upgradeForm.upgrade_effect_type,
+        replace_calculation_mode: upgradeForm.upgrade_effect_type === 'replace' ? upgradeForm.replace_calculation_mode : null,
+        unit: upgradeForm.unit, unit_price: parseFloat(upgradeForm.unit_price) || 0, 
+        sort_order: parseInt(upgradeForm.sort_order) || 0, status: upgradeForm.status,
+        description: upgradeForm.description, is_standard_item: upgradeForm.is_standard_item, 
+        allow_manual_edit: upgradeForm.allow_manual_edit,
+        combo_type: upgradeForm.combo_type, upgrade_material: upgradeForm.upgrade_material,
+        upgrade_style: upgradeForm.upgrade_style, upgrade_specification: upgradeForm.upgrade_specification,
+        minimum_quantity: parseFloat(upgradeForm.minimum_quantity) || 0, combo_children: upgradeForm.combo_children
+      };
+      if (editId) { await supabase.from('upgrade_items').update(payload).eq('id', editId); showToast('修改成功'); } 
+      else { await supabase.from('upgrade_items').insert([payload]); showToast('新增成功'); }
+      setUpgradeForm({ name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price', unit: '㎡', unit_price: '', sort_order: 0, status: true, description: '', image_url: '', is_standard_item: false, allow_manual_edit: true, combo_type: 'single', upgrade_material: '', upgrade_style: '', upgrade_specification: '', minimum_quantity: 0, combo_children: [] });
+      setEditId(null); fetchDictionaries();
+    } catch (err) { showToast('保存失败', 'error'); }
+  };
+
+  const handleSaveRules = async (e) => {
+    e.preventDefault();
+    try {
+      if (rules.id) { await supabase.from('pricing_rules').update(rules).eq('id', rules.id); showToast('规则更新成功！'); fetchDictionaries(); }
+    } catch (err) { showToast('保存失败', 'error'); }
+  };
+
+  const handleToggleUpgradeStatus = async (item) => {
+    try {
+      await supabase.from('upgrade_items').update({ status: !item.status }).eq('id', item.id);
+      showToast(item.status ? '已停用' : '已重新上架'); fetchDictionaries();
+    } catch (err) { showToast('操作失败', 'error'); }
+  };
+
+  const enterSalesWorkspace = () => {
+    setQuoteInfo({ quoteNo: generateQuoteNo(), customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中' });
+    const initCabId = 'cab-' + Date.now();
+    setQuoteCabinets([{ 
+      id: initCabId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
+      cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
+    }]);
+    setActiveCabinetId(initCabId);
+    setCurrentView('sales');
+  };
+
+  const activeCabinet = quoteCabinets.find(c => c.id === activeCabinetId) || quoteCabinets[0];
+  const updateActiveCabinet = (field, value) => { setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? { ...c, [field]: value } : c)); };
+
+  const handleAddCabinet = () => {
+    const newId = 'cab-' + Date.now();
+    setQuoteCabinets([...quoteCabinets, { 
+      id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
+      cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
+    }]);
+    setActiveCabinetId(newId);
+  };
+
+  const handleCopyCabinet = (e, cab) => {
+    e.stopPropagation();
+    const newId = 'cab-' + Date.now() + Math.floor(Math.random()*1000);
+    const newCab = { ...cab, id: newId, space: cab.space + ' (副本)', upgrades: [...(cab.upgrades || [])] };
+    setQuoteCabinets([...quoteCabinets, newCab]);
+    setActiveCabinetId(newId);
+    showToast('柜体已复制');
+  };
+
+  const handleDeleteCabinet = (e, id) => {
+    e.stopPropagation();
+    if (quoteCabinets.length <= 1) { showToast('至少需要保留一个柜体', 'error'); return; }
+    const newList = quoteCabinets.filter(c => c.id !== id);
+    setQuoteCabinets(newList);
+    if (activeCabinetId === id) setActiveCabinetId(newList[0].id);
+  };
+
+  const calculateCabinetDetails = (cab) => {
+    let result = {
+      qty: 0, calcMethod: '未计算', cabinetPortionTotal: 0, doorPortionTotal: 0, 
+      upgradePortionTotal: 0, baseTotal: 0, finalCabUnitPrice: 0, finalDoorUnitPrice: 0, calculatedUpgrades: []
+    };
+    let w = parseFloat(cab.width) || 0;
+    let h = parseFloat(cab.height) || 0;
+    let d = parseFloat(cab.depth) || 0;
+    if (!w || !h || !d) return result; 
+
+    // 1. 计算规则判定
+    let area = Math.max((w * h) / 1000000, rules.minimum_area || 1);
+    let meter = Math.max(w / 1000, (rules.minimum_width || 1000) / 1000);
+    let isArea = h > (rules.height_threshold || 1000);
+    result.qty = isArea ? area : meter;
+    result.calcMethod = isArea ? `投影面积 (${result.qty.toFixed(2)}㎡)` : `延米 (${result.qty.toFixed(2)}m)`;
+
+    // 2. 基础单价与人工调价
+    let cabMat = cabinets.find(m => m.id === cab.cabinet_mat_id);
+    let doorMat = doors.find(m => m.id === cab.door_mat_id);
+    let systemBaseDoorPrice = doorMat ? parseFloat(doorMat.base_price) || 0 : 0; 
+    let baseCabPrice = cabMat ? parseFloat(cabMat.base_price) || 0 : 0;
+    let shallowCabPrice = cabMat ? parseFloat(cabMat.shallow_price) || 0 : 0;
+    let noDoorFactor = cabMat ? parseFloat(cabMat.no_door_factor) || 1 : 1;
+    
+    result.finalCabUnitPrice = baseCabPrice + (parseFloat(cab.cabinet_unit_adjustment) || 0);
+    let finalShallowUnitPrice = shallowCabPrice + (parseFloat(cab.cabinet_unit_adjustment) || 0);
+    result.finalDoorUnitPrice = systemBaseDoorPrice + (parseFloat(cab.door_unit_adjustment) || 0);
+
+    // 3. 深度逻辑算法
+    let hasDoor = doorMat && doorMat.door_type !== '无门板';
+    let stdDepth = rules.standard_depth || 600;
+    let shallowDepth = rules.shallow_depth || 295;
+    let unitCabCost = 0;
+    let unitDoorCost = hasDoor ? result.finalDoorUnitPrice : 0;
+
+    if (!hasDoor) {
+      if (d <= shallowDepth) unitCabCost = finalShallowUnitPrice * noDoorFactor;
+      else if (d <= stdDepth) unitCabCost = result.finalCabUnitPrice * noDoorFactor;
+      else unitCabCost = (result.finalCabUnitPrice * noDoorFactor) * (d / stdDepth);
+    } else {
+      if (d <= shallowDepth) unitCabCost = finalShallowUnitPrice;
+      else if (d <= stdDepth) unitCabCost = result.finalCabUnitPrice;
+      else unitCabCost = result.finalCabUnitPrice * (d / stdDepth);
+    }
+
+    result.cabinetPortionTotal = unitCabCost * result.qty;
+    result.doorPortionTotal = unitDoorCost * result.qty;
+
+    // 4. 升级工艺引擎
+    let upgradesTotal = 0;
+    result.calculatedUpgrades = (cab.upgrades || []).map(upg => {
+      let inputQty = parseFloat(upg.input_quantity) || 0;
+      let calcQty = inputQty;
+      
+      let snapOriginalPrice = parseFloat(upg.snap_original_unit_price) || 0;
+      let priceAdj = parseFloat(upg.unit_price_adjustment) || 0;
+      let snapFinalPrice = snapOriginalPrice + priceAdj;
+      let minQty = parseFloat(upg.minimum_quantity) || 0;
+      
+      if (upg.calculation_type === '按柜宽自动算') {
+        calcQty = w / 1000; 
+        inputQty = calcQty;
+      } else if (upg.calculation_type === '超额抽屉规则') {
+        let standard = Math.max(1, Math.round(w / 1000));
+        calcQty = Math.max(0, inputQty - standard);
+      } else if (upg.upgrade_effect_type === 'replace') {
+        let baseArea = (upg.manual_door_area !== '' && upg.manual_door_area !== null && !isNaN(parseFloat(upg.manual_door_area))) 
+          ? parseFloat(upg.manual_door_area) 
+          : (w * h / 1000000);
+        calcQty = Math.max(baseArea, minQty);
+      } else if (upg.calculation_type !== '人工直接输金额') {
+        calcQty = Math.max(inputQty, minQty);
+      }
+
+      let finalAmount = 0;
+      
+      if (upg.calculation_type === '人工直接输金额' || upg.upgrade_effect_type === 'manual') {
+        finalAmount = inputQty; // Amount is directly inputted
+        calcQty = 1;
+      } else if (upg.upgrade_effect_type === 'replace' && upg.replace_calculation_mode === 'full_price') {
+        // V3.3 修正：(升级终价 - 原底价) * 计算后的数量
+        finalAmount = calcQty * (snapFinalPrice - systemBaseDoorPrice);
+      } else {
+        finalAmount = calcQty * snapFinalPrice;
+      }
+      
+      upgradesTotal += finalAmount;
+      return { 
+        ...upg, 
+        calculatedQty: calcQty, 
+        finalAmount, 
+        snap_base_door_price: systemBaseDoorPrice,
+        snap_final_unit_price: snapFinalPrice
       };
     });
 
-    return {
-      ...cabinet,
-      calc_mode: calcMode,
-      calc_area: baseArea,
-      cabinet_total: cabinetBaseTotal,
-      door_total: doorBaseTotal,
-      upgrades: calculatedUpgrades,
-      upgrades_total: upgradesTotal,
-      sub_total: cabinetBaseTotal + doorBaseTotal + upgradesTotal,
-      snap_final_cabinet_price: cabFinalPrice,
-      snap_final_door_price: doorFinalPrice
-    };
+    result.upgradePortionTotal = upgradesTotal;
+    result.baseTotal = result.cabinetPortionTotal + result.doorPortionTotal + result.upgradePortionTotal;
+    return result;
   };
 
-  const handleUpdateCabinet = (cabId, field, value) => {
-    setActiveQuote(prev => {
-      const updatedCabinets = prev.cabinets.map(cab => {
-        if (cab.id === cabId) {
-          const updatedCab = { ...cab, [field]: value };
-          // 如果修改了影响价格的字段，立刻重算
-          if (['width', 'height', 'depth', 'cabinet_mat_id', 'door_mat_id', 'no_door', 'cabinet_unit_adjustment', 'door_unit_adjustment'].includes(field)) {
-             return calculateCabinetDetails(updatedCab);
-          }
-          return updatedCab;
-        }
-        return cab;
-      });
-      return { ...prev, cabinets: updatedCabinets };
-    });
-  };
-
-  const addCabinet = () => {
-    const newCab = {
-      id: 'temp-' + Date.now(),
-      space: '主卧',
-      cabinet_type: '衣柜',
-      name: '主卧衣柜', // space + cabinet_type 组合
-      width: '', height: '', depth: '',
-      cabinet_mat_id: '', door_mat_id: '', no_door: false,
-      cabinet_thickness: 18,
-      cabinet_brand: '', cabinet_color: '', cabinet_material_remark: '',
-      door_brand: '', door_color: '', back_panel_spec: '9mm标准背板',
-      cabinet_unit_adjustment: 0, door_unit_adjustment: 0,
-      upgrades: [],
-      calc_mode: '', calc_area: 0, cabinet_total: 0, door_total: 0, upgrades_total: 0, sub_total: 0
-    };
-    setActiveQuote(prev => ({ ...prev, cabinets: [...prev.cabinets, newCab] }));
-    setActiveCabinetId(newCab.id);
-  };
-
-  const copyCabinet = (cabToCopy) => {
-    const newCab = {
-      ...cabToCopy,
-      id: 'temp-' + Date.now(),
-      name: cabToCopy.name + ' (副本)'
-    };
-    setActiveQuote(prev => ({ ...prev, cabinets: [...prev.cabinets, newCab] }));
-    setActiveCabinetId(newCab.id);
-  };
-
-  const removeCabinet = (id) => {
-    setActiveQuote(prev => ({ ...prev, cabinets: prev.cabinets.filter(c => c.id !== id) }));
-    if (activeCabinetId === id) setActiveCabinetId(null);
-  };
-
-  const openUpgradeModal = (item) => {
-    setUpgradeModal({
-      show: true,
-      selectedItem: item,
-      inputQty: '',
-      manualDoorArea: '',
-      unitPriceAdj: ''
-    });
-  };
-
-  const confirmAddUpgrade = () => {
-    const { selectedItem, inputQty, manualDoorArea, unitPriceAdj } = upgradeModal;
-    
-    // 【修改点】：如果是超额抽屉，强制将传入数据库的 unit_price_adjustment 设为 0
-    const isExcessDrawer = selectedItem.calculation_type === 'excess_drawer' || selectedItem.calculation_type === '超额抽屉规则';
-    const finalUnitPriceAdj = isExcessDrawer ? 0 : (parseFloat(unitPriceAdj) || 0);
-
+  const handleConfirmAddUpgrade = () => {
+    const item = upgradeModal.selectedItem;
+    if (!item) return;
+    if (item.calculation_type !== '按柜宽自动算' && !upgradeModal.inputQty) {
+      showToast('请输入数量或金额', 'error'); return;
+    }
     const newUpgrade = {
-      id: 'upg-' + Date.now(),
-      upgrade_item_id: selectedItem.id,
-      input_quantity: parseFloat(inputQty) || 0,
-      manual_door_area: parseFloat(manualDoorArea) || 0,
-      unit_price_adjustment: finalUnitPriceAdj,
-      remark: ''
+      id: 'upg-' + Date.now(), item_id: item.id, name: item.name, category: item.upgrade_category,
+      unit: item.unit, 
+      snap_original_unit_price: item.unit_price, 
+      unit_price_adjustment: parseFloat(upgradeModal.unit_price_adjustment) || 0,
+      calculation_type: item.calculation_type,
+      upgrade_effect_type: item.upgrade_effect_type, replace_calculation_mode: item.replace_calculation_mode,
+      input_quantity: parseFloat(upgradeModal.inputQty) || 0,
+      minimum_quantity: item.minimum_quantity,
+      manual_door_area: upgradeModal.manual_door_area,
+      remark: upgradeModal.inputRemark || '',
+      combo_type: item.combo_type,
+      snap_material: item.upgrade_material, snap_style: item.upgrade_style, snap_specification: item.upgrade_specification,
+      parent_record_id: null
     };
-
-    setActiveQuote(prev => {
-      const updatedCabinets = prev.cabinets.map(cab => {
-        if (cab.id === activeCabinetId) {
-          const updatedCab = { ...cab, upgrades: [...cab.upgrades, newUpgrade] };
-          return calculateCabinetDetails(updatedCab); // 加入工艺后重算该柜
-        }
-        return cab;
-      });
-      return { ...prev, cabinets: updatedCabinets };
-    });
-
-    setUpgradeModal({ show: false, selectedItem: null, inputQty: '', manualDoorArea: '', unitPriceAdj: '' });
+    updateActiveCabinet('upgrades', [...(activeCabinet.upgrades || []), newUpgrade]);
+    setUpgradeModal({ ...upgradeModal, isOpen: false, selectedItem: null, inputQty: '', inputRemark: '', unit_price_adjustment: 0, manual_door_area: '' });
+    showToast(`已添加工艺: ${item.name}`);
   };
 
-  const removeUpgrade = (cabId, upgId) => {
-    setActiveQuote(prev => {
-      const updatedCabinets = prev.cabinets.map(cab => {
-        if (cab.id === cabId) {
-          const updatedCab = { ...cab, upgrades: cab.upgrades.filter(u => u.id !== upgId) };
-          return calculateCabinetDetails(updatedCab);
-        }
-        return cab;
-      });
-      return { ...prev, cabinets: updatedCabinets };
-    });
+  const handleRemoveUpgrade = (upgId) => {
+    updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
   };
 
-  const handleSaveQuoteDraft = async () => {
-    // 1. 必填项前置校验
-    if (!activeQuote.customer_name || !activeQuote.customer_phone || !activeQuote.delivery_address) {
-      showToast('客户姓名、电话、交付地址均为必填项', 'error'); return;
-    }
-    const phoneRegex = /^1[3-9]\d{9}$/;
-    if (!phoneRegex.test(activeQuote.customer_phone)) {
-      showToast('请输入有效的11位大陆手机号码', 'error'); return;
-    }
-    if (activeQuote.cabinets.length === 0) {
-      showToast('请至少添加一个柜体', 'error'); return;
-    }
-
+  const handleSaveDraft = async () => {
+    if (!quoteInfo.customerName) { showToast('请填写客户姓名', 'error'); return; }
+    if (!isValidPhone(quoteInfo.customerPhone)) { showToast('手机号码格式不正确', 'error'); return; }
     setIsLoading(true);
     try {
-      let currentQuoteNo = activeQuote.quote_no;
-      if (!currentQuoteNo) currentQuoteNo = generateOrderNo(); // 自动生成订单号
+      const { data: quoteData, error: quoteErr } = await supabase.from('quotes').upsert([{
+        quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
+        customer_phone: quoteInfo.customerPhone, delivery_address: quoteInfo.deliveryAddress,
+        status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
+      }], { onConflict: 'quote_no' }).select().single();
+      if (quoteErr) throw quoteErr;
 
-      // 计算整单总金额
-      const totalAmount = activeQuote.cabinets.reduce((sum, cab) => sum + cab.sub_total, 0);
+      await supabase.from('quote_cabinets').delete().eq('quote_id', quoteData.id);
+      await supabase.from('quote_upgrades').delete().eq('quote_id', quoteData.id);
 
-      const quotePayload = {
-        quote_no: currentQuoteNo,
-        customer_name: activeQuote.customer_name,
-        customer_phone: activeQuote.customer_phone,
-        delivery_address: activeQuote.delivery_address,
-        status: '已保存',
-        total_amount: totalAmount,
-        created_by: currentUser.id
-      };
+      for (const cab of quoteCabinets) {
+        const calcs = calculateCabinetDetails(cab);
+        const { data: insertedCab, error: cabErr2 } = await supabase.from('quote_cabinets').insert([{
+          quote_id: quoteData.id, name: `${cab.space}｜${cab.cabinetType}`, 
+          width: parseFloat(cab.width) || 0, height: parseFloat(cab.height) || 0, depth: parseFloat(cab.depth) || 0,
+          cabinet_mat_id: cab.cabinet_mat_id || null, door_mat_id: cab.door_mat_id || null,
+          cabinet_thickness: parseFloat(cab.cabinet_thickness) || null,
+          snap_cabinet_brand: cab.snap_cabinet_brand || '', snap_cabinet_color: cab.snap_cabinet_color || '',
+          snap_door_brand: cab.snap_door_brand || '', snap_door_color: cab.snap_door_color || '',
+          snap_back_panel_spec: cab.snap_back_panel_spec || '',
+          cabinet_unit_adjustment: parseFloat(cab.cabinet_unit_adjustment) || 0,
+          door_unit_adjustment: parseFloat(cab.door_unit_adjustment) || 0,
+          snap_final_cabinet_price: calcs.finalCabUnitPrice, snap_final_door_price: calcs.finalDoorUnitPrice,
+          cabinet_material_remark: cab.cabinet_material_remark || ''
+        }]).select().single();
+        if (cabErr2) throw cabErr2;
 
-      let dbQuoteId = activeQuote.id;
-
-      // 插入或更新 quotes 表
-      if (dbQuoteId) {
-        await supabase.from('quotes').update(quotePayload).eq('id', dbQuoteId);
-      } else {
-        const { data, error } = await supabase.from('quotes').insert([quotePayload]).select();
-        if (error) throw error;
-        dbQuoteId = data[0].id;
-        setActiveQuote(prev => ({ ...prev, id: dbQuoteId, quote_no: currentQuoteNo, status: '已保存' }));
-      }
-
-      // 处理 quote_cabinets (先删后插)
-      await supabase.from('quote_cabinets').delete().eq('quote_id', dbQuoteId);
-      
-      for (const cab of activeQuote.cabinets) {
-        const cabPayload = {
-          quote_id: dbQuoteId,
-          name: cab.name,
-          width: cab.width, height: cab.height, depth: cab.depth,
-          cabinet_mat_id: cab.cabinet_mat_id, door_mat_id: cab.door_mat_id, no_door: cab.no_door,
-          cabinet_thickness: cab.cabinet_thickness,
-          snap_cabinet_brand: cab.cabinet_brand, snap_cabinet_color: cab.cabinet_color,
-          snap_door_brand: cab.door_brand, snap_door_color: cab.door_color,
-          snap_back_panel_spec: cab.back_panel_spec,
-          cabinet_material_remark: cab.cabinet_material_remark,
-          cabinet_unit_adjustment: cab.cabinet_unit_adjustment,
-          door_unit_adjustment: cab.door_unit_adjustment,
-          snap_final_cabinet_price: cab.snap_final_cabinet_price,
-          snap_final_door_price: cab.snap_final_door_price,
-          subtotal: cab.sub_total
-        };
-
-        const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').insert([cabPayload]).select();
-        if (cabErr) throw cabErr;
-
-        // 处理 quote_upgrades
         if (cab.upgrades && cab.upgrades.length > 0) {
-          const upgPayloads = cab.upgrades.map(u => ({
-            quote_id: dbQuoteId,
-            quote_cabinet_id: cabData[0].id,
-            upgrade_item_id: u.upgrade_item_id,
-            input_quantity: u.input_quantity,
-            calculated_quantity: u.calculated_quantity,
-            manual_door_area: u.manual_door_area,
-            unit_price_adjustment: u.unit_price_adjustment,
-            snap_final_unit_price: u.snap_final_unit_price,
-            snap_original_unit_price: u.snap_original_unit_price,
-            snap_base_door_price: u.snap_base_door_price,
-            snap_upgrade_effect_type: u.snap_upgrade_effect_type,
-            snap_upgrade_name: u.snap_upgrade_name,
-            total_price: u.total_amount,
-            remark: u.remark
-          }));
-          await supabase.from('quote_upgrades').insert(upgPayloads);
+          const upgradeInserts = cab.upgrades.map(u => {
+            const calculatedMatch = calcs.calculatedUpgrades.find(cu => cu.id === u.id);
+            return {
+              quote_id: quoteData.id, cabinet_id: insertedCab.id, upgrade_item_id: u.item_id,
+              quantity: calculatedMatch.calculatedQty, remark: u.remark || '',
+              snap_unit_price: calculatedMatch.snap_final_unit_price, snap_upgrade_effect_type: u.upgrade_effect_type,
+              snap_upgrade_name: u.name, snap_base_door_price: calculatedMatch.snap_base_door_price,
+              snap_upgrade_price: calculatedMatch.finalAmount,
+              snap_original_unit_price: u.snap_original_unit_price,
+              unit_price_adjustment: u.unit_price_adjustment,
+              snap_final_unit_price: calculatedMatch.snap_final_unit_price,
+              input_quantity: u.input_quantity,
+              calculated_quantity: calculatedMatch.calculatedQty,
+              manual_door_area: u.manual_door_area ? parseFloat(u.manual_door_area) : null,
+              parent_record_id: u.parent_record_id,
+              snap_material: u.snap_material,
+              snap_style: u.snap_style,
+              snap_specification: u.snap_specification
+            };
+          });
+          const { error: upgErr } = await supabase.from('quote_upgrades').insert(upgradeInserts);
+          if (upgErr) throw upgErr;
         }
       }
-
-      showToast('✅ 报价草稿保存成功！');
-    } catch (err) {
-      showToast('保存失败: ' + err.message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
+      setQuoteInfo(prev => ({ ...prev, status: '已保存草稿' }));
+      showToast(`报价草稿保存成功！`);
+    } catch (err) { showToast('保存失败: ' + err.message, 'error'); } finally { setIsLoading(false); }
   };
 
   const renderUpgradeModal = () => {
-    if (!upgradeModal.show || !upgradeModal.selectedItem) return null;
-    const item = upgradeModal.selectedItem;
-    const activeCab = activeQuote.cabinets.find(c => c.id === activeCabinetId);
-    
-    // 超额抽屉规则判定
-    const isExcessDrawer = item.calculation_type === 'excess_drawer' || item.calculation_type === '超额抽屉规则';
-    const isAutoWidth = item.calculation_type === 'auto_width' || item.calculation_type === '按柜宽自动算';
-    const isManualAmount = item.calculation_type === 'manual_amount' || item.calculation_type === '人工输入金额';
-
-    // 实时测算超额抽屉相关数据，用于UI展示
-    let drawerStd = 0;
-    let drawerExc = 0;
-    let drawerCost = 0;
-    if (isExcessDrawer && activeCab) {
-        drawerStd = Math.max(1, Math.ceil((parseFloat(activeCab.width) || 0) / 1000));
-        drawerExc = Math.max(0, (parseFloat(upgradeModal.inputQty) || 0) - drawerStd);
-        drawerCost = drawerExc * parseFloat(item.unit_price || 0);
-    }
+    if (!upgradeModal.isOpen) return null;
+    const activeUpgrades = upgrades.filter(u => u.status === true);
+    const categories = ['门板升级', '五金系统', '灯光系统', '木作工艺', '其他'];
+    const filteredItems = activeUpgrades.filter(u => (u.upgrade_category || '其他') === upgradeModal.activeCategory);
 
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
-          <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
-            <h3 className="font-bold text-lg text-gray-800">工艺配置：{item.name}</h3>
-            <button onClick={() => setUpgradeModal({...upgradeModal, show:false})} className="text-gray-400 hover:text-black"><LucideIcons.X size={20}/></button>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl w-full max-w-5xl h-[80vh] shadow-2xl flex flex-col overflow-hidden">
+          <div className="flex justify-between items-center p-6 border-b border-gray-100">
+            <h2 className="text-xl font-black text-gray-900">✨ 挑选升级与工艺系统</h2>
+            <button onClick={() => setUpgradeModal({...upgradeModal, isOpen: false})} className="w-10 h-10 bg-gray-100 rounded-full font-bold text-gray-600">✕</button>
           </div>
-          <div className="p-6 space-y-6">
-            
-            {/* 数量输入区 */}
-            {isExcessDrawer ? (
-              // 超额抽屉定制 UI 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">输入实际抽屉数量</label>
-                <input type="number" min="0" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-blue-500 font-black text-xl text-center" />
-                
-                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900 space-y-2">
-                   <div className="flex justify-between"><span>柜宽:</span><span className="font-bold">{activeCab?.width || 0} mm</span></div>
-                   <div className="flex justify-between"><span>系统标配数量:</span><span className="font-bold">{drawerStd}</span></div>
-                   <div className="flex justify-between"><span>客户输入数量:</span><span className="font-bold">{upgradeModal.inputQty || 0}</span></div>
-                   <div className="flex justify-between border-t border-blue-200 pt-2 mt-2"><span className="font-bold text-rose-600">超额数量:</span><span className="font-black text-rose-600">{drawerExc}</span></div>
-                   <div className="flex justify-between text-xs text-gray-500"><span>单价: ¥{item.unit_price}</span><span>最终费用: <strong className="text-gray-900">¥{drawerCost}</strong></span></div>
-                </div>
+          <div className="flex flex-1 overflow-hidden">
+            <div className="w-48 bg-gray-50 border-r border-gray-100 flex flex-col p-4 gap-2">
+              {categories.map(cat => (
+                <button key={cat} onClick={() => setUpgradeModal({...upgradeModal, activeCategory: cat, selectedItem: null})}
+                  className={`text-left px-4 py-3 rounded-xl font-bold text-sm ${upgradeModal.activeCategory === cat ? 'bg-black text-white' : 'text-gray-500 hover:bg-white'}`}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-4 h-max border-r border-gray-100">
+                {filteredItems.map(item => (
+                  <div key={item.id} onClick={() => setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: ''})}
+                    className={`p-4 border-2 rounded-2xl cursor-pointer ${upgradeModal.selectedItem?.id === item.id ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'}`}>
+                    <div className="flex justify-between font-bold mb-2"><span>{item.name}</span><span className="text-xs border px-1 rounded">{item.calculation_type}</span></div>
+                    <div className="text-sm font-black text-rose-600">¥{item.unit_price} <span className="text-xs text-gray-400">/ {item.unit}</span></div>
+                  </div>
+                ))}
               </div>
-            ) : isAutoWidth ? (
-              <div className="bg-gray-100 p-4 rounded-xl text-center text-gray-500 text-sm font-bold">系统已自动抓取柜宽: {activeCab?.width || 0} mm 参与计算</div>
-            ) : (
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  输入{isManualAmount ? '总金额' : '数量'}
-                </label>
-                <input type="number" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-black font-black text-lg" placeholder={`必填 (${item.unit})`} />
+              <div className="w-80 bg-gray-50/50 p-6 flex flex-col">
+                {upgradeModal.selectedItem ? (
+                  <div className="flex flex-col h-full">
+                    <div className="mb-6"><div className="text-xl font-black">{upgradeModal.selectedItem.name}</div></div>
+                    <div className="space-y-5 flex-1">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2">{upgradeModal.selectedItem.calculation_type === '人工直接输金额' ? '输入总金额 (元)' : `输入原始数量 (${upgradeModal.selectedItem.unit})`}</label>
+                        {upgradeModal.selectedItem.calculation_type === '按柜宽自动算' ? (
+                          <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm font-bold">🤖 根据柜宽自动运算</div>
+                        ) : (
+                          <input type="number" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-xl" />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 mb-2">人工单价调整 (元)</label>
+                          <input type="number" placeholder="+0" value={upgradeModal.unit_price_adjustment} onChange={e=>setUpgradeModal({...upgradeModal, unit_price_adjustment:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold" />
+                        </div>
+                        {upgradeModal.selectedItem.upgrade_effect_type === 'replace' && (
+                          <div>
+                            <label className="block text-xs font-bold text-rose-600 mb-2">人工门板面积 (㎡，选填)</label>
+                            <input type="number" placeholder="默认用系统柜体投影" value={upgradeModal.manual_door_area} onChange={e=>setUpgradeModal({...upgradeModal, manual_door_area:e.target.value})} className="w-full border-2 border-rose-200 p-3 rounded-xl font-bold bg-rose-50" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2">特殊说明</label>
+                        <textarea value={upgradeModal.inputRemark} onChange={e=>setUpgradeModal({...upgradeModal, inputRemark:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm resize-none" rows="3" />
+                      </div>
+                    </div>
+                    <button onClick={handleConfirmAddUpgrade} className="w-full bg-black text-white py-4 rounded-xl font-black mt-4">确认加入核算</button>
+                  </div>
+                ) : <div className="m-auto text-gray-400 font-bold">请在左侧选择工艺</div>}
               </div>
-            )}
-
-            {/* Replace 专属手工面积修正 */}
-            {item.upgrade_effect_type === 'replace' && (
-              <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                <label className="block text-xs font-bold text-amber-800 mb-2">人工修正门板面积 (㎡/选填)</label>
-                <input type="number" value={upgradeModal.manualDoorArea} onChange={e=>setUpgradeModal({...upgradeModal, manualDoorArea:e.target.value})} className="w-full border border-amber-200 p-2 rounded-lg bg-white" placeholder="如门板与投影面积不符，请在此输入真实面积" />
-              </div>
-            )}
-
-            {/* 调价区 (针对超额抽屉及人工输入金额隐藏) */}
-            {!isExcessDrawer && !isManualAmount && (
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 flex justify-between">
-                  <span>人工单价调整</span> <span className="text-xs text-gray-400 font-normal">系统原价: ¥{item.unit_price}</span>
-                </label>
-                <input type="number" placeholder="加收输入正数，减免输入负数" value={upgradeModal.unitPriceAdj} onChange={e=>setUpgradeModal({...upgradeModal, unitPriceAdj:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-black font-medium text-gray-600" />
-              </div>
-            )}
-
-          </div>
-          <div className="p-4 border-t bg-gray-50 flex gap-3">
-             <button onClick={()=>setUpgradeModal({show:false, selectedItem:null})} className="flex-1 py-3 rounded-xl font-bold bg-gray-200 text-gray-600">取消</button>
-             <button onClick={confirmAddUpgrade} className="flex-[2] py-3 rounded-xl font-bold bg-black text-white shadow-lg">确认加入配置</button>
+            </div>
           </div>
         </div>
       </div>
     );
   };
 
-  const renderWorkspace = () => {
-    const totalOrderAmount = activeQuote.cabinets.reduce((sum, cab) => sum + cab.sub_total, 0);
+  const renderSalesWorkspace = () => {
+    if (!activeCabinet) return null;
+    const currentCalcs = calculateCabinetDetails(activeCabinet);
+    const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0);
 
     return (
-      <div className="flex h-screen bg-gray-100 overflow-hidden font-sans">
-        
-        {/* === 中间核心作业区 === */}
-        <div className="flex-1 flex flex-col h-full bg-white z-10 shadow-xl overflow-y-auto relative border-r border-gray-200">
-          
-          {/* 顶部订单头信息 */}
-          <div className="bg-gray-900 text-white p-6 sticky top-0 z-20 shadow-md">
-            <div className="flex justify-between items-center mb-4">
-              <h1 className="text-xl font-black tracking-widest flex items-center gap-2"><LucideIcons.LayoutDashboard size={20}/> 报价工作台 V3.3</h1>
-              <div className="flex items-center gap-4">
-                <div className="text-sm font-mono bg-black/40 px-3 py-1 rounded-full text-emerald-400 border border-emerald-900/50">NO. {activeQuote.quote_no || '尚未生成'}</div>
-                <div className="text-sm font-bold text-amber-400 border border-amber-400/30 px-2 py-1 rounded">{activeQuote.status}</div>
-                {currentUser?.role === 'admin' && <button onClick={()=>setCurrentView('admin')} className="text-xs bg-white text-black px-3 py-1.5 rounded-md font-bold hover:bg-gray-200">后台管理</button>}
+      <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
+        {renderUpgradeModal()}
+        <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-6 shrink-0 shadow-sm z-20">
+          <div className="flex items-center gap-6">
+            <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span></div>
+            <div className="text-sm font-mono bg-gray-100 px-4 py-1 rounded-full font-bold">单号: {quoteInfo.quoteNo}</div>
+            <div className="text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">● {quoteInfo.status}</div>
+          </div>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setCurrentView('home')} className="text-sm text-gray-500 hover:text-black font-bold">← 返回</button>
+            <button onClick={handleSaveDraft} disabled={isLoading} className="bg-black text-white px-6 py-2 rounded-lg font-bold">💾 保存报价草稿</button>
+          </div>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* 左侧柜体列表 */}
+          <div className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-lg">
+            <div className="p-4 border-b border-gray-100 bg-gray-50">
+              <input value={quoteInfo.customerName} onChange={e=>setQuoteInfo({...quoteInfo, customerName:e.target.value})} placeholder="客户名称" className="w-full border border-gray-200 p-2 mb-2 rounded font-bold" />
+              <input value={quoteInfo.customerPhone} onChange={e=>setQuoteInfo({...quoteInfo, customerPhone:e.target.value})} placeholder="联系电话" className="w-full border border-gray-200 p-2 mb-2 rounded font-bold" />
+              <textarea value={quoteInfo.deliveryAddress} onChange={e=>setQuoteInfo({...quoteInfo, deliveryAddress:e.target.value})} placeholder="交付地址" className="w-full border border-gray-200 p-2 rounded text-sm resize-none" rows="2" />
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-black text-gray-400">🗄️ 空间柜体</span>
+                <button onClick={handleAddCabinet} className="text-xs font-bold text-blue-600">➕ 新增</button>
+              </div>
+              <div className="space-y-3">
+                {quoteCabinets.map(cab => (
+                  <div key={cab.id} onClick={() => setActiveCabinetId(cab.id)} className={`p-4 rounded-xl cursor-pointer border-2 relative group ${activeCabinetId === cab.id ? 'bg-white border-black shadow-md' : 'bg-white border-transparent'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-bold text-sm">{cab.space}{cab.cabinetType}</div>
+                      <div className="hidden group-hover:flex gap-1 absolute right-2 top-2 bg-white rounded p-1 shadow">
+                        <button onClick={(e) => handleCopyCabinet(e, cab)} className="text-blue-600 text-[10px] px-1 font-bold">复制</button>
+                        <button onClick={(e) => handleDeleteCabinet(e, cab.id)} className="text-rose-600 text-[10px] px-1 font-bold">删除</button>
+                      </div>
+                    </div>
+                    <div className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">{cab.width||0} × {cab.height||0} × {cab.depth||0}</div>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><label className="text-xs text-gray-400 mb-1 block uppercase">客户名称</label><input type="text" value={activeQuote.customer_name} onChange={e=>setActiveQuote({...activeQuote, customer_name:e.target.value})} className="w-full bg-gray-800 border-none p-2.5 rounded-lg text-sm text-white focus:ring-1 focus:ring-white outline-none" placeholder="必填"/></div>
-              <div><label className="text-xs text-gray-400 mb-1 block uppercase">联系电话</label><input type="tel" maxLength="11" value={activeQuote.customer_phone} onChange={e=>setActiveQuote({...activeQuote, customer_phone:e.target.value})} className="w-full bg-gray-800 border-none p-2.5 rounded-lg text-sm text-white focus:ring-1 focus:ring-white outline-none" placeholder="11位大陆手机号"/></div>
-              <div><label className="text-xs text-gray-400 mb-1 block uppercase">交付地址</label><input type="text" value={activeQuote.delivery_address} onChange={e=>setActiveQuote({...activeQuote, delivery_address:e.target.value})} className="w-full bg-gray-800 border-none p-2.5 rounded-lg text-sm text-white focus:ring-1 focus:ring-white outline-none" placeholder="安装送货地址"/></div>
+          </div>
+
+          {/* 右侧编辑区 */}
+          <div className="flex-1 overflow-y-auto p-8 bg-gray-100 pb-40">
+            <div className="max-w-4xl mx-auto space-y-6">
+              {/* 尺寸基础 */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black text-gray-800">📐 基础尺寸</h3><div className="text-xs font-bold bg-gray-100 px-3 py-1 rounded-full">算法: {currentCalcs.calcMethod}</div></div>
+                <div className="grid grid-cols-5 gap-4">
+                  <div><label className="text-xs font-bold text-gray-500">空间</label><input value={activeCabinet.space} onChange={e=>updateActiveCabinet('space', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">类型</label><input value={activeCabinet.cabinetType} onChange={e=>updateActiveCabinet('cabinetType', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white" /></div>
+                  <div><label className="text-xs font-bold text-blue-600">宽 W(mm)</label><input type="number" value={activeCabinet.width} onChange={e=>updateActiveCabinet('width', e.target.value)} className="w-full border-2 border-blue-200 p-2 rounded-lg font-black mt-1" /></div>
+                  <div><label className="text-xs font-bold text-blue-600">高 H(mm)</label><input type="number" value={activeCabinet.height} onChange={e=>updateActiveCabinet('height', e.target.value)} className="w-full border-2 border-blue-200 p-2 rounded-lg font-black mt-1" /></div>
+                  <div><label className="text-xs font-bold text-blue-600">深 D(mm)</label><input type="number" value={activeCabinet.depth} onChange={e=>updateActiveCabinet('depth', e.target.value)} className="w-full border-2 border-blue-200 p-2 rounded-lg font-black mt-1" /></div>
+                </div>
+              </div>
+
+              {/* 柜体选配 */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black">🗄️ 柜体选配</h3><div className="font-bold text-gray-500">柜体核算: <span className="text-black ml-1">¥{currentCalcs.cabinetPortionTotal.toFixed(0)}</span></div></div>
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500">系统材料底价</label>
+                    <select value={activeCabinet.cabinet_mat_id} onChange={e=>updateActiveCabinet('cabinet_mat_id', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                      <option value="">-- 选择系统材料 --</option>
+                      {cabinets.map(c => <option key={c.id} value={c.id}>{c.name} (¥{c.base_price})</option>)}
+                    </select>
+                  </div>
+                  <div><label className="text-xs font-bold text-gray-500">指定品牌</label><input value={activeCabinet.snap_cabinet_brand} onChange={e=>updateActiveCabinet('snap_cabinet_brand', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">指定颜色</label><input value={activeCabinet.snap_cabinet_color} onChange={e=>updateActiveCabinet('snap_cabinet_color', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                </div>
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div><label className="text-xs font-bold text-gray-500">板材厚度(mm)</label><input type="number" value={activeCabinet.cabinet_thickness} onChange={e=>updateActiveCabinet('cabinet_thickness', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">基础背板</label><select value={activeCabinet.snap_back_panel_spec} onChange={e=>updateActiveCabinet('snap_back_panel_spec', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option>9mm标准</option><option>18mm需升级</option></select></div>
+                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">综合选材备注</label><input value={activeCabinet.cabinet_material_remark} onChange={e=>updateActiveCabinet('cabinet_material_remark', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                </div>
+                <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                  <div className="text-sm font-black text-gray-900">人工调价 (元/㎡)</div>
+                  <div className="flex items-center gap-4">
+                    <input type="number" placeholder="+0" value={activeCabinet.cabinet_unit_adjustment} onChange={e=>updateActiveCabinet('cabinet_unit_adjustment', e.target.value)} className="w-24 border-2 p-2 rounded-lg font-black text-center" />
+                    <div className="text-right border-l pl-4"><div className="text-xs font-bold text-gray-500">最终单价快照</div><div className="text-xl font-black">¥{currentCalcs.finalCabUnitPrice}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 门板选配 */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black">🚪 门板选配</h3><div className="font-bold text-gray-500">门板核算: <span className="text-black ml-1">¥{currentCalcs.doorPortionTotal.toFixed(0)}</span></div></div>
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500">系统门板底价 (或敞开柜)</label>
+                    <select value={activeCabinet.door_mat_id} onChange={e=>updateActiveCabinet('door_mat_id', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                      <option value="">-- 无门板敞开柜 --</option>
+                      {doors.map(d => <option key={d.id} value={d.id}>{d.name} (¥{d.base_price})</option>)}
+                    </select>
+                  </div>
+                  <div><label className="text-xs font-bold text-gray-500">指定品牌</label><input value={activeCabinet.snap_door_brand} onChange={e=>updateActiveCabinet('snap_door_brand', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">指定颜色</label><input value={activeCabinet.snap_door_color} onChange={e=>updateActiveCabinet('snap_door_color', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                </div>
+                <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                  <div className="text-sm font-black text-gray-900">人工调价 (元/㎡)</div>
+                  <div className="flex items-center gap-4">
+                    <input type="number" placeholder="+0" value={activeCabinet.door_unit_adjustment} onChange={e=>updateActiveCabinet('door_unit_adjustment', e.target.value)} className="w-24 border-2 p-2 rounded-lg font-black text-center" />
+                    <div className="text-right border-l pl-4"><div className="text-xs font-bold text-gray-500">最终单价快照</div><div className="text-xl font-black">¥{currentCalcs.finalDoorUnitPrice}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 升级工艺引擎 */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10">
+                <div className="flex justify-between items-center mb-4 border-b pb-4">
+                  <h3 className="font-black text-gray-900">✨ 局部升级与工艺</h3>
+                  <button onClick={() => setUpgradeModal({...upgradeModal, isOpen: true})} className="bg-black text-white px-4 py-1.5 rounded-full text-sm font-bold shadow">+ 添加工艺</button>
+                </div>
+                {(!activeCabinet.upgrades || activeCabinet.upgrades.length === 0) ? (
+                   <div className="py-8 text-center text-gray-400 font-bold border-2 border-dashed rounded-xl">尚未添加工艺</div>
+                ) : (
+                  <div className="space-y-3">
+                    {activeCabinet.upgrades.map(upg => {
+                      const calced = currentCalcs.calculatedUpgrades.find(u => u.id === upg.id);
+                      return (
+                        <div key={upg.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center">
+                          <div>
+                            <div className="font-bold text-sm flex items-center gap-2">{upg.name} <span className="text-[10px] bg-white border px-1 rounded">{upg.category}</span></div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              原始价: ¥{upg.snap_original_unit_price} 
+                              {upg.unit_price_adjustment !== 0 && <span className="text-rose-500 ml-1">(调: {upg.unit_price_adjustment > 0 ? '+' : ''}{upg.unit_price_adjustment})</span>}
+                              <span className="mx-2">|</span>
+                              计价量: {calced.calculatedQty} {upg.unit} 
+                              {upg.input_quantity !== calced.calculatedQty && upg.calculation_type !== '人工直接输金额' && <span className="text-amber-500 ml-1">(输入: {upg.input_quantity})</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              {upg.upgrade_effect_type === 'replace' && upg.replace_calculation_mode === 'full_price' && <div className="text-[10px] text-rose-500">自动扣底 (¥{calced.snap_base_door_price})</div>}
+                              <div className="text-lg font-black">¥{calced.finalAmount.toFixed(0)}</div>
+                            </div>
+                            <button onClick={() => handleRemoveUpgrade(upg.id)} className="text-gray-400 hover:text-rose-600 font-bold px-2">✕</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <div className="text-right pt-2 mt-2 border-t font-black text-rose-600">工艺小计 ¥{currentCalcs.upgradePortionTotal.toFixed(0)}</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
-          <div className="flex flex-1 overflow-hidden">
-             {/* 柜体列表侧边栏 */}
-             <div className="w-64 bg-gray-50 border-r border-gray-200 p-4 flex flex-col gap-2 overflow-y-auto">
-               <button onClick={addCabinet} className="w-full bg-white border-2 border-dashed border-gray-300 text-gray-600 p-3 rounded-xl font-bold hover:border-black hover:text-black transition-colors mb-4 flex items-center justify-center gap-2"><LucideIcons.Plus size={18}/> 新增柜体</button>
-               {activeQuote.cabinets.map((cab, idx) => (
-                 <div key={cab.id} className={`p-3 rounded-xl border cursor-pointer transition-all group relative ${activeCabinetId === cab.id ? 'bg-black text-white border-black shadow-lg' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'}`} onClick={()=>setActiveCabinetId(cab.id)}>
-                    <div className="font-bold mb-1 flex items-center gap-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${activeCabinetId===cab.id?'bg-white/20':'bg-gray-100 text-gray-500'}`}>{idx+1}</span> {cab.name}</div>
-                    <div className={`text-xs ${activeCabinetId===cab.id?'text-gray-300':'text-gray-400'}`}>{cab.width}W × {cab.height}H × {cab.depth}D</div>
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e)=>{e.stopPropagation(); copyCabinet(cab);}} className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600" title="复制柜体"><LucideIcons.Copy size={12}/></button>
-                      <button onClick={(e)=>{e.stopPropagation(); removeCabinet(cab.id);}} className="p-1 bg-rose-500 text-white rounded hover:bg-rose-600"><LucideIcons.Trash2 size={12}/></button>
-                    </div>
-                 </div>
-               ))}
-             </div>
-
-             {/* 单柜编辑面板 */}
-             <div className="flex-1 p-6 overflow-y-auto bg-gray-50/30">
-               {activeCabinetId && (() => {
-                 const cab = activeQuote.cabinets.find(c => c.id === activeCabinetId);
-                 if (!cab) return null;
-                 return (
-                   <div className="max-w-3xl mx-auto space-y-6">
-                      
-                      {/* 卡片1：空间与尺寸 */}
-                      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                        <h3 className="font-black text-gray-800 mb-4 flex items-center gap-2"><LucideIcons.Box size={20}/> 基础属性</h3>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                           <div><label className="text-xs font-bold text-gray-500 mb-1 block">所在空间</label><select value={cab.space} onChange={e=> {handleUpdateCabinet(cab.id, 'space', e.target.value); handleUpdateCabinet(cab.id, 'name', `${e.target.value}${cab.cabinet_type}`);}} className="w-full border-2 border-gray-100 p-2.5 rounded-lg focus:border-black bg-gray-50 focus:bg-white font-medium outline-none"><option>主卧</option><option>次卧</option><option>厨房</option><option>阳台</option><option>客厅</option><option>其他</option></select></div>
-                           <div><label className="text-xs font-bold text-gray-500 mb-1 block">柜体类型</label><select value={cab.cabinet_type} onChange={e=> {handleUpdateCabinet(cab.id, 'cabinet_type', e.target.value); handleUpdateCabinet(cab.id, 'name', `${cab.space}${e.target.value}`);}} className="w-full border-2 border-gray-100 p-2.5 rounded-lg focus:border-black bg-gray-50 focus:bg-white font-medium outline-none"><option>衣柜</option><option>橱柜</option><option>电视柜</option><option>阳台柜</option><option>鞋柜</option></select></div>
-                        </div>
-                        <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-xl flex gap-3">
-                           <div className="flex-1"><span className="text-[10px] text-blue-800 font-bold block mb-1">宽度 (W) mm</span><input type="number" value={cab.width} onChange={e=>handleUpdateCabinet(cab.id, 'width', e.target.value)} className="w-full border border-blue-200 p-2 rounded-lg font-black text-center"/></div>
-                           <div className="flex-1"><span className="text-[10px] text-blue-800 font-bold block mb-1">高度 (H) mm</span><input type="number" value={cab.height} onChange={e=>handleUpdateCabinet(cab.id, 'height', e.target.value)} className="w-full border border-blue-200 p-2 rounded-lg font-black text-center"/></div>
-                           <div className="flex-1"><span className="text-[10px] text-blue-800 font-bold block mb-1">深度 (D) mm</span><input type="number" value={cab.depth} onChange={e=>handleUpdateCabinet(cab.id, 'depth', e.target.value)} className="w-full border border-blue-200 p-2 rounded-lg font-black text-center"/></div>
-                        </div>
-                      </div>
-
-                      {/* 卡片2：基础材质与溢价 */}
-                      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
-                        {/* 柜体选材 */}
-                        <div className="border-b border-gray-100 pb-6">
-                          <h3 className="font-black text-gray-800 mb-4 flex items-center gap-2"><LucideIcons.Layers size={20}/> 柜体配置</h3>
-                          <div className="grid grid-cols-3 gap-3 mb-3">
-                            <div className="col-span-2">
-                              <label className="text-xs font-bold text-gray-500 mb-1 block">柜体系统材料</label>
-                              <select value={cab.cabinet_mat_id} onChange={e=>handleUpdateCabinet(cab.id, 'cabinet_mat_id', e.target.value)} className="w-full border-2 border-gray-200 p-2.5 rounded-lg font-bold outline-none focus:border-black"><option value="">-- 请选择 --</option>{cabinetsData.map(c=><option key={c.id} value={c.id}>{c.name} (¥{c.base_price})</option>)}</select>
-                            </div>
-                            <div>
-                              <label className="text-xs font-bold text-rose-500 mb-1 block">人工单价溢价(元/㎡)</label>
-                              <input type="number" value={cab.cabinet_unit_adjustment} onChange={e=>handleUpdateCabinet(cab.id, 'cabinet_unit_adjustment', e.target.value)} className="w-full border-2 border-rose-200 bg-rose-50 p-2.5 rounded-lg font-bold outline-none text-rose-700"/>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-4 gap-3">
-                            <div><input type="text" placeholder="品牌(如:爱格)" value={cab.cabinet_brand} onChange={e=>handleUpdateCabinet(cab.id, 'cabinet_brand', e.target.value)} className="w-full border border-gray-200 p-2 rounded text-sm"/></div>
-                            <div><input type="text" placeholder="颜色(如:U702)" value={cab.cabinet_color} onChange={e=>handleUpdateCabinet(cab.id, 'cabinet_color', e.target.value)} className="w-full border border-gray-200 p-2 rounded text-sm"/></div>
-                            <div><input type="number" placeholder="厚度(如:18)" value={cab.cabinet_thickness} onChange={e=>handleUpdateCabinet(cab.id, 'cabinet_thickness', e.target.value)} className="w-full border border-gray-200 p-2 rounded text-sm"/></div>
-                            <div><select value={cab.back_panel_spec} onChange={e=>handleUpdateCabinet(cab.id, 'back_panel_spec', e.target.value)} className="w-full border border-gray-200 p-2 rounded text-sm text-gray-600"><option>9mm标准背板</option><option>18mm厚背板</option></select></div>
-                          </div>
-                        </div>
-                        
-                        {/* 门板选材 */}
-                        <div>
-                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-black text-gray-800 flex items-center gap-2"><LucideIcons.DoorClosed size={20}/> 门板配置</h3>
-                            <label className="flex items-center gap-2 text-sm font-bold text-gray-600 cursor-pointer"><input type="checkbox" checked={cab.no_door} onChange={e=>handleUpdateCabinet(cab.id, 'no_door', e.target.checked)} className="w-4 h-4 accent-black"/> 开放柜无门板</label>
-                          </div>
-                          {!cab.no_door && (
-                            <>
-                              <div className="grid grid-cols-3 gap-3 mb-3">
-                                <div className="col-span-2">
-                                  <label className="text-xs font-bold text-gray-500 mb-1 block">门板系统材料</label>
-                                  <select value={cab.door_mat_id} onChange={e=>handleUpdateCabinet(cab.id, 'door_mat_id', e.target.value)} className="w-full border-2 border-gray-200 p-2.5 rounded-lg font-bold outline-none focus:border-black"><option value="">-- 请选择 --</option>{doorsData.map(d=><option key={d.id} value={d.id}>{d.name} (¥{d.base_price})</option>)}</select>
-                                </div>
-                                <div>
-                                  <label className="text-xs font-bold text-rose-500 mb-1 block">人工单价溢价(元/㎡)</label>
-                                  <input type="number" value={cab.door_unit_adjustment} onChange={e=>handleUpdateCabinet(cab.id, 'door_unit_adjustment', e.target.value)} className="w-full border-2 border-rose-200 bg-rose-50 p-2.5 rounded-lg font-bold outline-none text-rose-700"/>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div><input type="text" placeholder="门板指定品牌" value={cab.door_brand} onChange={e=>handleUpdateCabinet(cab.id, 'door_brand', e.target.value)} className="w-full border border-gray-200 p-2 rounded text-sm"/></div>
-                                <div><input type="text" placeholder="门板指定颜色" value={cab.door_color} onChange={e=>handleUpdateCabinet(cab.id, 'door_color', e.target.value)} className="w-full border border-gray-200 p-2 rounded text-sm"/></div>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* 卡片3：局部升级工艺 */}
-                      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="font-black text-gray-800 flex items-center gap-2"><LucideIcons.Wrench size={20}/> 升级工艺与五金</h3>
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold">已挂载 {cab.upgrades.length} 项</span>
-                        </div>
-                        
-                        {cab.upgrades.length > 0 && (
-                          <div className="space-y-2 mb-4">
-                            {cab.upgrades.map(u => (
-                              <div key={u.id} className="flex justify-between items-center bg-gray-50 border border-gray-100 p-3 rounded-lg">
-                                <div>
-                                  <div className="font-bold text-sm text-gray-800">{u.snap_upgrade_name}</div>
-                                  <div className="text-xs text-gray-500 mt-0.5">
-                                    收费基数: {u.calculated_quantity} × (¥{u.snap_final_unit_price} {u.snap_upgrade_effect_type==='replace'?`-底价¥${u.snap_base_door_price}`:''})
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                  <span className="font-black text-gray-900 text-sm">¥{u.total_amount}</span>
-                                  <button onClick={()=>removeUpgrade(cab.id, u.id)} className="text-gray-400 hover:text-rose-500"><LucideIcons.Trash2 size={16}/></button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 h-48 overflow-y-auto">
-                          {['门板升级', '五金系统', '灯光系统', '木作工艺', '其他'].map(cat => {
-                            const items = upgradesData.filter(u => u.upgrade_category === cat && u.status !== false);
-                            if(items.length === 0) return null;
-                            return (
-                              <div key={cat} className="mb-3">
-                                <div className="text-[10px] font-bold text-gray-400 mb-1">{cat}</div>
-                                <div className="flex flex-wrap gap-2">
-                                  {items.map(item => (
-                                    <button key={item.id} onClick={()=>openUpgradeModal(item)} className="bg-white border border-gray-200 text-xs px-3 py-1.5 rounded shadow-sm hover:border-black font-medium text-gray-700">{item.name}</button>
-                                  ))}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                   </div>
-                 )
-               })()}
-               {!activeCabinetId && <div className="h-full flex flex-col items-center justify-center text-gray-400"><LucideIcons.MousePointerClick size={48} className="mb-4 opacity-30"/><p>请在左侧选择或新建一个柜体进行作业</p></div>}
-             </div>
-          </div>
         </div>
 
-        {/* === 右侧核算区 === */}
-        <div className="w-80 bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.03)] z-20 flex flex-col border-l border-gray-200 relative">
-          <div className="p-6 bg-gray-50 border-b border-gray-200 text-center">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">整单预计总计</h2>
-            <div className="text-4xl font-black text-rose-600">¥{totalOrderAmount.toFixed(0)}</div>
+        {/* 底部悬浮算账条 */}
+        <div className="fixed bottom-0 right-0 left-80 bg-white border-t p-4 flex justify-between items-center shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-20">
+          <div className="flex gap-6 pl-4 font-bold text-sm">
+            <div><div className="text-[10px] text-gray-400">柜体</div>¥{currentCalcs.cabinetPortionTotal.toFixed(0)}</div>
+            <div><div className="text-[10px] text-gray-400">门板</div>¥{currentCalcs.doorPortionTotal.toFixed(0)}</div>
+            <div><div className="text-[10px] text-gray-400">工艺</div><span className="text-rose-600">¥{currentCalcs.upgradePortionTotal.toFixed(0)}</span></div>
           </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-             {activeQuote.cabinets.map((cab, idx) => (
-                <div key={cab.id} className={`p-4 rounded-xl border ${activeCabinetId===cab.id ? 'border-black shadow-md bg-white' : 'border-gray-200 bg-gray-50/50'}`}>
-                   <div className="flex justify-between items-center mb-2">
-                     <span className="font-bold text-sm text-gray-900 truncate max-w-[140px]">{idx+1}. {cab.name}</span>
-                     <span className="font-black text-gray-900">¥{cab.sub_total.toFixed(0)}</span>
-                   </div>
-                   <div className="text-xs space-y-1 text-gray-600">
-                     <div className="flex justify-between"><span>柜体计价量:</span><span className="font-medium text-gray-900">{cab.calc_area.toFixed(2)} {cab.calc_mode==='按面积㎡'?'㎡':'m'}</span></div>
-                     <div className="flex justify-between border-t border-gray-100 pt-1 mt-1"><span>柜体基础:</span><span>¥{cab.cabinet_total.toFixed(0)}</span></div>
-                     <div className="flex justify-between"><span>门板基础:</span><span>¥{cab.door_total.toFixed(0)}</span></div>
-                     <div className="flex justify-between"><span>局部升级({cab.upgrades.length}项):</span><span>¥{cab.upgrades_total.toFixed(0)}</span></div>
-                   </div>
-                </div>
-             ))}
-          </div>
-
-          <div className="p-6 bg-white border-t border-gray-200">
-             <button onClick={handleSaveQuoteDraft} disabled={isLoading || activeQuote.cabinets.length===0} className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 disabled:bg-gray-300 shadow-xl transition-all flex justify-center items-center gap-2">
-               {isLoading ? <LucideIcons.Loader2 className="animate-spin"/> : <LucideIcons.Save size={20}/>} 
-               {activeQuote.id ? '更新草稿' : '生成报价草稿'}
-             </button>
+          <div className="flex gap-8 items-center pr-4">
+            <div className="text-right"><div className="text-xs text-gray-500">当前单柜合计</div><div className="text-2xl font-black">¥{currentCalcs.baseTotal.toFixed(0)}</div></div>
+            <div className="h-10 w-px bg-gray-200"></div>
+            <div className="text-right"><div className="text-xs text-gray-500">整单全案总计</div><div className="text-3xl font-black text-black">¥{grandTotal.toFixed(0)}</div></div>
           </div>
         </div>
-
-        {renderUpgradeModal()}
       </div>
     );
   };
 
   const renderAdmin = () => {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-        <div className="bg-gray-900 text-white p-4 flex justify-between items-center shadow-md">
-          <h1 className="text-lg font-black tracking-widest flex items-center gap-2"><LucideIcons.Settings size={20}/> NOEY ADMIN</h1>
-          <button onClick={()=>setCurrentView('workspace')} className="text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg font-bold transition">返回工作台</button>
+      <div className="flex h-screen bg-gray-100 font-sans overflow-hidden">
+        {deleteConfirm.show && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-white p-6 rounded-xl max-w-sm shadow-xl border">
+              <h3 className="text-lg font-black mb-2 text-rose-600">⚠️ 危险操作</h3>
+              <p className="text-sm font-bold text-gray-600 mb-4">确定物理删除 [{deleteConfirm.name}] 吗？</p>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setDeleteConfirm({show:false, table:'', id:null, name:''})} className="px-4 py-2 bg-gray-100 font-bold rounded-lg">取消</button>
+                <button onClick={executeDelete} className="px-4 py-2 bg-rose-600 text-white font-bold rounded-lg">执行删除</button>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="w-64 bg-gray-900 text-white flex flex-col z-20">
+          <div className="p-6 border-b border-gray-800"><h1 className="text-2xl font-black">NOEY<span className="font-light text-gray-400">ERP</span></h1></div>
+          <div className="flex-1 py-4">
+            <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>✨ V2.7 升级工艺</button>
+            <button onClick={() => setAdminView('cabinet')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='cabinet'?'border-blue-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🗄️ 柜体基础库</button>
+            <button onClick={() => setAdminView('door')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='door'?'border-indigo-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🚪 门板基础库</button>
+            <button onClick={() => setAdminView('rules')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='rules'?'border-rose-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>⚙️ 计价参数规则</button>
+          </div>
+          <div className="p-4 border-t border-gray-800"><button onClick={() => {setCurrentUser(null); setCurrentView('home');}} className="w-full bg-gray-800 py-2 rounded font-bold text-sm text-gray-400 hover:text-white hover:bg-rose-600">退出返回</button></div>
         </div>
-        <div className="p-8">
-           <h2 className="text-xl font-bold mb-6 text-gray-800 border-l-4 border-black pl-3">升级工艺配置 (字典展示)</h2>
-           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider font-bold">
-                  <tr>
-                    <th className="p-4">工艺名称</th>
-                    <th className="p-4">单位</th>
-                    <th className="p-4">系统原价</th>
-                    <th className="p-4 text-purple-800 bg-purple-50">保底数量 (Minimum Quantity)</th>
-                    <th className="p-4 bg-blue-50 text-blue-800">价格影响逻辑 (Effect Type)</th>
-                    <th className="p-4 bg-amber-50 text-amber-800">数量计算 (Calculation Type)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                   {upgradesData.map(u => {
-                     // 增加异常数据校验预警
-                     const isExcessDrawer = u.calculation_type === 'excess_drawer' || u.calculation_type === '超额抽屉规则';
-                     const hasConfigWarning = isExcessDrawer && u.upgrade_effect_type !== 'add_cost';
-                     
-                     return (
-                       <tr key={u.id} className="hover:bg-gray-50">
-                         <td className="p-4 font-bold text-gray-900">{u.name}</td>
-                         <td className="p-4 text-gray-500">{u.unit}</td>
-                         <td className="p-4 font-black">¥{u.unit_price}</td>
-                         <td className="p-4 font-medium text-purple-700 bg-purple-50/30">{u.minimum_quantity || 0}</td>
-                         <td className="p-4 font-medium text-blue-700 bg-blue-50/30">
-                           {u.upgrade_effect_type}
-                           {hasConfigWarning && (
-                             <div className="mt-1 text-[10px] bg-rose-100 text-rose-600 px-2 py-1 rounded border border-rose-200 font-bold block">
-                               ⛔ 错误：超额抽屉必须使用 add_cost 价格影响逻辑
-                             </div>
-                           )}
-                         </td>
-                         <td className="p-4 font-medium text-amber-700 bg-amber-50/30">{u.calculation_type}</td>
-                       </tr>
-                     );
-                   })}
-                </tbody>
-              </table>
-           </div>
+
+        <div className="flex-1 overflow-y-auto p-8 relative">
+          {adminView === 'upgrade' && (
+            <div className="max-w-5xl space-y-6">
+              <h2 className="text-2xl font-black">升级工艺管理</h2>
+              <form onSubmit={handleSaveUpgrade} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">工艺名称</label><input required value={upgradeForm.name} onChange={e=>setUpgradeForm({...upgradeForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">分类</label><select value={upgradeForm.upgrade_category} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_category:e.target.value})} className="w-full border-2 p-2 rounded-lg mt-1 font-bold"><option>门板升级</option><option>五金系统</option><option>灯光系统</option><option>木作工艺</option><option>其他</option></select></div>
+                  <div><label className="text-xs font-bold text-gray-500">排序权值</label><input type="number" required value={upgradeForm.sort_order} onChange={e=>setUpgradeForm({...upgradeForm, sort_order:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                </div>
+                <div className="grid grid-cols-4 gap-4 mb-4 bg-gray-50 p-4 rounded-lg">
+                  <div><label className="text-xs font-bold text-blue-700">提取图纸计价法</label><select value={upgradeForm.calculation_type} onChange={e=>setUpgradeForm({...upgradeForm, calculation_type:e.target.value})} className="w-full border-2 border-blue-200 p-2 rounded-lg font-bold text-blue-900 mt-1"><option>按面积㎡</option><option>按延米</option><option>按个</option><option>按套</option><option>按柜宽自动算</option><option>超额抽屉规则</option><option>人工直接输金额</option></select></div>
+                  <div><label className="text-xs font-bold text-gray-500">计价单位</label><input required value={upgradeForm.unit} onChange={e=>setUpgradeForm({...upgradeForm, unit:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">系统原价 (元)</label><input type="number" required value={upgradeForm.unit_price} onChange={e=>setUpgradeForm({...upgradeForm, unit_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
+                  <div>
+                    <label className="text-xs font-bold text-amber-700">价格影响逻辑引擎</label>
+                    <select value={upgradeForm.upgrade_effect_type} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_effect_type:e.target.value})} className="w-full border-2 border-amber-200 p-2 rounded-lg font-bold text-amber-900 mt-1">
+                      <option value="add_cost">追加费用</option><option value="replace">替换(需处理底价)</option><option value="difference">差价直补</option><option value="manual">人工调整</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-5 gap-4 mb-4">
+                  <div><label className="text-xs font-bold text-gray-500">组合类型</label><select value={upgradeForm.combo_type} onChange={e=>setUpgradeForm({...upgradeForm, combo_type:e.target.value})} className="w-full border-2 p-2 rounded-lg mt-1 font-bold"><option value="single">普通单项</option><option value="bundle">母子组合</option></select></div>
+                  <div><label className="text-xs font-bold text-gray-500">最低起算量</label><input type="number" value={upgradeForm.minimum_quantity} onChange={e=>setUpgradeForm({...upgradeForm, minimum_quantity:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">材质属性</label><input value={upgradeForm.upgrade_material} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_material:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">款式属性</label><input value={upgradeForm.upgrade_style} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_style:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">规格属性</label><input value={upgradeForm.upgrade_specification} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_specification:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                </div>
+                <div className="flex justify-between items-center"><button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold">{editId ? '保存修改' : '确认新增'}</button></div>
+              </form>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">分类</th><th className="p-3">单价</th><th className="p-3">逻辑</th><th className="p-3">操作</th></tr></thead>
+                  <tbody>
+                    {upgrades.map(u => (
+                      <tr key={u.id} className="border-b font-bold"><td className="p-3">{u.name}</td><td className="p-3">{u.upgrade_category}</td><td className="p-3">¥{u.unit_price}</td><td className="p-3 text-xs">{u.upgrade_effect_type}</td>
+                        <td className="p-3 flex gap-2">
+                          <button onClick={() => {setEditId(u.id); setUpgradeForm(u);}} className="text-blue-600">编辑</button>
+                          <button onClick={() => handleToggleUpgradeStatus(u)} className={u.status ? 'text-amber-500' : 'text-emerald-500'}>{u.status ? '停用' : '启用'}</button>
+                          <button onClick={() => triggerDelete('upgrade_items', u.id, u.name)} className="text-rose-600">物理删除</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {/* Cabinet Admin View */}
+          {adminView === 'cabinet' && (
+            <div className="max-w-4xl space-y-6">
+              <h2 className="text-2xl font-black">柜体基础材料</h2>
+              <form onSubmit={handleSaveCabinet} className="bg-white p-6 rounded-xl shadow-sm flex gap-4 items-end">
+                <div className="flex-1"><label className="text-xs font-bold text-gray-500">材料名</label><input required value={cabinetForm.name} onChange={e=>setCabinetForm({...cabinetForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold" /></div>
+                <div><label className="text-xs font-bold text-gray-500">基准价</label><input type="number" required value={cabinetForm.base_price} onChange={e=>setCabinetForm({...cabinetForm, base_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black w-24" /></div>
+                <div><label className="text-xs font-bold text-gray-500">浅柜价</label><input type="number" required value={cabinetForm.shallow_price} onChange={e=>setCabinetForm({...cabinetForm, shallow_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold w-24" /></div>
+                <div><label className="text-xs font-bold text-gray-500">无门系数</label><input type="number" step="0.01" required value={cabinetForm.no_door_factor} onChange={e=>setCabinetForm({...cabinetForm, no_door_factor:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold w-24" /></div>
+                <button type="submit" className="bg-black text-white px-6 py-2 rounded-lg font-bold h-[42px]">{editId ? '保存' : '新增'}</button>
+              </form>
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <table className="w-full text-left text-sm font-bold"><thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">基准价</th><th className="p-3">浅柜价</th><th className="p-3">操作</th></tr></thead>
+                  <tbody>{cabinets.map(c => <tr key={c.id} className="border-b"><td className="p-3">{c.name}</td><td className="p-3">¥{c.base_price}</td><td className="p-3">¥{c.shallow_price}</td><td className="p-3"><button onClick={() => {setEditId(c.id); setCabinetForm(c);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_cabinet', c.id, c.name)} className="text-rose-600">删除</button></td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {/* Door Admin View */}
+          {adminView === 'door' && (
+            <div className="max-w-3xl space-y-6">
+              <h2 className="text-2xl font-black">门板基础材料</h2>
+              <form onSubmit={handleSaveDoor} className="bg-white p-6 rounded-xl shadow-sm flex gap-4 items-end">
+                <div className="flex-1"><label className="text-xs font-bold text-gray-500">门板名</label><input required value={doorForm.name} onChange={e=>setDoorForm({...doorForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold" /></div>
+                <div><label className="text-xs font-bold text-gray-500">类型</label><select value={doorForm.door_type} onChange={e=>setDoorForm({...doorForm, door_type:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold"><option>普通门板</option><option>无门板</option></select></div>
+                <div><label className="text-xs font-bold text-gray-500">基准价</label><input type="number" required disabled={doorForm.door_type==='无门板'} value={doorForm.base_price} onChange={e=>setDoorForm({...doorForm, base_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black w-24" /></div>
+                <button type="submit" className="bg-black text-white px-6 py-2 rounded-lg font-bold h-[42px]">{editId ? '保存' : '新增'}</button>
+              </form>
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <table className="w-full text-left text-sm font-bold"><thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">类型</th><th className="p-3">价格</th><th className="p-3">操作</th></tr></thead>
+                  <tbody>{doors.map(d => <tr key={d.id} className="border-b"><td className="p-3">{d.name}</td><td className="p-3">{d.door_type}</td><td className="p-3">¥{d.base_price}</td><td className="p-3"><button onClick={() => {setEditId(d.id); setDoorForm(d);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_door', d.id, d.name)} className="text-rose-600">删除</button></td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {/* Rules Admin View */}
+          {adminView === 'rules' && (
+             <div className="max-w-2xl space-y-6">
+               <h2 className="text-2xl font-black">计价参数规则</h2>
+               <form onSubmit={handleSaveRules} className="bg-white p-8 rounded-xl shadow-sm border space-y-4 font-bold">
+                 <div><label className="block text-sm text-gray-500 mb-1">标准深度阈值 (mm)</label><input type="number" value={rules.standard_depth} onChange={e=>setRules({...rules, standard_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
+                 <div><label className="block text-sm text-gray-500 mb-1">浅柜判定界限 (mm)</label><input type="number" value={rules.shallow_depth} onChange={e=>setRules({...rules, shallow_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
+                 <div><label className="block text-sm text-gray-500 mb-1">面积/延米计价高度分水岭 (mm)</label><input type="number" value={rules.height_threshold} onChange={e=>setRules({...rules, height_threshold:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
+                 <button type="submit" className="w-full bg-black text-white p-3 rounded-lg font-black mt-4">更新全局规则</button>
+               </form>
+             </div>
+          )}
         </div>
       </div>
     );
   };
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
-        <div className="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-black"></div>
-          <h1 className="text-3xl font-black text-center text-gray-900 tracking-wider mb-2 mt-4">NOEY<span className="font-light">SYSTEM</span></h1>
-          <p className="text-center text-xs text-gray-500 mb-8 font-bold uppercase tracking-widest">多柜报价工作台 V3.3</p>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input type="text" required placeholder="账号 (admin)" value={loginForm.username} onChange={e=>setLoginForm({...loginForm, username: e.target.value})} className="w-full border-2 border-gray-100 p-4 rounded-xl focus:border-black font-medium outline-none" />
-            <input type="password" required placeholder="密码 (admin123)" value={loginForm.password} onChange={e=>setLoginForm({...loginForm, password: e.target.value})} className="w-full border-2 border-gray-100 p-4 rounded-xl focus:border-black font-medium outline-none" />
-            <button type="submit" disabled={isLoading} className="w-full bg-black text-white p-4 rounded-xl font-bold text-lg hover:bg-gray-800 shadow-xl transition-all mt-4">{isLoading ? '登录中...' : '进 入 工 作 台'}</button>
-          </form>
-        </div>
-        {toast.show && (<div className="fixed top-6 bg-black text-white px-6 py-3 rounded-full shadow-2xl z-50 text-sm font-bold animate-fade-in">{toast.message}</div>)}
+  const renderAdminLogin = () => (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-96 border">
+        <h2 className="text-2xl font-black mb-8 text-center">NOEY<span className="font-light">ERP</span></h2>
+        <input type="text" placeholder="账号 (admin)" value={adminLoginForm.username} onChange={e=>setAdminLoginForm({...adminLoginForm, username:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-4 font-bold" />
+        <input type="password" placeholder="密码 (admin123)" value={adminLoginForm.password} onChange={e=>setAdminLoginForm({...adminLoginForm, password:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-6 font-bold" />
+        <button onClick={handleAdminLogin} className="w-full bg-black text-white p-3 rounded-xl font-bold">登录控制台</button>
+        <button onClick={() => setCurrentView('home')} className="w-full mt-4 text-sm font-bold text-gray-400 hover:text-black">← 返回</button>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (currentView === 'sales') return renderSalesWorkspace();
+  if (currentView === 'admin-login') return renderAdminLogin();
+  if (currentView === 'admin') return renderAdmin();
 
   return (
-    <>
-      {currentView === 'workspace' && renderWorkspace()}
-      {currentView === 'admin' && renderAdmin()}
-      {toast.show && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
-           <div className={`px-6 py-3 rounded-full shadow-2xl font-bold text-sm text-white ${toast.type==='error'?'bg-rose-600':'bg-emerald-600'}`}>{toast.message}</div>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
         </div>
-      )}
-    </>
+        <div className="grid grid-cols-2 gap-8 max-w-4xl w-full px-6">
+          <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
+            <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">多柜报价工作台</h2>
+            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、自动深度计算、智能选配</p>
+          </button>
+          <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-gray-300 text-left group transition-all">
+            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">⚙️</div>
+            <h2 className="text-2xl font-black text-gray-800 mb-2">底层数据管理台</h2>
+            <p className="text-gray-500 font-medium text-sm">后台中枢：维护材料库、配置规则引擎、管控工艺</p>
+          </button>
+        </div>
+        {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-3 rounded-full text-sm font-bold shadow-2xl z-50">{toast.message}</div>}
+    </div>
   );
 }
