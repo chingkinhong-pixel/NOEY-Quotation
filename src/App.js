@@ -471,32 +471,61 @@ export default function App() {
                 {upgradeModal.selectedItem ? (
                   <div className="flex flex-col h-full">
                     <div className="mb-6"><div className="text-xl font-black">{upgradeModal.selectedItem.name}</div></div>
-                    <div className="space-y-5 flex-1">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-2">{upgradeModal.selectedItem.calculation_type === '人工直接输金额' ? '输入总金额 (元)' : `输入原始数量 (${upgradeModal.selectedItem.unit})`}</label>
-                        {upgradeModal.selectedItem.calculation_type === '按柜宽自动算' ? (
-                          <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm font-bold">🤖 根据柜宽自动运算</div>
-                        ) : (
-                          <input type="number" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-xl" />
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-600 mb-2">人工单价调整 (元)</label>
-                          <input type="number" placeholder="+0" value={upgradeModal.unit_price_adjustment} onChange={e=>setUpgradeModal({...upgradeModal, unit_price_adjustment:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold" />
-                        </div>
-                        {upgradeModal.selectedItem.upgrade_effect_type === 'replace' && (
+                   {(() => {
+                      const isExcessDrawer = upgradeModal.selectedItem.calculation_type === 'excess_drawer' || upgradeModal.selectedItem.calculation_type === '超额抽屉规则';
+                      return (
+                        <div className="space-y-5 flex-1">
                           <div>
-                            <label className="block text-xs font-bold text-rose-600 mb-2">人工门板面积 (㎡，选填)</label>
-                            <input type="number" placeholder="默认用系统柜体投影" value={upgradeModal.manual_door_area} onChange={e=>setUpgradeModal({...upgradeModal, manual_door_area:e.target.value})} className="w-full border-2 border-rose-200 p-3 rounded-xl font-bold bg-rose-50" />
+                            <label className="block text-xs font-bold text-gray-600 mb-2">
+                              {upgradeModal.selectedItem.calculation_type === '人工直接输金额' ? '输入总金额 (元)' : 
+                               isExcessDrawer ? '输入实际抽屉数量' : 
+                               `输入原始数量 (${upgradeModal.selectedItem.unit})`}
+                            </label>
+                            {upgradeModal.selectedItem.calculation_type === '按柜宽自动算' ? (
+                              <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm font-bold">🤖 根据柜宽自动运算</div>
+                            ) : (
+                              <>
+                                <input type="number" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-xl" />
+                                {isExcessDrawer && (() => {
+                                  const w = parseFloat(activeCabinet?.width) || 0;
+                                  const standard = Math.ceil(w / 1000);
+                                  const input = parseFloat(upgradeModal.inputQty) || 0;
+                                  const excess = Math.max(0, input - standard);
+                                  const cost = excess * parseFloat(upgradeModal.selectedItem.unit_price || 0);
+                                  return (
+                                    <div className="mt-4 bg-rose-50/50 p-4 rounded-xl border border-rose-100 space-y-2 text-sm">
+                                      <div className="flex justify-between"><span className="text-gray-500 font-bold">当前柜宽:</span><span className="font-bold">{w} mm</span></div>
+                                      <div className="flex justify-between"><span className="text-gray-500 font-bold">系统标配数量:</span><span className="font-bold">{standard} 个</span></div>
+                                      <div className="flex justify-between"><span className="text-gray-500 font-bold">客户实际数量:</span><span className="font-bold">{input} 个</span></div>
+                                      <div className="flex justify-between"><span className="text-gray-500 font-bold">超额计费数量:</span><span className="font-black text-rose-600">{excess} 个</span></div>
+                                      <div className="flex justify-between border-t border-rose-200 pt-2 mt-2"><span className="font-bold text-gray-800">预计超额费用:</span><span className="font-black text-rose-600">¥{cost.toFixed(0)}</span></div>
+                                    </div>
+                                  );
+                                })()}
+                              </>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-2">特殊说明</label>
-                        <textarea value={upgradeModal.inputRemark} onChange={e=>setUpgradeModal({...upgradeModal, inputRemark:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm resize-none" rows="3" />
-                      </div>
-                    </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            {!isExcessDrawer && (
+                              <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-2">人工单价调整 (元)</label>
+                                <input type="number" placeholder="+0" value={upgradeModal.unit_price_adjustment} onChange={e=>setUpgradeModal({...upgradeModal, unit_price_adjustment:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold" />
+                              </div>
+                            )}
+                            {upgradeModal.selectedItem.upgrade_effect_type === 'replace' && (
+                              <div>
+                                <label className="block text-xs font-bold text-rose-600 mb-2">人工门板面积 (㎡，选填)</label>
+                                <input type="number" placeholder="默认用系统柜体投影" value={upgradeModal.manual_door_area} onChange={e=>setUpgradeModal({...upgradeModal, manual_door_area:e.target.value})} className="w-full border-2 border-rose-200 p-3 rounded-xl font-bold bg-rose-50" />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 mb-2">特殊说明</label>
+                            <textarea value={upgradeModal.inputRemark} onChange={e=>setUpgradeModal({...upgradeModal, inputRemark:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm resize-none" rows="3" />
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <button onClick={handleConfirmAddUpgrade} className="w-full bg-black text-white py-4 rounded-xl font-black mt-4">确认加入核算</button>
                   </div>
                 ) : <div className="m-auto text-gray-400 font-bold">请在左侧选择工艺</div>}
