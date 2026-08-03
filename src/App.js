@@ -13,6 +13,28 @@ export default function App() {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isLoading, setIsLoading] = useState(false);
 
+  // --- 临时测试代码开始 ---
+  const testSupabase = async () => {
+    console.log('=== SUPABASE TEST START ===');
+    console.log('CLIENT INSTANCE:', supabase);
+    
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('*')
+        .limit(1);
+
+      console.log('TEST DATA RETURNED:', data);
+      
+      if (error) {
+        console.error('TEST ERROR RETURNED:', error);
+      }
+    } catch (err) {
+      console.error('TEST CATCH ERROR:', err);
+    }
+  };
+  // --- 临时测试代码结束 ---
+  
   // 2. 基础数据字典状态
   const [cabinets, setCabinets] = useState([]);
   const [doors, setDoors] = useState([]);
@@ -881,6 +903,9 @@ export default function App() {
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
           <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
         </div>
+        <button onClick={testSupabase}>
+        测试数据库
+        </button>
         <div className="grid grid-cols-2 gap-8 max-w-4xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
             <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
