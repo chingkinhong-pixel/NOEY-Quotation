@@ -237,7 +237,131 @@ export default function App() {
     setActiveCabinetId(initCabId);
     setCurrentView('sales');
   };
+// ==========================================
+  // 【Phase 2 新增】：历史报价重组引擎 (读取并逆向还原为编辑状态)
+  // 插入位置：enterSalesWorkspace 函数下方
+  // ==========================================
+  const handleLoadQuoteForEditing = async (quote) => {
+    setIsLoading(true);
+    try {
+      // 1. 还原主单信息
+      setQuoteInfo({
+        quoteNo: quote.quote_no,
+        customerName: quote.customer_name || '',
+        customerPhone: quote.customer_phone || '',
+        deliveryAddress: quote.delivery_address || '',
+        status: quote.status || '编辑中'
+      });
 
+      // 2. 拉取柜体和工艺明细
+      const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
+      if (cabErr) throw cabErr;
+      const { data: upgData, error: upgErr } = await supabase.from('quote_upgrades').select('*').eq('quote_id', quote.id);
+      if (upgErr) throw upgErr;
+
+      // 3. 逆向组装柜体数组
+      if (cabData && cabData.length > 0) {
+        const reconstructedCabinets = cabData.map(dbCab => {
+          // --- Name 拆分容错处理 ---
+          let space = '未知空间';
+          let cabinetType = '未知柜体';
+          if (dbCab.name) {
+            if (dbCab.name.includes('｜')) {
+              const parts = dbCab.name.split('｜');
+              space = parts[0] || space;
+              cabinetType = parts[1] || cabinetType;
+            } else {
+              space = dbCab.name; // 无法拆分则全塞进 space
+            }
+          }
+
+          // --- 组装挂载在该柜体下的工艺 ---
+          const cabUpgrades = upgData.filter(u => u.cabinet_id === dbCab.id).map(dbUpg => {
+            // 在当前字典库里寻找匹配项以补全静态规则 (容错：若已被物理删除，则取空对象)
+            const dictItem = upgrades.find(u => u.id === dbUpg.upgrade_item_id) || {};
+            
+            return {
+              id: dbUpg.id, // 使用历史记录的主键作为唯一标识，而不是新生成
+              item_id: dbUpg.upgrade_item_id,
+              name: dbUpg.snap_upgrade_name || dictItem.name || '已失效未知工艺',
+              category: dictItem.upgrade_category || '未知分类',
+              unit: dictItem.unit || '项',
+              // 强制优先使用当时的历史快照价格！
+              snap_original_unit_price: dbUpg.snap_original_unit_price || 0,
+              unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
+              
+              // 关键计算规则：优先使用字典当前规则，若字典失效则启用默认安全降级
+              calculation_type: dictItem.calculation_type || '按面积㎡',
+              upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
+              replace_calculation_mode: dictItem.replace_calculation_mode || null,
+              
+              input_quantity: dbUpg.input_quantity || 0,
+              minimum_quantity: dictItem.minimum_quantity || 0,
+              manual_door_area: dbUpg.manual_door_area || '',
+              remark: dbUpg.remark || '',
+              combo_type: dictItem.combo_type || 'single',
+              
+              // 属性快照恢复
+              snap_material: dbUpg.snap_material || '',
+              snap_style: dbUpg.snap_style || '',
+              snap_specification: dbUpg.snap_specification || '',
+              parent_record_id: dbUpg.parent_record_id || null
+            };
+          });
+
+          // --- 组装单柜数据 ---
+          return {
+            id: dbCab.id, // 关键：沿用真实 DB ID，避免下次保存错乱
+            space: space,
+            cabinetType: cabinetType,
+            width: dbCab.width || '',
+            height: dbCab.height || '',
+            depth: dbCab.depth || '',
+            // 系统选材关联 ID (用于计算引擎匹配底价)
+            cabinet_mat_id: dbCab.cabinet_mat_id || '',
+            door_mat_id: dbCab.door_mat_id || '',
+            
+            // 人工选配与快照
+            snap_cabinet_brand: dbCab.snap_cabinet_brand || '',
+            snap_cabinet_color: dbCab.snap_cabinet_color || '',
+            cabinet_thickness: dbCab.cabinet_thickness || '18',
+            cabinet_material_remark: dbCab.cabinet_material_remark || '',
+            snap_back_panel_spec: dbCab.snap_back_panel_spec || '9mm标准',
+            cabinet_unit_adjustment: dbCab.cabinet_unit_adjustment || '',
+            
+            snap_door_brand: dbCab.snap_door_brand || '',
+            snap_door_color: dbCab.snap_door_color || '',
+            door_unit_adjustment: dbCab.door_unit_adjustment || '',
+            
+            // 挂载上一步重组好的工艺数组
+            upgrades: cabUpgrades
+          };
+        });
+        
+        setQuoteCabinets(reconstructedCabinets);
+        setActiveCabinetId(reconstructedCabinets[0].id);
+      } else {
+        // 极端异常兜底：若该单据在数据库中没有任何柜体，强行塞一个空柜体防崩
+        const fallbackId = 'cab-fallback-' + Date.now();
+        setQuoteCabinets([{ 
+          id: fallbackId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
+          cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
+          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
+        }]);
+        setActiveCabinetId(fallbackId);
+      }
+
+      // 4. 数据完全重组后，切入编辑工作台
+      setCurrentView('sales');
+      showToast('草稿已成功恢复！');
+    } catch (err) {
+      console.error("恢复草稿失败详情:", err);
+      showToast('读取草稿失败: ' + err.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const activeCabinet = quoteCabinets.find(c => c.id === activeCabinetId) || quoteCabinets[0];
   const updateActiveCabinet = (field, value) => { setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? { ...c, [field]: value } : c)); };
 
