@@ -12,28 +12,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isLoading, setIsLoading] = useState(false);
-
-  // --- 临时测试代码开始 ---
-  const testSupabase = async () => {
-    console.log('=== SUPABASE TEST START ===');
-    console.log('CLIENT INSTANCE:', supabase);
-    
-    try {
-      const { data, error } = await supabase
-        .from('quotes')
-        .select('*')
-        .limit(1);
-
-      console.log('TEST DATA RETURNED:', data);
-      
-      if (error) {
-        console.error('TEST ERROR RETURNED:', error);
-      }
-    } catch (err) {
-      console.error('TEST CATCH ERROR:', err);
-    }
-  };
-  // --- 临时测试代码结束 ---
   
   // 2. 基础数据字典状态
   const [cabinets, setCabinets] = useState([]);
@@ -398,42 +376,67 @@ export default function App() {
     showToast(`已添加工艺: ${item.name}`);
   };
 
-  const handleRemoveUpgrade = (upgId) => {
+const handleRemoveUpgrade = (upgId) => {
     updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
   };
 
-  // ==========================================
-  // V4.0 Phase 1: 保存逻辑增强 (已更新)
-  // ==========================================
   const handleSaveDraft = async () => {
     if (!quoteInfo.customerName) { showToast('请填写客户姓名', 'error'); return; }
     if (!isValidPhone(quoteInfo.customerPhone)) { showToast('手机号码格式不正确', 'error'); return; }
     setIsLoading(true);
+
     try {
-      // 1. 【新增逻辑】利用核心计算引擎计算整单全案总价 grandTotal
       const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0);
 
-      // 2. 保存主表 quotes 并下入 total_amount
-      const { data: quoteData, error: quoteErr } = await supabase.from('quotes').upsert([{
-        quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
-        customer_phone: quoteInfo.customerPhone, delivery_address: quoteInfo.deliveryAddress,
+      const quotePayload = {
+        quote_no: quoteInfo.quoteNo, 
+        customer_name: quoteInfo.customerName,
+        customer_phone: quoteInfo.customerPhone, 
+        delivery_address: quoteInfo.deliveryAddress,
         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
-        total_amount: grandTotal // 【新增】保存整单总价落库
-      }], { onConflict: 'quote_no' }).select().single();
-      if (quoteErr) throw quoteErr;
+        total_amount: grandTotal
+      };
 
-      // 3. 清理旧柜体和工艺明细
-      await supabase.from('quote_cabinets').delete().eq('quote_id', quoteData.id);
-      await supabase.from('quote_upgrades').delete().eq('quote_id', quoteData.id);
+      // 【V4.0 核心修复】放弃使用容易报 400 错误的 upsert，改为绝对稳定的：先查后写
+      let currentQuoteId = null;
+      const { data: existingQuote, error: checkErr } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('quote_no', quoteInfo.quoteNo)
+        .limit(1)
+        .maybeSingle();
 
-      // 4. 循环保存最新柜体和工艺
+      if (checkErr) throw checkErr;
+
+      if (existingQuote) {
+        // 存在历史记录，执行纯净 Update
+        const { error: updateErr } = await supabase
+          .from('quotes')
+          .update(quotePayload)
+          .eq('id', existingQuote.id);
+        if (updateErr) throw updateErr;
+        currentQuoteId = existingQuote.id;
+      } else {
+        // 不存在记录，执行纯净 Insert
+        const { data: newQuote, error: insertErr } = await supabase
+          .from('quotes')
+          .insert([quotePayload])
+          .select('id')
+          .single();
+        if (insertErr) throw insertErr;
+        currentQuoteId = newQuote.id;
+      }
+
+      if (!currentQuoteId) throw new Error("无法获取主单据 ID");
+
+      // 清理旧柜体和工艺明细
+      await supabase.from('quote_cabinets').delete().eq('quote_id', currentQuoteId);
+      await supabase.from('quote_upgrades').delete().eq('quote_id', currentQuoteId);
+
       for (const cab of quoteCabinets) {
-        // 利用引擎获得当前柜子的各项最终计算结果
         const calcs = calculateCabinetDetails(cab);
-        
-        // 保存柜体明细
         const { data: insertedCab, error: cabErr2 } = await supabase.from('quote_cabinets').insert([{
-          quote_id: quoteData.id, name: `${cab.space}｜${cab.cabinetType}`, 
+          quote_id: currentQuoteId, name: `${cab.space}｜${cab.cabinetType}`, 
           width: parseFloat(cab.width) || 0, height: parseFloat(cab.height) || 0, depth: parseFloat(cab.depth) || 0,
           cabinet_mat_id: cab.cabinet_mat_id || null, door_mat_id: cab.door_mat_id || null,
           cabinet_thickness: parseFloat(cab.cabinet_thickness) || null,
@@ -444,16 +447,15 @@ export default function App() {
           door_unit_adjustment: parseFloat(cab.door_unit_adjustment) || 0,
           snap_final_cabinet_price: calcs.finalCabUnitPrice, snap_final_door_price: calcs.finalDoorUnitPrice,
           cabinet_material_remark: cab.cabinet_material_remark || '',
-          cabinet_total_price: calcs.baseTotal // 【新增】保存该单个柜子的核算总计
+          cabinet_total_price: calcs.baseTotal
         }]).select().single();
         if (cabErr2) throw cabErr2;
 
-        // 保存升级工艺 (逻辑不变，依然高度一致依赖 calcs 提供精准快照)
         if (cab.upgrades && cab.upgrades.length > 0) {
           const upgradeInserts = cab.upgrades.map(u => {
             const calculatedMatch = calcs.calculatedUpgrades.find(cu => cu.id === u.id);
             return {
-              quote_id: quoteData.id, cabinet_id: insertedCab.id, upgrade_item_id: u.item_id,
+              quote_id: currentQuoteId, cabinet_id: insertedCab.id, upgrade_item_id: u.item_id,
               quantity: calculatedMatch.calculatedQty, remark: u.remark || '',
               snap_unit_price: calculatedMatch.snap_final_unit_price, snap_upgrade_effect_type: u.upgrade_effect_type,
               snap_upgrade_name: u.name, snap_base_door_price: calculatedMatch.snap_base_door_price,
@@ -476,7 +478,12 @@ export default function App() {
       }
       setQuoteInfo(prev => ({ ...prev, status: '已保存草稿' }));
       showToast(`报价草稿保存成功！`);
-    } catch (err) { showToast('保存失败: ' + err.message, 'error'); } finally { setIsLoading(false); }
+    } catch (err) { 
+      console.error("保存失败详情:", err);
+      showToast('保存失败: ' + (err.message || '未知数据库错误'), 'error'); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const renderUpgradeModal = () => {
@@ -903,9 +910,6 @@ export default function App() {
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
           <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
         </div>
-        <button onClick={testSupabase}>
-        测试数据库
-        </button>
         <div className="grid grid-cols-2 gap-8 max-w-4xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
             <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
