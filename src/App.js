@@ -253,11 +253,18 @@ export default function App() {
         status: quote.status || '编辑中'
       });
 
-      // 2. 拉取柜体和工艺明细
+      // 2. 拉取柜体明细
       const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
       if (cabErr) throw cabErr;
-      const { data: upgData, error: upgErr } = await supabase.from('quote_upgrades').select('*').eq('quote_id', quote.id);
-      if (upgErr) throw upgErr;
+
+      // 3. 拉取工艺明细 (修复：因 quote_upgrades 无 quote_id 字段，改用 cabinet_id 批量关联查询)
+      let upgData = [];
+      if (cabData && cabData.length > 0) {
+        const cabinetIds = cabData.map(cab => cab.id);
+        const { data: uData, error: upgErr } = await supabase.from('quote_upgrades').select('*').in('cabinet_id', cabinetIds);
+        if (upgErr) throw upgErr;
+        upgData = uData || [];
+      }
 
       // 3. 逆向组装柜体数组
       if (cabData && cabData.length > 0) {
