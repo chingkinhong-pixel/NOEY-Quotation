@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function App() {
   // 1. 全局状态
-  const [currentView, setCurrentView] = useState('home'); // home, admin-login, admin, sales
+  const [currentView, setCurrentView] = useState('home'); // home, admin-login, admin, sales, sales-history
   const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +21,10 @@ export default function App() {
     id: null, standard_depth: 600, shallow_depth: 295, height_threshold: 1000, minimum_area: 1, minimum_width: 1000 
   });
 
+  // --- Phase 2 新增状态 ---
+  const [historyList, setHistoryList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+ 
   // 3. 后台管理台专属状态
   const [adminView, setAdminView] = useState('upgrade'); 
   const [editId, setEditId] = useState(null); 
@@ -88,8 +92,31 @@ export default function App() {
     }
   };
 
+  // --- Phase 2 新增：获取历史报价列表 ---
+  const fetchHistoryList = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setHistoryList(data || []);
+    } catch (err) {
+      showToast('历史列表加载失败', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (currentView === 'admin' || currentView === 'sales') fetchDictionaries();
+    if (currentView === 'admin' || currentView === 'sales' || currentView === 'sales-history') {
+      fetchDictionaries();
+    }
+    if (currentView === 'sales-history') {
+      fetchHistoryList();
+    }
   }, [currentView]);
 
   const handleAdminLogin = async (e) => {
