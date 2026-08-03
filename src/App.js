@@ -397,8 +397,10 @@ const handleRemoveUpgrade = (upgId) => {
         total_amount: grandTotal
       };
 
-      // 【V4.0 核心修复】放弃使用容易报 400 错误的 upsert，改为绝对稳定的：先查后写
       let currentQuoteId = null;
+      // 标记是否是第一次保存（如果是第一次，数据库里根本没有旧的柜体/工艺需要清理，从而避免空转引发报错）
+      let isExisting = false; 
+
       const { data: existingQuote, error: checkErr } = await supabase
         .from('quotes')
         .select('id')
@@ -409,15 +411,14 @@ const handleRemoveUpgrade = (upgId) => {
       if (checkErr) throw checkErr;
 
       if (existingQuote) {
-        // 存在历史记录，执行纯净 Update
         const { error: updateErr } = await supabase
           .from('quotes')
           .update(quotePayload)
           .eq('id', existingQuote.id);
         if (updateErr) throw updateErr;
         currentQuoteId = existingQuote.id;
+        isExisting = true; // 确认是更新历史记录
       } else {
-        // 不存在记录，执行纯净 Insert
         const { data: newQuote, error: insertErr } = await supabase
           .from('quotes')
           .insert([quotePayload])
@@ -429,9 +430,16 @@ const handleRemoveUpgrade = (upgId) => {
 
       if (!currentQuoteId) throw new Error("无法获取主单据 ID");
 
-      // 清理旧柜体和工艺明细
-      await supabase.from('quote_cabinets').delete().eq('quote_id', currentQuoteId);
-      await supabase.from('quote_upgrades').delete().eq('quote_id', currentQuoteId);
+      // 【精准清理】：只有在更新历史草稿时，才去执行危险的 delete 操作
+      if (isExisting) {
+         // 注意：即使 delete 失败也不要阻断后续保存，而是记录下可能的数据冗余
+         const { error: cabDelErr } = await supabase.from('quote_cabinets').delete().eq('quote_id', currentQuoteId);
+         if (cabDelErr) console.warn("清理旧柜体时遇到警告(可能是正常现象):", cabDelErr);
+         
+         // 为了避免某些版本的 SDK 因为空返回引发 400 警告，不在此处抛错
+         const { error: upgDelErr } = await supabase.from('quote_upgrades').delete().eq('quote_id', currentQuoteId);
+         if (upgDelErr) console.warn("清理旧工艺时遇到警告(可能是正常现象):", upgDelErr);
+      }
 
       for (const cab of quoteCabinets) {
         const calcs = calculateCabinetDetails(cab);
