@@ -922,6 +922,114 @@ const handleRemoveUpgrade = (upgId) => {
     );
   };
 
+// ==========================================
+  // 【Phase 2 新增】：渲染历史报价列表界面 (卡片式布局)
+  // 插入位置：在 renderAdmin() 之前
+  // ==========================================
+  const renderSalesHistory = () => {
+    // 搜索过滤逻辑
+    const filteredHistory = historyList.filter(q => {
+      if (!searchQuery) return true;
+      const lowerQuery = searchQuery.toLowerCase();
+      return (
+        (q.customer_name && q.customer_name.toLowerCase().includes(lowerQuery)) ||
+        (q.customer_phone && q.customer_phone.includes(lowerQuery)) ||
+        (q.quote_no && q.quote_no.toLowerCase().includes(lowerQuery))
+      );
+    });
+
+    return (
+      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-20">
+        {/* 顶部导航 */}
+        <div className="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-6 shadow-sm shrink-0">
+          <button onClick={() => setCurrentView('home')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors">← 返回首页</button>
+          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-gray-100 px-2 py-1 rounded text-gray-500">历史记录</span></div>
+          <div className="w-16"></div> {/* 占位符保持居中 */}
+        </div>
+
+        {/* 搜索与控制区 */}
+        <div className="max-w-6xl w-full mx-auto mt-8 px-6">
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row gap-4 items-center">
+            <div className="flex-1 w-full flex items-center gap-3 bg-gray-50 px-5 py-3 rounded-2xl border border-transparent focus-within:border-black transition-colors">
+              <span className="text-xl">🔍</span>
+              <input 
+                type="text" 
+                placeholder="输入客户姓名 / 手机号 / 报价单号搜索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent w-full font-bold outline-none text-gray-700 placeholder-gray-400"
+              />
+            </div>
+          </div>
+
+          {/* 卡片列表区 */}
+          {filteredHistory.length === 0 ? (
+            <div className="text-center py-20 text-gray-400 font-bold border-2 border-dashed border-gray-200 rounded-3xl">
+              {isLoading ? '加载中...' : '没有找到匹配的报价记录'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredHistory.map(quote => (
+                <div key={quote.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group">
+                  <div>
+                    {/* 卡片头部 */}
+                    <div className="flex justify-between items-start mb-4 border-b border-gray-50 pb-4">
+                      <div>
+                        <div className="text-xs text-gray-400 font-mono mb-1">{quote.quote_no}</div>
+                        <div className="font-black text-lg text-gray-900">
+                          {quote.customer_name || '未填姓名'} 
+                          <span className="text-sm text-gray-500 font-bold ml-2">{quote.customer_phone || ''}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-full shrink-0">
+                        {quote.status}
+                      </span>
+                    </div>
+                    
+                    {/* 基础信息 */}
+                    <div className="space-y-2 mb-6">
+                      <div className="text-sm flex items-start gap-2">
+                        <span className="text-gray-300 shrink-0">📍</span>
+                        <span className="text-gray-500 font-medium line-clamp-2 leading-tight">{quote.delivery_address || '未填写地址'}</span>
+                      </div>
+                      <div className="text-sm flex items-center gap-2">
+                        <span className="text-gray-300 shrink-0">🕒</span>
+                        <span className="text-gray-400 font-mono text-xs">{new Date(quote.created_at).toLocaleString('zh-CN', { hour12: false })}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 价格与操作区 */}
+                  <div>
+                    <div className="flex justify-between items-end mb-5">
+                      <div className="text-xs font-bold text-gray-400">金额总计</div>
+                      <div className="text-2xl font-black text-rose-600">¥{quote.total_amount ? parseFloat(quote.total_amount).toFixed(0) : '0'}</div>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => handleLoadQuoteForEditing(quote)}
+                        className="flex-1 bg-black text-white py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors"
+                      >
+                        ✏️ 继续编辑
+                      </button>
+                      <button 
+                        onClick={() => showToast('客户报价展示页面将在下一阶段开发')}
+                        className="flex-1 bg-white text-gray-700 py-3 rounded-xl font-bold text-sm border-2 border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                      >
+                        👀 查看报价
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderAdmin = () => {
     return (
       <div className="flex h-screen bg-gray-100 font-sans overflow-hidden">
@@ -1059,6 +1167,7 @@ const handleRemoveUpgrade = (upgId) => {
     </div>
   );
 
+  if (currentView === 'sales-history') return renderSalesHistory();
   if (currentView === 'sales') return renderSalesWorkspace();
   if (currentView === 'admin-login') return renderAdminLogin();
   if (currentView === 'admin') return renderAdmin();
@@ -1069,12 +1178,19 @@ const handleRemoveUpgrade = (upgId) => {
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
           <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
         </div>
-        <div className="grid grid-cols-2 gap-8 max-w-4xl w-full px-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
             <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
             <h2 className="text-2xl font-black text-gray-900 mb-2">多柜报价工作台</h2>
             <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、自动深度计算、智能选配</p>
           </button>
+
+          <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-blue-500 text-left group transition-all">
+            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">📂</div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">历史报价管理</h2>
+            <p className="text-gray-500 font-medium text-sm">查询以前保存的草稿，继续编辑或预览</p>
+          </button>
+    
           <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-gray-300 text-left group transition-all">
             <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">⚙️</div>
             <h2 className="text-2xl font-black text-gray-800 mb-2">底层数据管理台</h2>
