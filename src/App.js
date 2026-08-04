@@ -1086,8 +1086,6 @@ const handleRemoveUpgrade = (upgId) => {
     });
 
     return (
-      // 👇 关键修复：请加回这行最外层的大容器！
-      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-20">
         <div className="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-6 shadow-sm shrink-0">
           <button onClick={() => setCurrentView('home')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors">← 返回首页</button>
           <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-gray-100 px-2 py-1 rounded text-gray-500">Quote Archive</span></div>
@@ -1321,6 +1319,7 @@ const handleRemoveUpgrade = (upgId) => {
       </div>
     </div>
   );
+};
 
   if (currentView === 'quote-preview') return renderQuotePreview();
   if (currentView === 'sales-history') return renderSalesHistory();
