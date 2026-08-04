@@ -588,15 +588,19 @@ const handleRemoveUpgrade = (upgId) => {
 
       if (!currentQuoteId) throw new Error("无法获取主单据 ID");
 
-      // 【精准清理】：只有在更新历史草稿时，才去执行危险的 delete 操作
+ // 【V4.0 修复】：彻底告别 quote_id 不存在的报错，改为通过 cabinet_id 级联清理
       if (isExisting) {
-         // 注意：即使 delete 失败也不要阻断后续保存，而是记录下可能的数据冗余
-         const { error: cabDelErr } = await supabase.from('quote_cabinets').delete().eq('quote_id', currentQuoteId);
-         if (cabDelErr) console.warn("清理旧柜体时遇到警告(可能是正常现象):", cabDelErr);
-         
-         // 为了避免某些版本的 SDK 因为空返回引发 400 警告，不在此处抛错
-         const { error: upgDelErr } = await supabase.from('quote_upgrades').delete().eq('quote_id', currentQuoteId);
-         if (upgDelErr) console.warn("清理旧工艺时遇到警告(可能是正常现象):", upgDelErr);
+        // 先查出属于这个订单的旧柜体 IDs
+        const { data: oldCabs } = await supabase.from('quote_cabinets').select('id').eq('quote_id', currentQuoteId);
+        if (oldCabs && oldCabs.length > 0) {
+          const oldCabIds = oldCabs.map(c => c.id);
+          // 依靠 cabinet_id 清理旧工艺
+          const { error: upgDelErr } = await supabase.from('quote_upgrades').delete().in('cabinet_id', oldCabIds);
+          if (upgDelErr) console.warn("清理旧工艺时遇到警告:", upgDelErr);
+        }
+        // 最后清理旧柜体
+        const { error: cabDelErr } = await supabase.from('quote_cabinets').delete().eq('quote_id', currentQuoteId);
+        if (cabDelErr) console.warn("清理旧柜体时遇到警告:", cabDelErr);
       }
 
       for (const cab of quoteCabinets) {
@@ -620,8 +624,8 @@ const handleRemoveUpgrade = (upgId) => {
         if (cab.upgrades && cab.upgrades.length > 0) {
           const upgradeInserts = cab.upgrades.map(u => {
             const calculatedMatch = calcs.calculatedUpgrades.find(cu => cu.id === u.id);
-            return {
-              quote_id: currentQuoteId, cabinet_id: insertedCab.id, upgrade_item_id: u.item_id,
+           return {
+              cabinet_id: insertedCab.id, upgrade_item_id: u.item_id,
               quantity: calculatedMatch.calculatedQty, remark: u.remark || '',
               snap_unit_price: calculatedMatch.snap_final_unit_price, snap_upgrade_effect_type: u.upgrade_effect_type,
               snap_upgrade_name: u.name, snap_base_door_price: calculatedMatch.snap_base_door_price,
