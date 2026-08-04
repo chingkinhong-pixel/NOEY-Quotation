@@ -884,8 +884,11 @@ const handleRemoveUpgrade = (upgId) => {
                    <div className="py-8 text-center text-gray-400 font-bold border-2 border-dashed rounded-xl">尚未添加工艺</div>
                 ) : (
                   <div className="space-y-3">
-                    {activeCabinet.upgrades.map(upg => {
-                      const calced = currentCalcs.calculatedUpgrades.find(u => u.id === upg.id);
+                   {activeCabinet.upgrades.map(upg => {
+                      // 【V4.0 容错修复】：如果尺寸被清空导致引擎短路，给一个默认空对象兜底防崩溃
+                      const calced = currentCalcs.calculatedUpgrades.find(u => u.id === upg.id) || {
+                        calculatedQty: 0, finalAmount: 0, snap_base_door_price: 0
+                      };
                       return (
                         <div key={upg.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center">
                           <div>
