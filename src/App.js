@@ -605,7 +605,7 @@ const handleRemoveUpgrade = (upgId) => {
         customer_phone: quoteInfo.customerPhone, 
         delivery_address: quoteInfo.deliveryAddress,
         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
-        total_amount: grandTotal
+        total_amount: grandTotal,
         updated_at: new Date().toISOString() // 【新增】：每次保存刷新修改时间
       };
 
