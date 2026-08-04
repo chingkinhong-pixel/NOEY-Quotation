@@ -564,7 +564,6 @@ export default function App() {
   // 【核心引擎代码结束】
   // ==========================================
 
-
   const handleConfirmAddUpgrade = () => {
     const item = upgradeModal.selectedItem;
     if (!item) return;
@@ -591,7 +590,7 @@ export default function App() {
     showToast(`已添加工艺: ${item.name}`);
   };
 
-const handleRemoveUpgrade = (upgId) => {
+  const handleRemoveUpgrade = (upgId) => {
     updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
   };
 
@@ -646,7 +645,7 @@ const handleRemoveUpgrade = (upgId) => {
 
       if (!currentQuoteId) throw new Error("无法获取主单据 ID");
 
- // 【V4.0 修复】：彻底告别 quote_id 不存在的报错，改为通过 cabinet_id 级联清理
+      // 【V4.0 修复】：彻底告别 quote_id 不存在的报错，改为通过 cabinet_id 级联清理
       if (isExisting) {
         // 先查出属于这个订单的旧柜体 IDs
         const { data: oldCabs } = await supabase.from('quote_cabinets').select('id').eq('quote_id', currentQuoteId);
