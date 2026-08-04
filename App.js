@@ -25,8 +25,6 @@ export default function App() {
   const [historyList, setHistoryList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [previewData, setPreviewData] = useState(null); // 【新增】：存储预览所需的数据
-  // 【V4.0 导航优化】：记录 Quote Studio 的来路来源，决定返回按钮去哪
-  const [salesOrigin, setSalesOrigin] = useState('home');
   
   // 3. 后台管理台专属状态
   const [adminView, setAdminView] = useState('upgrade'); 
@@ -238,7 +236,6 @@ export default function App() {
       door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
     }]);
     setActiveCabinetId(initCabId);
-    setSalesOrigin('home'); // 【导航优化】：标记从首页新建进入
     setCurrentView('sales');
   };
 
@@ -415,7 +412,6 @@ export default function App() {
       }
 
       // 4. 数据完全重组后，切入编辑工作台
-      setSalesOrigin('sales-history'); // 【导航优化】：标记从历史列表进入
       setCurrentView('sales');
       showToast('草稿已成功恢复！');
     } catch (err) {
@@ -564,6 +560,7 @@ export default function App() {
   // 【核心引擎代码结束】
   // ==========================================
 
+
   const handleConfirmAddUpgrade = () => {
     const item = upgradeModal.selectedItem;
     if (!item) return;
@@ -590,7 +587,7 @@ export default function App() {
     showToast(`已添加工艺: ${item.name}`);
   };
 
-  const handleRemoveUpgrade = (upgId) => {
+const handleRemoveUpgrade = (upgId) => {
     updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
   };
 
@@ -645,7 +642,7 @@ export default function App() {
 
       if (!currentQuoteId) throw new Error("无法获取主单据 ID");
 
-      // 【V4.0 修复】：彻底告别 quote_id 不存在的报错，改为通过 cabinet_id 级联清理
+ // 【V4.0 修复】：彻底告别 quote_id 不存在的报错，改为通过 cabinet_id 级联清理
       if (isExisting) {
         // 先查出属于这个订单的旧柜体 IDs
         const { data: oldCabs } = await supabase.from('quote_cabinets').select('id').eq('quote_id', currentQuoteId);
@@ -829,10 +826,9 @@ export default function App() {
             <div className="text-sm font-mono bg-gray-100 px-4 py-1 rounded-full font-bold">单号: {quoteInfo.quoteNo}</div>
             <div className="text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">● {quoteInfo.status}</div>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setCurrentView(salesOrigin)} className="text-sm text-gray-500 hover:text-black font-bold">
-              ← 返回{salesOrigin === 'home' ? '首页' : '列表'}
-            </button>
+         <div className="flex items-center gap-4">
+            {/* 修改：返回上一级变更为历史报价列表 */}
+            <button onClick={() => setCurrentView('sales-history')} className="text-sm text-gray-500 hover:text-black font-bold">← 返回列表</button>
             <button onClick={handleSaveDraft} disabled={isLoading} className="bg-black text-white px-6 py-2 rounded-lg font-bold">💾 保存报价草稿</button>
           </div>
         </div>
@@ -1091,8 +1087,8 @@ export default function App() {
         {/* 顶部导航 */}
         <div className="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-6 shadow-sm shrink-0">
           <button onClick={() => setCurrentView('home')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors">← 返回首页</button>
-          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-gray-100 px-2 py-1 rounded text-gray-500">Quote Archive</span></div>
-          <div className="w-16"></div>
+          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-gray-100 px-2 py-1 rounded text-gray-500">历史记录</span></div>
+          <div className="w-16"></div> {/* 占位符保持居中 */}
         </div>
 
         {/* 搜索与控制区 */}
@@ -1202,7 +1198,7 @@ export default function App() {
           </div>
         )}
         <div className="w-64 bg-gray-900 text-white flex flex-col z-20">
-          <div className="p-6 border-b border-gray-800"><h1 className="text-2xl font-black">NOEY<span className="font-light text-gray-400"> System Hub</span></h1></div>
+          <div className="p-6 border-b border-gray-800"><h1 className="text-2xl font-black">NOEY<span className="font-light text-gray-400">ERP</span></h1></div>
           <div className="flex-1 py-4">
             <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>✨ V2.7 升级工艺</button>
             <button onClick={() => setAdminView('cabinet')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='cabinet'?'border-blue-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🗄️ 柜体基础库</button>
@@ -1314,7 +1310,7 @@ export default function App() {
   const renderAdminLogin = () => (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-96 border">
-        <h2 className="text-2xl font-black mb-8 text-center">NOEY<span className="font-light"> System Hub</span></h2>
+        <h2 className="text-2xl font-black mb-8 text-center">NOEY<span className="font-light">ERP</span></h2>
         <input type="text" placeholder="账号 (admin)" value={adminLoginForm.username} onChange={e=>setAdminLoginForm({...adminLoginForm, username:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-4 font-bold" />
         <input type="password" placeholder="密码 (admin123)" value={adminLoginForm.password} onChange={e=>setAdminLoginForm({...adminLoginForm, password:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-6 font-bold" />
         <button onClick={handleAdminLogin} className="w-full bg-black text-white p-3 rounded-xl font-bold">登录控制台</button>
@@ -1338,20 +1334,20 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
             <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Studio</h2>
-            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、配置柜体方案、选择材料工艺，并实时生成精准报价</p>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">多柜报价工作台</h2>
+            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、自动深度计算、智能选配</p>
           </button>
 
           <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-blue-500 text-left group transition-all">
             <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">📂</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Archive</h2>
-            <p className="text-gray-500 font-medium text-sm">管理历史报价，支持编辑或预览，生成客户报价</p>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">历史报价管理</h2>
+            <p className="text-gray-500 font-medium text-sm">查询以前保存的草稿，继续编辑或预览</p>
           </button>
     
           <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-gray-300 text-left group transition-all">
             <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">⚙️</div>
-            <h2 className="text-2xl font-black text-gray-800 mb-2">System Hub</h2>
-            <p className="text-gray-500 font-medium text-sm">系统管理：维护材料库、配置规则及基础业务数据</p>
+            <h2 className="text-2xl font-black text-gray-800 mb-2">底层数据管理台</h2>
+            <p className="text-gray-500 font-medium text-sm">后台中枢：维护材料库、配置规则引擎、管控工艺</p>
           </button>
         </div>
         {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-3 rounded-full text-sm font-bold shadow-2xl z-50">{toast.message}</div>}
