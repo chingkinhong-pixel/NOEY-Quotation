@@ -826,8 +826,9 @@ const handleRemoveUpgrade = (upgId) => {
             <div className="text-sm font-mono bg-gray-100 px-4 py-1 rounded-full font-bold">单号: {quoteInfo.quoteNo}</div>
             <div className="text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">● {quoteInfo.status}</div>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setCurrentView('home')} className="text-sm text-gray-500 hover:text-black font-bold">← 返回</button>
+         <div className="flex items-center gap-4">
+            {/* 修改：返回上一级变更为历史报价列表 */}
+            <button onClick={() => setCurrentView('sales-history')} className="text-sm text-gray-500 hover:text-black font-bold">← 返回列表</button>
             <button onClick={handleSaveDraft} disabled={isLoading} className="bg-black text-white px-6 py-2 rounded-lg font-bold">💾 保存报价草稿</button>
           </div>
         </div>
@@ -1031,9 +1032,9 @@ const handleRemoveUpgrade = (upgId) => {
                   <div className="text-xs font-mono bg-gray-100 px-3 py-1 rounded text-gray-500">{cab.width||0} W × {cab.height||0} H × {cab.depth||0} D</div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-gray-50 p-3 rounded-lg"><span className="text-xs text-gray-400 block mb-1">柜体配置</span><span className="font-bold text-sm">{cab.cabinet_material_remark || '系统柜体'} (单价快照: ¥{cab.snap_final_cabinet_price})</span></div>
-                  <div className="bg-gray-50 p-3 rounded-lg"><span className="text-xs text-gray-400 block mb-1">门板配置</span><span className="font-bold text-sm">{cab.snap_door_brand || '系统门板'} (单价快照: ¥{cab.snap_final_door_price})</span></div>
+               <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-gray-50 p-3 rounded-lg"><span className="text-xs text-gray-400 block mb-1">柜体配置</span><span className="font-bold text-sm">{cab.cabinet_material_remark || '系统柜体'} (单价快照: ¥{Number(cab.snap_final_cabinet_price || 0).toFixed(2)})</span></div>
+                  <div className="bg-gray-50 p-3 rounded-lg"><span className="text-xs text-gray-400 block mb-1">门板配置</span><span className="font-bold text-sm">{cab.snap_door_brand || '系统门板'} (单价快照: ¥{Number(cab.snap_final_door_price || 0).toFixed(2)})</span></div>
                 </div>
 
                 {cabUpgrades.length > 0 && (
@@ -1043,7 +1044,7 @@ const handleRemoveUpgrade = (upgId) => {
                       {cabUpgrades.map(upg => (
                         <li key={upg.id} className="flex justify-between text-sm bg-gray-50 px-3 py-2 rounded">
                           <span><span className="font-bold">{upg.snap_upgrade_name}</span> <span className="text-gray-400 text-xs ml-2">({upg.quantity} 计价单位)</span></span>
-                          <span className="font-black text-rose-600">¥{upg.snap_upgrade_price}</span>
+                          <span className="font-black text-rose-600">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
                         </li>
                       ))}
                     </ul>
@@ -1051,7 +1052,7 @@ const handleRemoveUpgrade = (upgId) => {
                 )}
                 
                 <div className="text-right mt-4 pt-4 border-t text-sm font-bold text-gray-500">
-                  单柜合计金额: <span className="text-xl text-black ml-2">¥{cab.cabinet_total_price}</span>
+                  单柜合计金额: <span className="text-xl text-black ml-2">¥{Number(cab.cabinet_total_price || 0).toFixed(2)}</span>
                 </div>
               </div>
             );
@@ -1059,7 +1060,7 @@ const handleRemoveUpgrade = (upgId) => {
 
           <div className="bg-black text-white p-6 rounded-2xl flex justify-between items-center shadow-lg mt-8">
             <span className="font-bold">整单全案总计</span>
-            <span className="text-4xl font-black">¥{quote.total_amount}</span>
+            <span className="text-4xl font-black">¥{Number(quote.total_amount || 0).toFixed(2)}</span>
           </div>
         </div>
       </div>
