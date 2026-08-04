@@ -1319,7 +1319,6 @@ const handleRemoveUpgrade = (upgId) => {
       </div>
     </div>
   );
-};
 
   if (currentView === 'quote-preview') return renderQuotePreview();
   if (currentView === 'sales-history') return renderSalesHistory();
