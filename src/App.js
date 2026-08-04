@@ -24,7 +24,8 @@ export default function App() {
   // --- Phase 2 新增状态 ---
   const [historyList, setHistoryList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
- 
+  const [previewData, setPreviewData] = useState(null); // 【新增】：存储预览所需的数据
+  
   // 3. 后台管理台专属状态
   const [adminView, setAdminView] = useState('upgrade'); 
   const [editId, setEditId] = useState(null); 
@@ -237,10 +238,62 @@ export default function App() {
     setActiveCabinetId(initCabId);
     setCurrentView('sales');
   };
-// ==========================================
-  // 【Phase 2 新增】：历史报价重组引擎 (读取并逆向还原为编辑状态)
-  // 插入位置：enterSalesWorkspace 函数下方
+
   // ==========================================
+  // 【新增】：删除历史草稿
+  // ==========================================
+  const handleDeleteQuote = async (quoteId) => {
+    if (!window.confirm("确定删除该报价草稿？删除后无法恢复")) return;
+    setIsLoading(true);
+    try {
+      // 1. 先查出该订单的所有柜体ID
+      const { data: cabs } = await supabase.from('quote_cabinets').select('id').eq('quote_id', quoteId);
+      if (cabs && cabs.length > 0) {
+        const cabIds = cabs.map(c => c.id);
+        // 2. 根据柜体ID，删除底层工艺 (规避 quote_id 不存在的报错)
+        await supabase.from('quote_upgrades').delete().in('cabinet_id', cabIds);
+      }
+      // 3. 删除柜体
+      await supabase.from('quote_cabinets').delete().eq('quote_id', quoteId);
+      // 4. 删除主单
+      await supabase.from('quotes').delete().eq('id', quoteId);
+      
+      showToast('草稿已彻底删除');
+      fetchHistoryList(); // 刷新列表
+    } catch (err) {
+      showToast('删除失败: ' + err.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ==========================================
+  // 【新增】：拉取数据并进入只读预览模式
+  // ==========================================
+  const handlePreviewQuote = async (quote) => {
+    setIsLoading(true);
+    try {
+      const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
+      if (cabErr) throw cabErr;
+
+      let upgData = [];
+      if (cabData && cabData.length > 0) {
+        const cabIds = cabData.map(c => c.id);
+        const { data: uData, error: upgErr } = await supabase.from('quote_upgrades').select('*').in('cabinet_id', cabIds);
+        if (upgErr) throw upgErr;
+        upgData = uData || [];
+      }
+
+      setPreviewData({ quote, cabinets: cabData || [], upgrades: upgData });
+      setCurrentView('quote-preview');
+    } catch (err) {
+      showToast('读取预览数据失败: ' + err.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // 【Phase 2 新增】：历史报价重组引擎 (读取并逆向还原为编辑状态)
   const handleLoadQuoteForEditing = async (quote) => {
     setIsLoading(true);
     try {
@@ -553,6 +606,7 @@ const handleRemoveUpgrade = (upgId) => {
         delivery_address: quoteInfo.deliveryAddress,
         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
         total_amount: grandTotal
+        updated_at: new Date().toISOString() // 【新增】：每次保存刷新修改时间
       };
 
       let currentQuoteId = null;
@@ -937,6 +991,81 @@ const handleRemoveUpgrade = (upgId) => {
   };
 
 // ==========================================
+  // 【新增】：只读内部报价预览页
+  // ==========================================
+  const renderQuotePreview = () => {
+    if (!previewData) return null;
+    const { quote, cabinets, upgrades } = previewData;
+
+    return (
+      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-20">
+        <div className="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-6 shadow-sm sticky top-0 z-10">
+          <button onClick={() => setCurrentView('sales-history')} className="text-sm font-bold text-gray-500 hover:text-black">← 返回历史列表</button>
+          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-rose-100 text-rose-700 px-2 py-1 rounded">只读预览</span></div>
+          <div className="w-24"></div>
+        </div>
+
+        <div className="max-w-4xl mx-auto mt-8 w-full px-6 space-y-6">
+          {/* 客户与主单信息 */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+            <div className="flex justify-between items-start mb-4 pb-4 border-b">
+              <div>
+                <h2 className="text-2xl font-black">{quote.customer_name || '未命名客户'}</h2>
+                <div className="text-gray-500 font-bold mt-1">📞 {quote.customer_phone || '未留电话'} | 📍 {quote.delivery_address || '未留地址'}</div>
+              </div>
+              <div className="text-right">
+                <div className="font-mono text-gray-400 text-sm">{quote.quote_no}</div>
+                <div className="text-xs text-gray-400 mt-1">建单: {new Date(quote.created_at).toLocaleString('zh-CN')}</div>
+                <div className="text-xs text-gray-400">修改: {new Date(quote.updated_at || quote.created_at).toLocaleString('zh-CN')}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 柜体明细列表 */}
+          {cabinets.map(cab => {
+            const cabUpgrades = upgrades.filter(u => u.cabinet_id === cab.id);
+            return (
+              <div key={cab.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                  <div className="font-black text-lg text-gray-800">{cab.name || '未命名柜体'}</div>
+                  <div className="text-xs font-mono bg-gray-100 px-3 py-1 rounded text-gray-500">{cab.width||0} W × {cab.height||0} H × {cab.depth||0} D</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-gray-50 p-3 rounded-lg"><span className="text-xs text-gray-400 block mb-1">柜体配置</span><span className="font-bold text-sm">{cab.cabinet_material_remark || '系统柜体'} (单价快照: ¥{cab.snap_final_cabinet_price})</span></div>
+                  <div className="bg-gray-50 p-3 rounded-lg"><span className="text-xs text-gray-400 block mb-1">门板配置</span><span className="font-bold text-sm">{cab.snap_door_brand || '系统门板'} (单价快照: ¥{cab.snap_final_door_price})</span></div>
+                </div>
+
+                {cabUpgrades.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
+                    <div className="text-xs font-bold text-gray-400 mb-2">局部升级与工艺明细：</div>
+                    <ul className="space-y-2">
+                      {cabUpgrades.map(upg => (
+                        <li key={upg.id} className="flex justify-between text-sm bg-gray-50 px-3 py-2 rounded">
+                          <span><span className="font-bold">{upg.snap_upgrade_name}</span> <span className="text-gray-400 text-xs ml-2">({upg.quantity} 计价单位)</span></span>
+                          <span className="font-black text-rose-600">¥{upg.snap_upgrade_price}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className="text-right mt-4 pt-4 border-t text-sm font-bold text-gray-500">
+                  单柜合计金额: <span className="text-xl text-black ml-2">¥{cab.cabinet_total_price}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="bg-black text-white p-6 rounded-2xl flex justify-between items-center shadow-lg mt-8">
+            <span className="font-bold">整单全案总计</span>
+            <span className="text-4xl font-black">¥{quote.total_amount}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+// ==========================================
   // 【Phase 2 新增】：渲染历史报价列表界面 (卡片式布局)
   // 插入位置：在 renderAdmin() 之前
   // ==========================================
@@ -1006,10 +1135,12 @@ const handleRemoveUpgrade = (upgId) => {
                         <span className="text-gray-300 shrink-0">📍</span>
                         <span className="text-gray-500 font-medium line-clamp-2 leading-tight">{quote.delivery_address || '未填写地址'}</span>
                       </div>
-                      <div className="text-sm flex items-center gap-2">
-                        <span className="text-gray-300 shrink-0">🕒</span>
-                        <span className="text-gray-400 font-mono text-xs">{new Date(quote.created_at).toLocaleString('zh-CN', { hour12: false })}</span>
-                      </div>
+                     <div className="text-sm flex items-center gap-2">
+                       <span className="text-gray-300 shrink-0">🕒</span>
+                       <span className="text-gray-400 font-mono text-[10px]">
+                        修改: {new Date(quote.updated_at || quote.created_at).toLocaleString('zh-CN', { hour12: false })}
+                       </span>
+                    </div>
                     </div>
                   </div>
 
@@ -1020,20 +1151,26 @@ const handleRemoveUpgrade = (upgId) => {
                       <div className="text-2xl font-black text-rose-600">¥{quote.total_amount ? parseFloat(quote.total_amount).toFixed(0) : '0'}</div>
                     </div>
                     
-                    <div className="flex gap-3">
-                      <button 
-                        onClick={() => handleLoadQuoteForEditing(quote)}
-                        className="flex-1 bg-black text-white py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors"
-                      >
-                        ✏️ 继续编辑
-                      </button>
-                      <button 
-                        onClick={() => showToast('客户报价展示页面将在下一阶段开发')}
-                        className="flex-1 bg-white text-gray-700 py-3 rounded-xl font-bold text-sm border-2 border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors"
-                      >
-                        👀 查看报价
-                      </button>
-                    </div>
+              <div className="flex gap-2">
+  <button 
+    onClick={() => handleLoadQuoteForEditing(quote)}
+    className="flex-1 bg-black text-white py-2.5 rounded-xl font-bold text-xs hover:bg-gray-800 transition-colors"
+  >
+    ✏️ 编辑
+  </button>
+  <button 
+    onClick={() => handlePreviewQuote(quote)}
+    className="flex-1 bg-white text-gray-700 py-2.5 rounded-xl font-bold text-xs border-2 border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+  >
+    👀 查看
+  </button>
+  <button 
+    onClick={() => handleDeleteQuote(quote.id)}
+    className="px-3 bg-rose-50 text-rose-600 py-2.5 rounded-xl font-bold text-xs border border-rose-100 hover:bg-rose-100 transition-colors"
+  >
+    🗑️
+  </button>
+</div>
                   </div>
                 </div>
               ))}
@@ -1181,6 +1318,7 @@ const handleRemoveUpgrade = (upgId) => {
     </div>
   );
 
+  if (currentView === 'quote-preview') return renderQuotePreview();
   if (currentView === 'sales-history') return renderSalesHistory();
   if (currentView === 'sales') return renderSalesWorkspace();
   if (currentView === 'admin-login') return renderAdminLogin();
