@@ -237,6 +237,7 @@ export default function App() {
       door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
     }]);
     setActiveCabinetId(initCabId);
+    setSalesOrigin('home'); // 【导航优化】：标记从首页新建进入
     setCurrentView('sales');
   };
 
