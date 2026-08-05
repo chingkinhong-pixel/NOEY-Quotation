@@ -1335,23 +1335,23 @@ const handleRemoveUpgrade = (upgId) => {
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
           <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
             <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">多柜报价工作台</h2>
-            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、自动深度计算、智能选配</p>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Studio</h2>
+            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、配置柜体方案、选择材料工艺，并实时生成精准报价</p>
           </button>
 
           <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-blue-500 text-left group transition-all">
             <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">📂</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">历史报价管理</h2>
-            <p className="text-gray-500 font-medium text-sm">查询以前保存的草稿，继续编辑或预览</p>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Archive</h2>
+            <p className="text-gray-500 font-medium text-sm">管理历史报价，支持编辑或预览，生成客户报价</p>
           </button>
     
           <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-gray-300 text-left group transition-all">
             <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">⚙️</div>
-            <h2 className="text-2xl font-black text-gray-800 mb-2">底层数据管理台</h2>
-            <p className="text-gray-500 font-medium text-sm">后台中枢：维护材料库、配置规则引擎、管控工艺</p>
+            <h2 className="text-2xl font-black text-gray-800 mb-2">System Hub</h2>
+            <p className="text-gray-500 font-medium text-sm">系统管理：维护材料库、配置规则及基础业务数据</p>
           </button>
         </div>
         {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-3 rounded-full text-sm font-bold shadow-2xl z-50">{toast.message}</div>}
