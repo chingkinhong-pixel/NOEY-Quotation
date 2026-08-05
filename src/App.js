@@ -18,9 +18,9 @@ export default function App() {
   const [doors, setDoors] = useState([]);
   const [upgrades, setUpgrades] = useState([]);
   const [rules, setRules] = useState({ 
-    id: null, standard_depth: 600, shallow_depth: 295, height_threshold: 1000, minimum_area: 1, minimum_width: 1000 
+    id: null, standard_depth: 600, shallow_depth: 295, height_threshold: 1000, minimum_area: 1, minimum_width: 1000,
+    depth_overage_enabled: true, depth_calculation_mode: 'ratio'
   });
-
   // --- Phase 2 新增状态 ---
   const [historyList, setHistoryList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -487,24 +487,39 @@ export default function App() {
     let finalShallowUnitPrice = shallowCabPrice + (parseFloat(cab.cabinet_unit_adjustment) || 0);
     result.finalDoorUnitPrice = systemBaseDoorPrice + (parseFloat(cab.door_unit_adjustment) || 0);
 
-    // 3. 深度逻辑算法
+   // 3. 深度逻辑算法 (V4.0 比例算法重构)
     let hasDoor = doorMat && doorMat.door_type !== '无门板';
     let stdDepth = rules.standard_depth || 600;
     let shallowDepth = rules.shallow_depth || 295;
     let unitCabCost = 0;
     let unitDoorCost = hasDoor ? result.finalDoorUnitPrice : 0;
 
+    // 基础柜体费用(不再直接乘超深比例)
     if (!hasDoor) {
       if (d <= shallowDepth) unitCabCost = finalShallowUnitPrice * noDoorFactor;
-      else if (d <= stdDepth) unitCabCost = result.finalCabUnitPrice * noDoorFactor;
-      else unitCabCost = (result.finalCabUnitPrice * noDoorFactor) * (d / stdDepth);
+      else unitCabCost = result.finalCabUnitPrice * noDoorFactor;
     } else {
       if (d <= shallowDepth) unitCabCost = finalShallowUnitPrice;
-      else if (d <= stdDepth) unitCabCost = result.finalCabUnitPrice;
-      else unitCabCost = result.finalCabUnitPrice * (d / stdDepth);
+      else unitCabCost = result.finalCabUnitPrice;
     }
 
-    result.cabinetPortionTotal = unitCabCost * result.qty;
+    let baseCabinetTotal = unitCabCost * result.qty;
+    let excessDepthFee = 0;
+    let depthRatio = 1;
+
+    // 独立计算超深比例和费用
+    if (rules.depth_overage_enabled !== false && d > stdDepth) {
+      depthRatio = d / stdDepth;
+      excessDepthFee = (baseCabinetTotal * depthRatio) - baseCabinetTotal;
+    }
+
+    // 最终合并
+    result.baseCabinetCost = baseCabinetTotal; // 供 UI 单独展示基础费用
+    result.excessDepthFee = excessDepthFee;    // 供 UI 单独展示超深附加费
+    result.depthRatio = depthRatio;            // 供保存快照
+    
+    // 【核心闭环】：基础费用 + 超深费用 = 最终柜体部分费用 (参与后续 baseTotal 汇算)
+    result.cabinetPortionTotal = baseCabinetTotal + excessDepthFee; 
     result.doorPortionTotal = unitDoorCost * result.qty;
 
     // 4. 升级工艺引擎
