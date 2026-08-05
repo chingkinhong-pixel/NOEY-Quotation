@@ -736,7 +736,12 @@ const handleRemoveUpgrade = (upgId) => {
     if (!upgradeModal.isOpen) return null;
     const activeUpgrades = upgrades.filter(u => u.status === true);
     const categories = ['门板升级', '五金系统', '灯光系统', '木作工艺', '其他'];
-    const filteredItems = activeUpgrades.filter(u => (u.upgrade_category || '其他') === upgradeModal.activeCategory);
+    // 【修改】：叠加搜索过滤，严格限制在当前 activeCategory 下
+    const filteredItems = activeUpgrades.filter(u => {
+      const isCategoryMatch = (u.upgrade_category || '其他') === upgradeModal.activeCategory;
+      const isSearchMatch = u.name && u.name.toLowerCase().includes(upgradeSearchQuery.toLowerCase());
+      return isCategoryMatch && isSearchMatch;
+    });
 
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -748,13 +753,15 @@ const handleRemoveUpgrade = (upgId) => {
           <div className="flex flex-1 overflow-hidden">
             <div className="w-48 bg-gray-50 border-r border-gray-100 flex flex-col p-4 gap-2">
               {categories.map(cat => (
-                <button key={cat} onClick={() => setUpgradeModal({...upgradeModal, activeCategory: cat, selectedItem: null})}
+                // 【修改】：切换分类时，清空搜索框
+                <button key={cat} onClick={() => { setUpgradeModal({...upgradeModal, activeCategory: cat, selectedItem: null}); setUpgradeSearchQuery(''); }}
                   className={`text-left px-4 py-3 rounded-xl font-bold text-sm ${upgradeModal.activeCategory === cat ? 'bg-black text-white' : 'text-gray-500 hover:bg-white'}`}>
                   {cat}
                 </button>
               ))}
             </div>
             <div className="flex-1 flex overflow-hidden">
+              
               <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-4 h-max border-r border-gray-100">
                 {filteredItems.map(item => (
                   <div key={item.id} onClick={() => setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: ''})}
