@@ -1237,8 +1237,7 @@ const handleRemoveUpgrade = (upgId) => {
               <form onSubmit={handleSaveUpgrade} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div className="col-span-2"><label className="text-xs font-bold text-gray-500">工艺名称</label><input required value={upgradeForm.name} onChange={e=>setUpgradeForm({...upgradeForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">分类</label><select value={upgradeForm.upgrade_category} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_category:e.target.value})} className="w-full border-2 p-2 rounded-lg mt-1 font-bold"><option>门板升级</option><option>五金系统</option><option>灯光系统</option><option>木作工艺</option><option>其他</option></select></div>
-                  <div><label className="text-xs font-bold text-gray-500">排序权值</label><input type="number" required value={upgradeForm.sort_order} onChange={e=>setUpgradeForm({...upgradeForm, sort_order:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">分类</label><select value={upgradeForm.upgrade_category} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_category:e.target.value})} className="w-full border-2 p-2 rounded-lg mt-1 font-bold"><option>门板升级</option><option>五金系统</option><option>灯光系统</option><option>木作工艺</option><option>其他</option></select></div>
                 </div>
                 <div className="grid grid-cols-4 gap-4 mb-4 bg-gray-50 p-4 rounded-lg">
                   <div><label className="text-xs font-bold text-blue-700">提取图纸计价法</label><select value={upgradeForm.calculation_type} onChange={e=>setUpgradeForm({...upgradeForm, calculation_type:e.target.value})} className="w-full border-2 border-blue-200 p-2 rounded-lg font-bold text-blue-900 mt-1"><option>按面积㎡</option><option>按延米</option><option>按个</option><option>按套</option><option>按柜宽自动算</option><option>超额抽屉规则</option><option>人工直接输金额</option></select></div>
@@ -1246,8 +1245,9 @@ const handleRemoveUpgrade = (upgId) => {
                   <div><label className="text-xs font-bold text-gray-500">系统原价 (元)</label><input type="number" required value={upgradeForm.unit_price} onChange={e=>setUpgradeForm({...upgradeForm, unit_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
                   <div>
                     <label className="text-xs font-bold text-amber-700">价格影响逻辑引擎</label>
-                    <select value={upgradeForm.upgrade_effect_type} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_effect_type:e.target.value})} className="w-full border-2 border-amber-200 p-2 rounded-lg font-bold text-amber-900 mt-1">
-                      <option value="add_cost">追加费用</option><option value="replace">替换(需处理底价)</option><option value="difference">差价直补</option><option value="manual">人工调整</option>
+                   <select value={upgradeForm.upgrade_effect_type} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_effect_type:e.target.value})} className="w-full border-2 border-amber-200 p-2 rounded-lg font-bold text-amber-900 mt-1">
+                      <option value="add_cost">追加费用</option>
+                      <option value="replace">替换 (需处理底价)</option>
                     </select>
                   </div>
                 </div>
@@ -1320,6 +1320,16 @@ const handleRemoveUpgrade = (upgId) => {
                  <div><label className="block text-sm text-gray-500 mb-1">标准深度阈值 (mm)</label><input type="number" value={rules.standard_depth} onChange={e=>setRules({...rules, standard_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
                  <div><label className="block text-sm text-gray-500 mb-1">浅柜判定界限 (mm)</label><input type="number" value={rules.shallow_depth} onChange={e=>setRules({...rules, shallow_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
                  <div><label className="block text-sm text-gray-500 mb-1">面积/延米计价高度分水岭 (mm)</label><input type="number" value={rules.height_threshold} onChange={e=>setRules({...rules, height_threshold:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
+                <div className="flex items-center gap-2 mt-4 p-4 bg-gray-50 rounded-lg border">
+                   <input type="checkbox" checked={rules.depth_overage_enabled} onChange={e=>setRules({...rules, depth_overage_enabled:e.target.checked})} className="w-5 h-5 accent-black" />
+                   <label className="text-sm font-bold text-gray-800">启用超深自动加价逻辑 (按深度比例计算)</label>
+                 </div>
+                 <div>
+                   <label className="block text-sm text-gray-500 mb-1 mt-4">超深计算模式 (未来预留)</label>
+                   <select disabled value={rules.depth_calculation_mode} className="w-full border-2 p-2 rounded-lg bg-gray-100 text-gray-400 font-bold">
+                     <option value="ratio">按深度比例计算 (Ratio)</option>
+                   </select>
+                 </div>
                  <button type="submit" className="w-full bg-black text-white p-3 rounded-lg font-black mt-4">更新全局规则</button>
                </form>
              </div>
