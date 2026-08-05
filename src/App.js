@@ -690,6 +690,9 @@ const handleRemoveUpgrade = (upgId) => {
           snap_final_cabinet_price: calcs.finalCabUnitPrice, snap_final_door_price: calcs.finalDoorUnitPrice,
           cabinet_material_remark: cab.cabinet_material_remark || '',
           cabinet_total_price: calcs.baseTotal
+          excess_depth_fee: calcs.excessDepthFee,
+          snap_standard_depth: rules.standard_depth || 600,
+          snap_depth_ratio: calcs.depthRatio
         }]).select().single();
         if (cabErr2) throw cabErr2;
 
