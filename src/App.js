@@ -1091,8 +1091,8 @@ const handleRemoveUpgrade = (upgId) => {
         {/* 顶部导航 */}
         <div className="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-6 shadow-sm shrink-0">
           <button onClick={() => setCurrentView('home')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors">← 返回首页</button>
-          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-gray-100 px-2 py-1 rounded text-gray-500">历史记录</span></div>
-          <div className="w-16"></div> {/* 占位符保持居中 */}
+          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-gray-100 px-2 py-1 rounded text-gray-500">Quote Archive</span></div>
+          <div className="w-16"></div>
         </div>
 
         {/* 搜索与控制区 */}
