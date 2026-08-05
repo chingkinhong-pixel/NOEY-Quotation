@@ -414,6 +414,7 @@ export default function App() {
       }
 
       // 4. 数据完全重组后，切入编辑工作台
+      setSalesOrigin('sales-history'); // 【导航优化】：标记从历史列表进入
       setCurrentView('sales');
       showToast('草稿已成功恢复！');
     } catch (err) {
