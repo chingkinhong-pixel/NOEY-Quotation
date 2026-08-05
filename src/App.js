@@ -761,7 +761,6 @@ const handleRemoveUpgrade = (upgId) => {
               ))}
             </div>
             <div className="flex-1 flex overflow-hidden">
-              {/* 【修改】：插入搜索框，并调整布局 */}
               <div className="flex-1 flex flex-col border-r border-gray-100 bg-white">
                 <div className="p-4 border-b border-gray-50">
                    <input type="text" placeholder={`在 "${upgradeModal.activeCategory}" 中搜索工艺...`} 
