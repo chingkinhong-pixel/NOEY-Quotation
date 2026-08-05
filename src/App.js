@@ -25,6 +25,7 @@ export default function App() {
   const [historyList, setHistoryList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [previewData, setPreviewData] = useState(null); // 【新增】：存储预览所需的数据
+  const [salesOrigin, setSalesOrigin] = useState('home');// 【V4.0 导航优化】：记录 Quote Studio 的来路来源，决定返回按钮去哪
   
   // 3. 后台管理台专属状态
   const [adminView, setAdminView] = useState('upgrade'); 
