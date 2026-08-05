@@ -1081,13 +1081,8 @@ const renderUpgradeModal = () => {
             const excessDepthFee = Number(cab.excess_depth_fee || 0);
             const doorPrice = Number(cab.snap_final_door_price || 0);
             
-            // 【判断规则】：是否为无门板柜体
+            // 【核心规则】：多维度判断是否为开放式无门板柜体
             const hasNoDoor = !cab.door_mat_id || doorPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
-            
-            // 【历史兼容】：如果老单子没有 snap_cabinet_cost，则用 (总价 - 超深 - 工艺总和) 完美反推出柜体金额
-            const upgradesTotal = cabUpgrades.reduce((sum, u) => sum + Number(u.snap_upgrade_price || 0), 0);
-            const derivedCabinetCost = Number(cab.cabinet_total_price || 0) - excessDepthFee - upgradesTotal;
-            const finalCabinetCost = cab.snap_cabinet_cost ? Number(cab.snap_cabinet_cost) : derivedCabinetCost;
 
             return (
               <div key={cab.id} className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
@@ -1102,41 +1097,31 @@ const renderUpgradeModal = () => {
                 </div>
                 
                 {/* 2. 柜体与门板计价配置区 */}
-                <div className="mb-4">
-                  {hasNoDoor ? (
-                    // 【无门板】：只显示最终销售总价，屏蔽单价和门板区域
-                    <div className="bg-gray-50/80 p-5 rounded-2xl border border-gray-100 w-full md:w-1/2">
-                      <div className="text-xs text-gray-400 mb-1.5 font-bold">开放式柜体</div>
-                      <div className="font-bold text-sm text-gray-800 mb-3">{cab.cabinet_material_remark || '系统柜体'}</div>
-                      <div className="text-xs text-gray-500 flex justify-between items-center">
-                        <span>柜体销售价格:</span>
-                        <span className="font-black text-gray-900 text-sm">¥{finalCabinetCost.toFixed(2)}</span>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* 柜体计价展示 */}
+                  <div className="bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
+                    <div className="text-xs text-gray-400 mb-1.5 font-bold">{hasNoDoor ? '开放式柜体' : '柜体'}</div>
+                    <div className="font-bold text-sm text-gray-800 mb-3">{cab.cabinet_material_remark || '系统柜体'}</div>
+                    <div className="text-xs text-gray-500 flex justify-between items-center">
+                      <span>计价单价:</span>
+                      <span><span className="font-black text-gray-900 text-sm">¥{Number(cab.snap_final_cabinet_price || 0).toFixed(2)}</span> /m²</span>
                     </div>
-                  ) : (
-                    // 【有门板】：显示柜体单价 + 门板单价
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
-                        <div className="text-xs text-gray-400 mb-1.5 font-bold">柜体</div>
-                        <div className="font-bold text-sm text-gray-800 mb-3">{cab.cabinet_material_remark || '系统柜体'}</div>
-                        <div className="text-xs text-gray-500 flex justify-between items-center">
-                          <span>最终计价单价:</span>
-                          <span><span className="font-black text-gray-900 text-sm">¥{Number(cab.snap_final_cabinet_price || 0).toFixed(2)}</span> /m²</span>
-                        </div>
-                      </div>
-                      <div className="bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
-                        <div className="text-xs text-gray-400 mb-1.5 font-bold">门板</div>
-                        <div className="font-bold text-sm text-gray-800 mb-3">{cab.snap_door_brand || '系统门板'}</div>
-                        <div className="text-xs text-gray-500 flex justify-between items-center">
-                          <span>最终计价单价:</span>
-                          <span><span className="font-black text-gray-900 text-sm">¥{doorPrice.toFixed(2)}</span> /m²</span>
-                        </div>
+                  </div>
+
+                  {/* 门板计价展示 (仅在有门板时渲染) */}
+                  {!hasNoDoor && (
+                    <div className="bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
+                      <div className="text-xs text-gray-400 mb-1.5 font-bold">门板</div>
+                      <div className="font-bold text-sm text-gray-800 mb-3">{cab.snap_door_brand || '系统门板'}</div>
+                      <div className="text-xs text-gray-500 flex justify-between items-center">
+                        <span>计价单价:</span>
+                        <span><span className="font-black text-gray-900 text-sm">¥{doorPrice.toFixed(2)}</span> /m²</span>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* 3. 特殊费用：超出标准深度 */}
+                {/* 3. 特殊费用：超出标准深度 (仅在触发时渲染) */}
                 {excessDepthFee > 0 && (
                   <div className="mb-4 bg-amber-50/50 p-5 rounded-2xl border border-amber-100/50">
                     <div className="text-xs font-black text-amber-800 mb-3 flex items-center gap-2">
