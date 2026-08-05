@@ -1084,6 +1084,14 @@ const renderUpgradeModal = () => {
             // 【核心规则】：多维度判断是否为开放式无门板柜体
             const hasNoDoor = !cab.door_mat_id || doorPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
 
+            // 【历史兼容核心】：算出当前柜子的工艺合计金额
+            const upgradesTotal = cabUpgrades.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
+            
+            // 【无门板销售价安全获取】：优先读快照，若为空(历史旧草稿)，则用“柜体汇总 - 超深 - 工艺”倒推得出纯柜体销售额
+            const openCabinetSalesPrice = cab.snap_base_cabinet_cost 
+                ? Number(cab.snap_base_cabinet_cost) 
+                : Math.max(0, Number(cab.cabinet_total_price || 0) - excessDepthFee - upgradesTotal);
+
             return (
               <div key={cab.id} className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                 {/* 1. 空间与尺寸区 */}
@@ -1096,10 +1104,10 @@ const renderUpgradeModal = () => {
                   </div>
                 </div>
                 
-                {/* 2. 柜体与门板计价配置区 (根据有无门板切换布局) */}
+                {/* 2. 柜体与门板计价配置区 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {hasNoDoor ? (
-                    // 【无门板场景】：合并展示，隐藏门板区域，直接展示最终销售总价
+                    // 【无门板场景】：合并展示，隐藏门板区域，直接展示最终销售总价 (包含商业系数，非一平方单价)
                     <div className="col-span-1 md:col-span-2 bg-gray-50/80 p-5 rounded-2xl border border-gray-100 flex justify-between items-center">
                       <div>
                         <div className="text-xs text-gray-400 mb-1.5 font-bold">开放式柜体</div>
@@ -1107,7 +1115,7 @@ const renderUpgradeModal = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-gray-500 mb-1">柜体销售价格</div>
-                        <div className="font-black text-gray-900 text-xl">¥{Number(cab.snap_base_cabinet_cost || 0).toFixed(2)}</div>
+                        <div className="font-black text-gray-900 text-xl">¥{openCabinetSalesPrice.toFixed(2)}</div>
                       </div>
                     </div>
                   ) : (
@@ -1133,7 +1141,7 @@ const renderUpgradeModal = () => {
                   )}
                 </div>
 
-                {/* 3. 特殊费用：超出标准深度 */}
+                {/* 3. 特殊费用：超出标准深度 (读取快照，严禁重新计算) */}
                 {excessDepthFee > 0 && (
                   <div className="mb-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
                     <div className="text-xs font-black text-gray-700 mb-3 flex items-center gap-2">
