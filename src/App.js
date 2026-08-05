@@ -30,6 +30,7 @@ export default function App() {
   
   // 3. 后台管理台专属状态
   const [adminView, setAdminView] = useState('upgrade'); 
+  const [adminUpgradeSearch, setAdminUpgradeSearch] = useState(''); // 【新增】：后台工艺管理专属搜索
   const [editId, setEditId] = useState(null); 
   const [adminLoginForm, setAdminLoginForm] = useState({ username: '', password: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, table: '', id: null, name: '' });
@@ -1362,21 +1363,74 @@ const renderUpgradeModal = () => {
                 </div>
                 <div className="flex justify-between items-center"><button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold">{editId ? '保存修改' : '确认新增'}</button></div>
               </form>
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">分类</th><th className="p-3">单价</th><th className="p-3">逻辑</th><th className="p-3">操作</th></tr></thead>
-                  <tbody>
-                    {upgrades.map(u => (
-                      <tr key={u.id} className="border-b font-bold"><td className="p-3">{u.name}</td><td className="p-3">{u.upgrade_category}</td><td className="p-3">¥{u.unit_price}</td><td className="p-3 text-xs">{u.upgrade_effect_type}</td>
-                        <td className="p-3 flex gap-2">
-                          <button onClick={() => {setEditId(u.id); setUpgradeForm(u);}} className="text-blue-600">编辑</button>
-                          <button onClick={() => handleToggleUpgradeStatus(u)} className={u.status ? 'text-amber-500' : 'text-emerald-500'}>{u.status ? '停用' : '启用'}</button>
-                          <button onClick={() => triggerDelete('upgrade_items', u.id, u.name)} className="text-rose-600">物理删除</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* 【新增】：工艺列表顶部搜索框 */}
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mt-6 mb-6">
+                <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 focus-within:border-black transition-colors">
+                  <span className="text-lg">🔍</span>
+                  <input 
+                    type="text" 
+                    placeholder="搜索工艺名称或分类 (如: 抽屉 / 门板)..." 
+                    value={adminUpgradeSearch} 
+                    onChange={e => setAdminUpgradeSearch(e.target.value)} 
+                    className="w-full bg-transparent outline-none font-bold text-gray-700 placeholder-gray-400" 
+                  />
+                </div>
               </div>
+
+              {/* 【新增】：动态分类区块渲染逻辑 */}
+              {(() => {
+                // 1. 根据搜索框过滤全局数据
+                const searchLower = adminUpgradeSearch.toLowerCase();
+                const filteredAdminUpgrades = upgrades.filter(u => {
+                  if (!searchLower) return true;
+                  const matchName = u.name?.toLowerCase().includes(searchLower);
+                  const matchCat = u.upgrade_category?.toLowerCase().includes(searchLower);
+                  return matchName || matchCat;
+                });
+
+                // 2. 动态提取存在的分类，并保持优雅的默认排序
+                const predefinedOrder = ['门板升级', '五金系统', '灯光系统', '木作工艺', '其他'];
+                const dynamicCats = Array.from(new Set(filteredAdminUpgrades.map(u => u.upgrade_category || '其他')));
+                const displayCategories = predefinedOrder.filter(c => dynamicCats.includes(c)).concat(dynamicCats.filter(c => !predefinedOrder.includes(c)));
+
+                // 3. 循环渲染分类区块
+                return displayCategories.map(cat => {
+                  const catItems = filteredAdminUpgrades.filter(u => (u.upgrade_category || '其他') === cat);
+                  if (catItems.length === 0) return null; // 隐藏无数据的分类
+
+                  return (
+                    <div key={cat} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+                      <div className="bg-gray-50 border-b border-gray-200 p-4 flex justify-between items-center">
+                        <h3 className="font-black text-gray-800 text-lg">{cat} <span className="text-gray-400 text-sm font-bold ml-2">({catItems.length}项)</span></h3>
+                      </div>
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-white text-xs text-gray-400 border-b">
+                          <tr>
+                            <th className="p-4 font-bold w-1/3">名称</th>
+                            <th className="p-4 font-bold">单价</th>
+                            <th className="p-4 font-bold">逻辑</th>
+                            <th className="p-4 font-bold">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {catItems.map(u => (
+                            <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                              <td className="p-4 font-black text-gray-800">{u.name}</td>
+                              <td className="p-4 font-black text-rose-600">¥{u.unit_price}</td>
+                              <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{u.upgrade_effect_type}</span></td>
+                              <td className="p-4 flex gap-4 font-bold">
+                                <button onClick={() => {setEditId(u.id); setUpgradeForm(u);}} className="text-blue-600 hover:text-blue-800">编辑</button>
+                                <button onClick={() => handleToggleUpgradeStatus(u)} className={u.status ? 'text-amber-500 hover:text-amber-700' : 'text-emerald-500 hover:text-emerald-700'}>{u.status ? '停用' : '启用'}</button>
+                                <button onClick={() => triggerDelete('upgrade_items', u.id, u.name)} className="text-rose-600 hover:text-rose-800">删除</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
           {/* Cabinet Admin View */}
