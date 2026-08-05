@@ -829,9 +829,10 @@ const handleRemoveUpgrade = (upgId) => {
             <div className="text-sm font-mono bg-gray-100 px-4 py-1 rounded-full font-bold">单号: {quoteInfo.quoteNo}</div>
             <div className="text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">● {quoteInfo.status}</div>
           </div>
-         <div className="flex items-center gap-4">
-            {/* 修改：返回上一级变更为历史报价列表 */}
-            <button onClick={() => setCurrentView('sales-history')} className="text-sm text-gray-500 hover:text-black font-bold">← 返回列表</button>
+        <div className="flex items-center gap-4">
+            <button onClick={() => setCurrentView(salesOrigin)} className="text-sm text-gray-500 hover:text-black font-bold">
+              ← 返回{salesOrigin === 'home' ? '首页' : '列表'}
+            </button>
             <button onClick={handleSaveDraft} disabled={isLoading} className="bg-black text-white px-6 py-2 rounded-lg font-bold">💾 保存报价草稿</button>
           </div>
         </div>
