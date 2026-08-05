@@ -761,8 +761,14 @@ const handleRemoveUpgrade = (upgId) => {
               ))}
             </div>
             <div className="flex-1 flex overflow-hidden">
-              
-              <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-4 h-max border-r border-gray-100">
+              {/* 【修改】：插入搜索框，并调整布局 */}
+              <div className="flex-1 flex flex-col border-r border-gray-100 bg-white">
+                <div className="p-4 border-b border-gray-50">
+                   <input type="text" placeholder={`在 "${upgradeModal.activeCategory}" 中搜索工艺...`} 
+                          value={upgradeSearchQuery} onChange={e => setUpgradeSearchQuery(e.target.value)} 
+                          className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold focus:bg-white outline-none focus:border-black transition-colors" />
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start">
                 {filteredItems.map(item => (
                   <div key={item.id} onClick={() => setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: ''})}
                     className={`p-4 border-2 rounded-2xl cursor-pointer ${upgradeModal.selectedItem?.id === item.id ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'}`}>
