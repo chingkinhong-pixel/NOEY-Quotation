@@ -694,7 +694,6 @@ const handleRemoveUpgrade = (upgId) => {
           excess_depth_fee: calcs.excessDepthFee,
           snap_standard_depth: rules.standard_depth || 600,
           snap_depth_ratio: calcs.depthRatio
-          snap_cabinet_cost: calcs.baseCabinetCost // 【V4.0 补充】：快照保存柜体部分的最终合计金额
         }]).select().single();
         if (cabErr2) throw cabErr2;
 
