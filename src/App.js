@@ -915,18 +915,9 @@ const handleRemoveUpgrade = (upgId) => {
                 </div>
               </div>
 
-              {/* 柜体选配 */}
+{/* 柜体选配 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <div className="flex justify-between items-end mb-4 border-b pb-4">
-                  <h3 className="font-black">🗄️ 柜体选配</h3>
-                  <div className="text-right text-xs font-bold text-gray-500 flex items-center gap-4">
-                    <span>柜体基础: ¥{currentCalcs.baseCabinetCost?.toFixed(0) || 0}</span>
-                    {currentCalcs.excessDepthFee > 0 && (
-                      <span>深度调整: +¥{currentCalcs.excessDepthFee.toFixed(0)}</span>
-                    )}
-                    <span className="text-sm text-black bg-gray-100 px-3 py-1 rounded">小计: ¥{currentCalcs.cabinetPortionTotal.toFixed(0)}</span>
-                  </div>
-                </div>
+                <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black">🗄️ 柜体选配</h3><div className="font-bold text-gray-500">柜体核算: <span className="text-black ml-1">¥{currentCalcs.cabinetPortionTotal.toFixed(0)}</span></div></div>
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div className="col-span-2">
                     <label className="text-xs font-bold text-gray-500">系统材料底价</label>
