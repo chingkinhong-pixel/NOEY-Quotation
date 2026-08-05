@@ -26,6 +26,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [previewData, setPreviewData] = useState(null); // 【新增】：存储预览所需的数据
   const [salesOrigin, setSalesOrigin] = useState('home');// 【V4.0 导航优化】：记录 Quote Studio 的来路来源，决定返回按钮去哪
+  const [upgradeSearchQuery, setUpgradeSearchQuery] = useState('');// 【新增】：控制工艺弹窗内的独立搜索
   
   // 3. 后台管理台专属状态
   const [adminView, setAdminView] = useState('upgrade'); 
@@ -735,27 +736,41 @@ const handleRemoveUpgrade = (upgId) => {
     if (!upgradeModal.isOpen) return null;
     const activeUpgrades = upgrades.filter(u => u.status === true);
     const categories = ['门板升级', '五金系统', '灯光系统', '木作工艺', '其他'];
-    const filteredItems = activeUpgrades.filter(u => (u.upgrade_category || '其他') === upgradeModal.activeCategory);
+// 【修改】：叠加搜索过滤，严格限制在当前 activeCategory 下
+    const filteredItems = activeUpgrades.filter(u => {
+      const isCategoryMatch = (u.upgrade_category || '其他') === upgradeModal.activeCategory;
+      const isSearchMatch = u.name && u.name.toLowerCase().includes(upgradeSearchQuery.toLowerCase());
+      return isCategoryMatch && isSearchMatch;
+    });
 
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-3xl w-full max-w-5xl h-[80vh] shadow-2xl flex flex-col overflow-hidden">
           <div className="flex justify-between items-center p-6 border-b border-gray-100">
             <h2 className="text-xl font-black text-gray-900">✨ 挑选升级与工艺系统</h2>
-            <button onClick={() => setUpgradeModal({...upgradeModal, isOpen: false})} className="w-10 h-10 bg-gray-100 rounded-full font-bold text-gray-600">✕</button>
+            <button onClick={() => { setUpgradeModal({...upgradeModal, isOpen: false}); setUpgradeSearchQuery(''); }} className="w-10 h-10 bg-gray-100 rounded-full font-bold text-gray-600">✕</button>
           </div>
           <div className="flex flex-1 overflow-hidden">
             <div className="w-48 bg-gray-50 border-r border-gray-100 flex flex-col p-4 gap-2">
               {categories.map(cat => (
-                <button key={cat} onClick={() => setUpgradeModal({...upgradeModal, activeCategory: cat, selectedItem: null})}
+                // 【修改】：切换分类时，清空搜索框
+                <button key={cat} onClick={() => { setUpgradeModal({...upgradeModal, activeCategory: cat, selectedItem: null}); setUpgradeSearchQuery(''); }}
                   className={`text-left px-4 py-3 rounded-xl font-bold text-sm ${upgradeModal.activeCategory === cat ? 'bg-black text-white' : 'text-gray-500 hover:bg-white'}`}>
                   {cat}
                 </button>
               ))}
             </div>
+            
             <div className="flex-1 flex overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-4 h-max border-r border-gray-100">
-                {filteredItems.map(item => (
+              {/* 【修改】：插入搜索框，并调整布局 */}
+              <div className="flex-1 flex flex-col border-r border-gray-100 bg-white">
+                <div className="p-4 border-b border-gray-50">
+                   <input type="text" placeholder={`在 "${upgradeModal.activeCategory}" 中搜索工艺...`} 
+                          value={upgradeSearchQuery} onChange={e => setUpgradeSearchQuery(e.target.value)} 
+                          className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold focus:bg-white outline-none focus:border-black transition-colors" />
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start">
+                  {filteredItems.map(item => (
                   <div key={item.id} onClick={() => setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: ''})}
                     className={`p-4 border-2 rounded-2xl cursor-pointer ${upgradeModal.selectedItem?.id === item.id ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'}`}>
                     <div className="flex justify-between font-bold mb-2"><span>{item.name}</span><span className="text-xs border px-1 rounded">{item.calculation_type}</span></div>
