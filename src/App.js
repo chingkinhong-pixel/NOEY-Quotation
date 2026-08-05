@@ -781,6 +781,7 @@ const renderUpgradeModal = () => {
                   </div>
                 ))}
               </div>
+              </div>    
               <div className="w-80 bg-gray-50/50 p-6 flex flex-col">
                 {upgradeModal.selectedItem ? (
                   <div className="flex flex-col h-full">
