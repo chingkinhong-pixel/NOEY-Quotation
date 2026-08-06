@@ -187,10 +187,10 @@ export default function App() {
   const handleSaveDoor = async (e) => {
     e.preventDefault();
     try {
-      const payload = { name: doorForm.name, door_type: doorForm.door_type, base_price: parseFloat(doorForm.base_price) || 0 };
+      const payload = { name: doorForm.name, door_type: doorForm.door_type, surface_finish: doorForm.surface_finish, base_price: parseFloat(doorForm.base_price) || 0 };
       if (editId) { await supabase.from('materials_door').update(payload).eq('id', editId); showToast('修改成功'); } 
       else { await supabase.from('materials_door').insert([payload]); showToast('新增成功'); }
-      setDoorForm({ name: '', door_type: '普通门板', base_price: '' }); setEditId(null); fetchDictionaries();
+      setDoorForm({ name: '', door_type: '双饰面', surface_finish: '', base_price: '' }); setEditId(null); fetchDictionaries();
     } catch (err) { showToast('保存失败', 'error'); }
   };
 
@@ -236,7 +236,7 @@ export default function App() {
     setQuoteCabinets([{ 
       id: initCabId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', upgrades: []
     }]);
     setActiveCabinetId(initCabId);
     setSalesOrigin('home'); // 【导航优化】：标记从首页新建进入
@@ -396,6 +396,7 @@ export default function App() {
             snap_door_brand: dbCab.snap_door_brand || '',
             snap_door_color: dbCab.snap_door_color || '',
             door_unit_adjustment: dbCab.door_unit_adjustment || '',
+            snap_door_surface_finish: dbCab.snap_door_surface_finish || '',
             
             // 挂载上一步重组好的工艺数组
             upgrades: cabUpgrades
@@ -435,7 +436,7 @@ export default function App() {
     setQuoteCabinets([...quoteCabinets, { 
       id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', upgrades: []
     }]);
     setActiveCabinetId(newId);
   };
@@ -695,6 +696,10 @@ const handleRemoveUpgrade = (upgId) => {
           snap_final_cabinet_price: calcs.finalCabUnitPrice, snap_final_door_price: calcs.finalDoorUnitPrice,
           cabinet_material_remark: cab.cabinet_material_remark || '',
           cabinet_total_price: calcs.baseTotal,
+          // 【V4.0快照补充】
+          snap_cabinet_material_name: cabinets.find(m => m.id === cab.cabinet_mat_id)?.name || '',
+          snap_door_material_name: doors.find(m => m.id === cab.door_mat_id)?.door_type || '',
+          snap_door_surface_finish: cab.snap_door_surface_finish || '', // 直接取工作台人工确认后的值
           excess_depth_fee: calcs.excessDepthFee,
           snap_standard_depth: rules.standard_depth || 600,
           snap_depth_ratio: calcs.depthRatio,
@@ -968,14 +973,24 @@ const renderUpgradeModal = () => {
               {/* 门板选配 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black">🚪 门板选配</h3><div className="font-bold text-gray-500">门板核算: <span className="text-black ml-1">¥{currentCalcs.doorPortionTotal.toFixed(0)}</span></div></div>
-                <div className="grid grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-5 gap-4 mb-4">
                   <div className="col-span-2">
                     <label className="text-xs font-bold text-gray-500">系统门板底价 (或敞开柜)</label>
-                    <select value={activeCabinet.door_mat_id} onChange={e=>updateActiveCabinet('door_mat_id', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                    <select 
+                      value={activeCabinet.door_mat_id} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        const doorDict = doors.find(d => d.id === val);
+                        // 【核心】：切换门板时，自动带出后台的表面工艺作为默认值，但允许人工后续修改
+                        setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? { ...c, door_mat_id: val, snap_door_surface_finish: doorDict ? (doorDict.surface_finish || '') : '' } : c));
+                      }} 
+                      className="w-full border-2 p-2 rounded-lg font-bold mt-1"
+                    >
                       <option value="">-- 无门板敞开柜 --</option>
                       {doors.map(d => <option key={d.id} value={d.id}>{d.name} (¥{d.base_price})</option>)}
                     </select>
                   </div>
+                  <div><label className="text-xs font-bold text-blue-600">表面工艺(可改)</label><input value={activeCabinet.snap_door_surface_finish} onChange={e=>updateActiveCabinet('snap_door_surface_finish', e.target.value)} placeholder="如:肤感膜" className="w-full border-2 border-blue-100 p-2 rounded-lg font-bold mt-1 bg-blue-50 focus:bg-white" /></div>
                   <div><label className="text-xs font-bold text-gray-500">指定品牌</label><input value={activeCabinet.snap_door_brand} onChange={e=>updateActiveCabinet('snap_door_brand', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                   <div><label className="text-xs font-bold text-gray-500">指定颜色</label><input value={activeCabinet.snap_door_color} onChange={e=>updateActiveCabinet('snap_door_color', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                 </div>
@@ -1469,8 +1484,18 @@ const renderUpgradeModal = () => {
                 <button type="submit" className="bg-black text-white px-6 py-2 rounded-lg font-bold h-[42px]">{editId ? '保存' : '新增'}</button>
               </form>
               <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <table className="w-full text-left text-sm font-bold"><thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">基准价</th><th className="p-3">浅柜价</th><th className="p-3">操作</th></tr></thead>
-                  <tbody>{cabinets.map(c => <tr key={c.id} className="border-b"><td className="p-3">{c.name}</td><td className="p-3">¥{c.base_price}</td><td className="p-3">¥{c.shallow_price}</td><td className="p-3"><button onClick={() => {setEditId(c.id); setCabinetForm(c);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_cabinet', c.id, c.name)} className="text-rose-600">删除</button></td></tr>)}</tbody>
+                <table className="w-full text-left text-sm font-bold"><thead className="bg-gray-50 text-xs text-gray-500 border-b">
+                    <tr><th className="p-3 w-16">序号</th><th className="p-3">材料名称</th><th className="p-3">基准价</th><th className="p-3">浅柜价</th><th className="p-3">操作</th></tr>
+                  </thead>
+                  <tbody>
+                    {cabinets.map((c, index) => (
+                      <tr key={c.id} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-mono text-gray-400">{String(index + 1).padStart(2, '0')}</td>
+                        <td className="p-3 text-gray-800">{c.name}</td><td className="p-3 text-rose-600">¥{c.base_price}</td><td className="p-3">¥{c.shallow_price}</td>
+                        <td className="p-3"><button onClick={() => {setEditId(c.id); setCabinetForm(c);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_cabinet', c.id, c.name)} className="text-rose-600">删除</button></td>
+                      </tr>
+                    ))}
+                  </tbody>                
                 </table>
               </div>
             </div>
