@@ -1504,29 +1504,33 @@ const renderUpgradeModal = () => {
           {adminView === 'door' && (
             <div className="max-w-4xl space-y-6">
               <h2 className="text-2xl font-black">门板基础材料</h2>
-              <form onSubmit={handleSaveDoor} className="bg-white p-6 rounded-xl shadow-sm flex gap-4 items-end">
+                <form onSubmit={handleSaveDoor} className="bg-white p-6 rounded-xl shadow-sm flex gap-4 items-end">
                 <div className="flex-1"><label className="text-xs font-bold text-gray-500">门板库名称</label><input required value={doorForm.name} onChange={e=>setDoorForm({...doorForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold" /></div>
-                
-                {/* 【V4.0修改】：重塑门板类型字典 */}
                 <div>
-                  <label className="text-xs font-bold text-gray-500">材料类型</label>
+                  <label className="text-xs font-bold text-gray-500">门板分类</label>
                   <select value={doorForm.door_type} onChange={e=>setDoorForm({...doorForm, door_type:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold">
                     <option>双饰面</option><option>吸塑</option><option>PET</option><option>烤漆</option><option>实木</option><option>玻璃框</option><option>铝蜂窝</option>
                   </select>
                 </div>
-                
-                {/* 【V4.0新增】：表面工艺 */}
-                <div className="flex-1">
-                  <label className="text-xs font-bold text-gray-500">表面工艺</label>
-                  <input value={doorForm.surface_finish || ''} onChange={e=>setDoorForm({...doorForm, surface_finish:e.target.value})} placeholder="例如: 肤感/亮光" className="w-full border-2 p-2 rounded-lg font-bold" />
-                </div>
-                
+                <div className="flex-1"><label className="text-xs font-bold text-gray-500">系统默认表面工艺</label><input value={doorForm.surface_finish || ''} onChange={e=>setDoorForm({...doorForm, surface_finish:e.target.value})} placeholder="例如: 亮光/肤感" className="w-full border-2 p-2 rounded-lg font-bold" /></div>
                 <div><label className="text-xs font-bold text-gray-500">基准价</label><input type="number" required value={doorForm.base_price} onChange={e=>setDoorForm({...doorForm, base_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black w-24" /></div>
                 <button type="submit" className="bg-black text-white px-6 py-2 rounded-lg font-bold h-[42px]">{editId ? '保存' : '新增'}</button>
               </form>
               <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <table className="w-full text-left text-sm font-bold"><thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">类型</th><th className="p-3">价格</th><th className="p-3">操作</th></tr></thead>
-                  <tbody>{doors.map(d => <tr key={d.id} className="border-b"><td className="p-3">{d.name}</td><td className="p-3">{d.door_type}</td><td className="p-3">¥{d.base_price}</td><td className="p-3"><button onClick={() => {setEditId(d.id); setDoorForm(d);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_door', d.id, d.name)} className="text-rose-600">删除</button></td></tr>)}</tbody>
+                <table className="w-full text-left text-sm font-bold">
+                  <thead className="bg-gray-50 text-xs text-gray-500 border-b">
+                    <tr><th className="p-3 w-16">序号</th><th className="p-3">材料名称</th><th className="p-3">门板分类</th><th className="p-3">默认表面工艺</th><th className="p-3">价格</th><th className="p-3">操作</th></tr>
+                  </thead>
+                  <tbody>
+                    {doors.map((d, index) => (
+                      <tr key={d.id} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-mono text-gray-400">{String(index + 1).padStart(2, '0')}</td>
+                        <td className="p-3 text-gray-800">{d.name}</td><td className="p-3 text-gray-500">{d.door_type}</td><td className="p-3 text-gray-500">{d.surface_finish || '-'}</td>
+                        <td className="p-3 text-rose-600">¥{d.base_price}</td>
+                        <td className="p-3"><button onClick={() => {setEditId(d.id); setDoorForm(d);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_door', d.id, d.name)} className="text-rose-600">删除</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
             </div>
