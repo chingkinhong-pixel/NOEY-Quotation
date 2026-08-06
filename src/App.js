@@ -35,7 +35,7 @@ export default function App() {
   const [adminLoginForm, setAdminLoginForm] = useState({ username: '', password: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, table: '', id: null, name: '' });
   const [cabinetForm, setCabinetForm] = useState({ name: '', base_price: '', shallow_price: '', no_door_factor: '' });
-  const [doorForm, setDoorForm] = useState({ name: '', door_type: '双饰面', surface_finish: '' });
+  const [doorForm, setDoorForm] = useState({ name: '', door_type: '双饰面', surface_finish: '', base_price: '' });
   const [upgradeForm, setUpgradeForm] = useState({
     name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', 
     upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price',
@@ -1443,8 +1443,9 @@ const renderUpgradeModal = () => {
                         <h3 className="font-black text-gray-800 text-lg">{cat} <span className="text-gray-400 text-sm font-bold ml-2">({catItems.length}项)</span></h3>
                       </div>
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-white text-xs text-gray-400 border-b">
+                      <thead className="bg-white text-xs text-gray-400 border-b">
                           <tr>
+                            <th className="p-4 font-bold w-16">序号</th>
                             <th className="p-4 font-bold w-1/3">名称</th>
                             <th className="p-4 font-bold">单价</th>
                             <th className="p-4 font-bold">逻辑</th>
@@ -1452,8 +1453,9 @@ const renderUpgradeModal = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {catItems.map(u => (
+                          {catItems.map((u, index) => (
                             <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                              <td className="p-4 font-mono text-gray-400 font-bold">{String(index + 1).padStart(2, '0')}</td>
                               <td className="p-4 font-black text-gray-800">{u.name}</td>
                               <td className="p-4 font-black text-rose-600">¥{u.unit_price}</td>
                               <td className="p-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{u.upgrade_effect_type}</span></td>
