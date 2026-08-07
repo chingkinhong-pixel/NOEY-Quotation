@@ -540,8 +540,10 @@ export default function App() {
       let minQty = parseFloat(upg.minimum_quantity) || 0;
       
       if (upg.calculation_type === '按柜宽自动算') {
-        calcQty = w / 1000; 
-        inputQty = calcQty;
+        const sysCalc = w / 1000;
+        // 【V4.0优化】：如果有明确的人工输入值，且不等于默认初始0，优先用人工，否则用系统算出值
+        calcQty = (inputQty > 0) ? Math.max(inputQty, minQty) : sysCalc; 
+        // 引擎不该改写 inputQty，保留原始值
       } else if (upg.calculation_type === '超额抽屉规则' || upg.calculation_type === 'excess_drawer') {
         let standard = Math.max(1, Math.round(w / 1000));
         calcQty = Math.max(0, inputQty - standard);
@@ -585,32 +587,78 @@ export default function App() {
   // ==========================================
 
 
-  const handleConfirmAddUpgrade = () => {
+const handleConfirmAddUpgrade = () => {
     const item = upgradeModal.selectedItem;
     if (!item) return;
-    if (item.calculation_type !== '按柜宽自动算' && !upgradeModal.inputQty) {
-      showToast('请输入数量或金额', 'error'); return;
+
+    // 起算量硬拦截验证 (第一层防呆)
+    const minQ = parseFloat(item.minimum_quantity) || 0;
+    let finalInputQty = parseFloat(upgradeModal.inputQty) || 0;
+    
+    // 对于按柜宽自动算，如果用户没填，让它过（引擎会用系统计算）。如果填了，必须大于最小量
+    if (item.calculation_type === '按柜宽自动算') {
+      if (upgradeModal.inputQty !== '' && finalInputQty < minQ) {
+         finalInputQty = minQ;
+         showToast(`人工数值不得低于起算量 ${minQ}，已自动修正！`, 'error');
+      }
+    } else if (item.calculation_type !== '按柜宽自动算' && item.calculation_type !== '人工直接输金额') {
+      if (!upgradeModal.inputQty) { showToast('请输入数量或金额', 'error'); return; }
+      if (finalInputQty < minQ) {
+         finalInputQty = minQ;
+         showToast(`数量不得低于最低起算量 ${minQ}，已自动修正！`, 'error');
+         return; // 强制要求用户看到提示后再次点击
+      }
     }
+
+    const parentId = 'upg-' + Date.now();
+    
+    // 生成一级工艺
     const newUpgrade = {
-      id: 'upg-' + Date.now(), item_id: item.id, name: item.name, category: item.upgrade_category,
+      id: parentId, item_id: item.id, name: item.name, category: item.upgrade_category,
       unit: item.unit, 
       snap_original_unit_price: item.unit_price, 
       unit_price_adjustment: parseFloat(upgradeModal.unit_price_adjustment) || 0,
       calculation_type: item.calculation_type,
       upgrade_effect_type: item.upgrade_effect_type, replace_calculation_mode: item.replace_calculation_mode,
-      input_quantity: parseFloat(upgradeModal.inputQty) || 0,
+      input_quantity: finalInputQty,
       minimum_quantity: item.minimum_quantity,
       manual_door_area: upgradeModal.manual_door_area,
-      remark: upgradeModal.inputRemark || '',
+      remark: upgradeModal.inputRemark || '', // 特殊说明
       combo_type: item.combo_type,
-      snap_material: item.upgrade_material, snap_style: item.upgrade_style, snap_specification: item.upgrade_specification,
       parent_record_id: null
     };
-    updateActiveCabinet('upgrades', [...(activeCabinet.upgrades || []), newUpgrade]);
-    setUpgradeModal({ ...upgradeModal, isOpen: false, selectedItem: null, inputQty: '', inputRemark: '', unit_price_adjustment: 0, manual_door_area: '' });
-    showToast(`已添加工艺: ${item.name}`);
-  };
 
+    let itemsToAdd = [newUpgrade];
+
+    // 【V4.0】处理二级工艺自动带出逻辑
+    if (item.combo_children && Array.isArray(item.combo_children) && item.combo_children.length > 0) {
+      item.combo_children.forEach((childId, index) => {
+        const childItem = upgrades.find(u => u.id === childId);
+        if (childItem && childItem.status) {
+          // 二级工艺默认继承一级工艺的输入量，但其自身也有最小起算量限制
+          const childMin = parseFloat(childItem.minimum_quantity) || 0;
+          const childInput = Math.max(finalInputQty, childMin);
+          
+          itemsToAdd.push({
+            id: parentId + '-child-' + index, item_id: childItem.id, name: childItem.name, category: childItem.upgrade_category,
+            unit: childItem.unit, snap_original_unit_price: childItem.unit_price, unit_price_adjustment: 0,
+            calculation_type: childItem.calculation_type, upgrade_effect_type: childItem.upgrade_effect_type, replace_calculation_mode: childItem.replace_calculation_mode,
+            input_quantity: childInput, // 继承数量
+            minimum_quantity: childItem.minimum_quantity,
+            manual_door_area: '', remark: '附属二级工艺自动关联', // 标识来源
+            combo_type: 'single',
+            parent_record_id: parentId // 核心：绑定父子关系
+          });
+        }
+      });
+      showToast(`已添加工艺及自动关联的 ${itemsToAdd.length - 1} 项二级配件`);
+    } else {
+      showToast(`已添加工艺: ${item.name}`);
+    }
+
+    updateActiveCabinet('upgrades', [...(activeCabinet.upgrades || []), ...itemsToAdd]);
+    setUpgradeModal({ ...upgradeModal, isOpen: false, selectedItem: null, inputQty: '', inputRemark: '', unit_price_adjustment: 0, manual_door_area: '' });
+  };
 const handleRemoveUpgrade = (upgId) => {
     updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
   };
@@ -814,7 +862,12 @@ const renderUpgradeModal = () => {
                                `输入原始数量 (${upgradeModal.selectedItem.unit})`}
                             </label>
                             {upgradeModal.selectedItem.calculation_type === '按柜宽自动算' ? (
-                              <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm font-bold">🤖 根据柜宽自动运算</div>
+                              <div className="space-y-2">
+                                <div className="bg-blue-50 text-blue-800 p-3 rounded-xl text-xs font-bold flex justify-between items-center">
+                                  <span>🤖 系统按柜宽自动计算 (默认: {activeCabinet?.width/1000})</span>
+                                </div>
+                                <input type="number" placeholder={`留空则系统自动算; 若调整不得低于起算量 ${upgradeModal.selectedItem.minimum_quantity||0}`} value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-blue-200 p-3 rounded-xl font-black text-lg bg-white" />
+                              </div>
                             ) : (
                               <>
                                 <input type="number" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-xl" />
@@ -979,6 +1032,10 @@ const renderUpgradeModal = () => {
                 <div className="grid grid-cols-5 gap-4 mb-4">
                   <div className="col-span-2">
                     <label className="text-xs font-bold text-gray-500">系统门板底价 (或敞开柜)</label>
+                    <div className="mt-2">
+                      <label className="text-xs font-bold text-gray-500">特殊门板及客户要求备注</label>
+                      <input value={activeCabinet.door_material_remark || ''} onChange={e=>updateActiveCabinet('door_material_remark', e.target.value)} placeholder="如: 特殊颜色、非标纹理等补充说明" className="w-full border-2 border-dashed border-gray-300 p-2 rounded-lg font-medium text-sm mt-1 bg-gray-50" />
+                    </div>
                     <select 
                       value={activeCabinet.door_mat_id} 
                       onChange={e => {
@@ -1385,25 +1442,46 @@ const renderUpgradeModal = () => {
                   <div className="col-span-2"><label className="text-xs font-bold text-gray-500">分类</label><select value={upgradeForm.upgrade_category} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_category:e.target.value})} className="w-full border-2 p-2 rounded-lg mt-1 font-bold"><option>门板升级</option><option>五金系统</option><option>灯光系统</option><option>木作工艺</option><option>其他</option></select></div>
                 </div>
                 <div className="grid grid-cols-4 gap-4 mb-4 bg-gray-50 p-4 rounded-lg">
-                  <div><label className="text-xs font-bold text-blue-700">提取图纸计价法</label><select value={upgradeForm.calculation_type} onChange={e=>setUpgradeForm({...upgradeForm, calculation_type:e.target.value})} className="w-full border-2 border-blue-200 p-2 rounded-lg font-bold text-blue-900 mt-1"><option>按面积㎡</option><option>按延米</option><option>按个</option><option>按套</option><option>按柜宽自动算</option><option>超额抽屉规则</option><option>人工直接输金额</option></select></div>
-                  <div><label className="text-xs font-bold text-gray-500">计价单位</label><input required value={upgradeForm.unit} onChange={e=>setUpgradeForm({...upgradeForm, unit:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-blue-700">提取图纸计价法</label><select value={upgradeForm.calculation_type} onChange={e=>setUpgradeForm({...upgradeForm, calculation_type:e.target.value})} className="w-full border-2 border-blue-200 p-2 rounded-lg font-bold text-blue-900 mt-1"><option>按面积㎡</option><option>按延米</option><option>按个</option><option>按套</option><option>按扇</option><option>按组</option><option>按柜宽自动算</option><option>超额抽屉规则</option><option>人工直接输金额</option></select></div>
+                  <div><label className="text-xs font-bold text-gray-500">计价单位</label><input required placeholder="如: ㎡/个/套/m" value={upgradeForm.unit} onChange={e=>setUpgradeForm({...upgradeForm, unit:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                   <div><label className="text-xs font-bold text-gray-500">系统原价 (元)</label><input type="number" required value={upgradeForm.unit_price} onChange={e=>setUpgradeForm({...upgradeForm, unit_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
                   <div>
                     <label className="text-xs font-bold text-amber-700">价格影响逻辑引擎</label>
-                   <select value={upgradeForm.upgrade_effect_type} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_effect_type:e.target.value})} className="w-full border-2 border-amber-200 p-2 rounded-lg font-bold text-amber-900 mt-1">
-                      <option value="add_cost">追加费用</option>
-                      <option value="replace">替换 (需处理底价)</option>
+                    <select value={upgradeForm.upgrade_effect_type} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_effect_type:e.target.value})} className="w-full border-2 border-amber-200 p-2 rounded-lg font-bold text-amber-900 mt-1">
+                      <option value="add_cost">追加费用</option><option value="replace">替换(需处理底价)</option>
                     </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-5 gap-4 mb-4">
-                  <div><label className="text-xs font-bold text-gray-500">组合类型</label><select value={upgradeForm.combo_type} onChange={e=>setUpgradeForm({...upgradeForm, combo_type:e.target.value})} className="w-full border-2 p-2 rounded-lg mt-1 font-bold"><option value="single">普通单项</option><option value="bundle">母子组合</option></select></div>
-                  <div><label className="text-xs font-bold text-gray-500">最低起算量</label><input type="number" value={upgradeForm.minimum_quantity} onChange={e=>setUpgradeForm({...upgradeForm, minimum_quantity:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">材质属性</label><input value={upgradeForm.upgrade_material} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_material:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">款式属性</label><input value={upgradeForm.upgrade_style} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_style:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">规格属性</label><input value={upgradeForm.upgrade_specification} onChange={e=>setUpgradeForm({...upgradeForm, upgrade_specification:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500">二级工艺关联管理</label>
+                    <select multiple value={upgradeForm.combo_children || []} onChange={e => {
+                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                        setUpgradeForm({...upgradeForm, combo_children: selected, combo_type: selected.length > 0 ? 'bundle' : 'single'});
+                      }} 
+                      className="w-full border-2 p-2 rounded-lg font-bold mt-1 h-24 text-sm"
+                    >
+                      {/* 列出所有其他工艺供多选 */}
+                      {upgrades.filter(u => u.id !== upgradeForm.id).map(u => (
+                        <option key={u.id} value={u.id}>{u.name} (¥{u.unit_price})</option>
+                      ))}
+                    </select>
+                    <div className="text-[10px] text-gray-400 mt-1">按住 Ctrl/Cmd 多选。开单时将自动关联计价。</div>
+                  </div>
+                  <div><label className="text-xs font-bold text-gray-500">特殊工艺备注提示</label><input value={upgradeForm.description || ''} onChange={e=>setUpgradeForm({...upgradeForm, description:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-rose-600">限制：最低起算量</label><input type="number" step="0.01" value={upgradeForm.minimum_quantity} onChange={e=>setUpgradeForm({...upgradeForm, minimum_quantity:e.target.value})} className="w-full border-2 border-rose-200 p-2 rounded-lg font-black text-rose-700 mt-1 bg-rose-50" /></div>
                 </div>
-                <div className="flex justify-between items-center"><button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold">{editId ? '保存修改' : '确认新增'}</button></div>
+                <div className="flex justify-end gap-4 items-center pt-2 border-t border-gray-100">
+                  {editId && (
+                    <button type="button" onClick={() => {
+                        setEditId(null);
+                        setUpgradeForm({ name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', upgrade_effect_type: 'add_cost', replace_calculation_mode: 'full_price', unit: '㎡', unit_price: '', sort_order: 0, status: true, description: '', combo_type: 'single', minimum_quantity: 0, combo_children: [] });
+                      }} className="bg-gray-100 text-gray-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-200">
+                      取消并返回新增
+                    </button>
+                  )}
+                  <button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:shadow-xl">{editId ? '保存当前修改' : '确认新增工艺'}</button>
+                </div>
               </form>
               {/* 【新增】：工艺列表顶部搜索框 */}
               <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mt-6 mb-6">
