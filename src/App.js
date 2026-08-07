@@ -1217,6 +1217,7 @@ const renderUpgradeModal = () => {
                             <div className="flex justify-between"><span className="text-gray-400">指定品牌</span><span className="font-bold text-gray-800">{cab.snap_cabinet_brand || '-'}</span></div>
                             <div className="flex justify-between"><span className="text-gray-400">柜体颜色</span><span className="font-bold text-gray-800">{cab.snap_cabinet_color || '-'}</span></div>
                             <div className="flex justify-between"><span className="text-gray-400">规格参数</span><span className="font-bold text-gray-800">{cab.cabinet_thickness || 18}mm / {cab.snap_back_panel_spec || '-'}</span></div>
+                            {cab.cabinet_material_remark && <div className="mt-2 pt-2 border-t border-dashed border-gray-200 text-gray-500 bg-gray-50 p-2 rounded"><span className="font-bold">柜体备注:</span> {cab.cabinet_material_remark}</div>}
 
                             <div className="col-span-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b pb-1 mt-2 mb-1">门板配置</div>
                             {hasNoDoor ? (
@@ -1227,6 +1228,7 @@ const renderUpgradeModal = () => {
                                 <div className="flex justify-between"><span className="text-gray-400">指定品牌</span><span className="font-bold text-gray-800">{cab.snap_door_brand || '-'}</span></div>
                                 <div className="flex justify-between"><span className="text-gray-400">门板颜色</span><span className="font-bold text-gray-800">{cab.snap_door_color || '-'}</span></div>
                                 <div className="flex justify-between"><span className="text-gray-400">表面工艺</span><span className="font-bold text-gray-800">{cab.snap_door_surface_finish || '-'}</span></div>
+                                {cab.door_material_remark && <div className="mt-2 pt-2 border-t border-dashed border-gray-200 text-gray-500 bg-gray-50 p-2 rounded"><span className="font-bold">门板备注:</span> {cab.door_material_remark}</div>}
                               </>
                             )}
                           </div>
