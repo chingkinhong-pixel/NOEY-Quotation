@@ -235,8 +235,8 @@ export default function App() {
     const initCabId = 'cab-' + Date.now();
     setQuoteCabinets([{ 
       id: initCabId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
-      cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', upgrades: []
+      cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: []
     }]);
     setActiveCabinetId(initCabId);
     setSalesOrigin('home'); // 【导航优化】：标记从首页新建进入
@@ -396,6 +396,9 @@ export default function App() {
             snap_door_brand: dbCab.snap_door_brand || '',
             snap_door_color: dbCab.snap_door_color || '',
             door_unit_adjustment: dbCab.door_unit_adjustment || '',
+            // 【V4.0 新增】恢复备注快照
+            cabinet_material_remark: dbCab.cabinet_material_remark || '',
+            door_material_remark: dbCab.door_material_remark || '',
             snap_door_surface_finish: dbCab.snap_door_surface_finish || '',
             
             // 挂载上一步重组好的工艺数组
@@ -410,8 +413,8 @@ export default function App() {
         const fallbackId = 'cab-fallback-' + Date.now();
         setQuoteCabinets([{ 
           id: fallbackId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
-          cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
-          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: []
+          cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
+          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: []
         }]);
         setActiveCabinetId(fallbackId);
       }
@@ -435,8 +438,8 @@ export default function App() {
     const newId = 'cab-' + Date.now();
     setQuoteCabinets([...quoteCabinets, { 
       id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
-      cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', upgrades: []
+      cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: []
     }]);
     setActiveCabinetId(newId);
   };
