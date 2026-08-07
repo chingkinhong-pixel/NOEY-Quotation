@@ -1259,20 +1259,40 @@ const renderUpgradeModal = () => {
                         </div>
                       </div>
 
-                      {/* 底部：工艺升级平铺区 */}
+                      {/* 底部：工艺升级列表区 (支持父子层级与备注) */}
                       {cabUpgrades.length > 0 && (
-                        <div className="bg-gray-50 border-t border-gray-100 px-5 py-3">
-                          <div className="text-[10px] font-bold text-gray-400 mb-2">附加工艺与五金</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {cabUpgrades.map(upg => (
-                              <div key={upg.id} className="flex justify-between items-center text-xs bg-white border border-gray-100 px-3 py-1.5 rounded">
-                                <span className="font-bold text-gray-700 truncate mr-2" title={upg.snap_upgrade_name}>{upg.snap_upgrade_name}</span>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-gray-400">×{upg.quantity}{upg.unit}</span>
-                                  <span className="font-black text-gray-800">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
-                                </div>
-                              </div>
-                            ))}
+                        <div className="mt-6 pt-4 border-t border-dashed border-gray-200 px-5 pb-5">
+                          <div className="text-[10px] font-black text-gray-400 mb-4 uppercase tracking-widest">局部工艺与五金升级明细</div>
+                          <div className="bg-gray-50/50 rounded-xl overflow-hidden border border-gray-100">
+                            <table className="w-full text-left text-sm">
+                              <thead className="bg-gray-100/50 text-xs text-gray-500 border-b border-gray-100">
+                                <tr>
+                                  <th className="py-3 px-4 font-bold">工艺名称</th>
+                                  <th className="py-3 px-4 font-bold text-center">计价数量</th>
+                                  <th className="py-3 px-4 font-bold text-right">单价</th>
+                                  <th className="py-3 px-4 font-bold text-right">小计</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {cabUpgrades.map(upg => {
+                                  // 视觉缩进判断 (是否为二级子工艺)
+                                  const isChild = !!upg.parent_record_id;
+                                  return (
+                                    <tr key={upg.id} className={isChild ? "bg-gray-50/30" : ""}>
+                                      <td className={`py-3 px-4 text-gray-800 flex flex-col ${isChild ? "pl-8 border-l-2 border-gray-200" : ""}`}>
+                                        <span className="font-bold">{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
+                                        {upg.remark && <span className="text-[10px] text-gray-500 mt-0.5 max-w-[200px] truncate" title={upg.remark}>说明: {upg.remark}</span>}
+                                      </td>
+                                      <td className="py-3 px-4 text-gray-600 text-center text-xs">
+                                        {upg.quantity} <span className="text-[10px] text-gray-400">{upg.unit || ''}</span>
+                                      </td>
+                                      <td className="py-3 px-4 text-gray-500 text-right text-xs">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</td>
+                                      <td className="py-3 px-4 font-black text-gray-800 text-right">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
                       )}
