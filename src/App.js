@@ -1735,10 +1735,15 @@ const renderUpgradeModal = () => {
   // 【V4.01 视觉优化】：恢复居中高级商务风主页 (极简底部 Logo 印章)
   // ==========================================
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V4.1</p>
+<div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans relative">
+      
+      {/* 核心操作区 (绝对居中) */}
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-6 z-10 mx-auto mt-[-5vh]">
+        
+        {/* 系统标题 */}
+        <div className="text-center mb-16 flex flex-col items-center">
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-3">NOEY QUOTATION SYSTEM</h1>
+          <p className="text-gray-400 font-bold tracking-[0.2em] text-xs">V4.01</p>
         </div>
         
         {/* 三个功能模块 (保持原有逻辑与排版) */}
