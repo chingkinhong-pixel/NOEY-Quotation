@@ -1732,28 +1732,21 @@ const renderUpgradeModal = () => {
   if (currentView === 'admin') return renderAdmin();
 
 // ==========================================
-  // 【V4.0 视觉优化】：高端系统主页 (左上角Logo + 极简版式)
+  // 【V4.01 视觉优化】：恢复居中高级商务风主页 (极简底部 Logo 印章)
   // ==========================================
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans relative">
       
-      {/* 左上角品牌标识 (克制、专业) */}
-      <div className="absolute top-0 left-0 w-full p-8 flex justify-between items-center z-20">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-2">
-            <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain" />
-          </div>
-          <span className="text-[10px] font-bold tracking-[0.2em] text-gray-800 uppercase">NOEY Furniture</span>
-        </div>
-      </div>
-
-      {/* 核心操作区 */}
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-6 z-10 mt-12">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-4">NOEY QUOTATION SYSTEM</h1>
-          <p className="text-gray-400 font-medium tracking-[0.3em] text-xs uppercase">Premium Custom Furniture Management</p>
+      {/* 核心操作区 (绝对居中) */}
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-6 z-10 mx-auto mt-[-5vh]">
+        
+        {/* 系统标题 */}
+        <div className="text-center mb-16 flex flex-col items-center">
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-3">NOEY QUOTATION SYSTEM</h1>
+          <p className="text-gray-400 font-bold tracking-[0.2em] text-xs">V4.01</p>
         </div>
         
+        {/* 三个功能模块 (保持原有逻辑与排版) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 shadow-sm hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
             <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 group-hover:-translate-y-1 transition-all">💻</div>
@@ -1775,10 +1768,32 @@ const renderUpgradeModal = () => {
         </div>
       </div>
 
-      {/* 极简商务 Footer */}
-      <div className="w-full text-center pb-8 pt-4">
-        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em] mb-1">NOEY Furniture</div>
-        <div className="text-[10px] font-medium text-gray-400">© 2026 NOEY. All Rights Reserved.</div>
+      {/* 极简印章式品牌 Footer */}
+      <div className="w-full text-center pb-12 pt-8 flex flex-col items-center justify-center">
+        
+        {/* 圆形 Logo 容器 */}
+        <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-2.5 mb-5">
+           <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain opacity-90" />
+        </div>
+        
+        {/* 品牌名称 */}
+        <div className="text-[11px] font-black text-gray-800 uppercase tracking-[0.25em] mb-2">
+          NOEY FURNITURE MANUFACTURE
+        </div>
+        
+        {/* 品牌理念 */}
+        <div className="text-[9px] font-medium text-gray-400 uppercase tracking-[0.2em] mb-6">
+          OUR PROMISE YOUR SATISFACTION
+        </div>
+        
+        {/* 分割线 */}
+        <div className="w-8 border-b border-gray-300 mb-6"></div>
+        
+        {/* 版权 */}
+        <div className="text-[9px] font-medium text-gray-400 tracking-wider">
+          © 2026 NOEY. All Rights Reserved.
+        </div>
+
       </div>
 
       {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-3 text-sm font-bold shadow-2xl z-50 rounded animate-fade-in-down">{toast.message}</div>}
