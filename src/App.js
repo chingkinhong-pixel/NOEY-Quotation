@@ -757,7 +757,7 @@ const handleRemoveUpgrade = (upgId) => {
           snap_base_cabinet_cost: calcs.baseCabinetCost,
           // 【V4.0 补充核心展示快照】：
           snap_cabinet_material_name: cabDict ? cabDict.name : '',
-          snap_door_material_name: doorDict ? doorDict.door_type : '',
+          snap_door_material_name: doorDict ? doorDict.name : '', // 修正：读取后台门板的具体名称
           snap_door_surface_finish: doorDict ? doorDict.surface_finish : ''
         }]).select().single();
         if (cabErr2) throw cabErr2;
@@ -1685,32 +1685,46 @@ const renderUpgradeModal = () => {
   if (currentView === 'admin-login') return renderAdminLogin();
   if (currentView === 'admin') return renderAdmin();
 
+// ==========================================
+  // 【V4.0 品牌升级】：系统主页 (Logo + Footer)
+  // ==========================================
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-between font-sans pt-24">
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-6">
+        <div className="text-center mb-16 flex flex-col items-center">
+          {/* 使用官方 Logo，限制最大高度避免突兀 */}
+          <img src="/LOGO英版.png" alt="NOEY Furniture" className="h-16 md:h-20 object-contain mb-6" />
+          <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-xs">Custom Furniture Quotation System</p>
         </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
-          <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
-            <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Studio</h2>
-            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、配置柜体方案、选择材料工艺，并实时生成精准报价</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          <button onClick={enterSalesWorkspace} className="bg-white p-10 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
+            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 transition-opacity">💻</div>
+            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">Quote Studio</h2>
+            <p className="text-gray-500 font-medium text-xs leading-relaxed">建立订单、配置方案、选择材料工艺，实时生成精准报价。</p>
           </button>
 
-          <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-blue-500 text-left group transition-all">
-            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">📂</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Archive</h2>
-            <p className="text-gray-500 font-medium text-sm">管理历史报价，支持编辑或预览，生成客户报价</p>
+          <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
+            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 transition-opacity">📂</div>
+            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">Quote Archive</h2>
+            <p className="text-gray-500 font-medium text-xs leading-relaxed">管理历史报价档案，支持编辑或预览正式客户报价单。</p>
           </button>
     
-          <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-gray-300 text-left group transition-all">
-            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">⚙️</div>
-            <h2 className="text-2xl font-black text-gray-800 mb-2">System Hub</h2>
-            <p className="text-gray-500 font-medium text-sm">系统管理：维护材料库、配置规则及基础业务数据</p>
+          <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
+            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 transition-opacity">⚙️</div>
+            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">System Hub</h2>
+            <p className="text-gray-500 font-medium text-xs leading-relaxed">管理后台：维护材料字典、配置参数规则及基础业务数据。</p>
           </button>
         </div>
-        {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-3 rounded-full text-sm font-bold shadow-2xl z-50">{toast.message}</div>}
+      </div>
+
+      {/* 极简商务 Footer */}
+      <div className="w-full text-center py-8 mt-12 border-t border-gray-200 bg-gray-50">
+        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">NOEY Custom Furniture System</div>
+        <div className="text-[10px] font-medium text-gray-400">Designed for NOEY Furniture © 2026. All Rights Reserved.</div>
+      </div>
+
+      {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-3 text-sm font-bold shadow-2xl z-50 rounded animate-fade-in-down">{toast.message}</div>}
     </div>
   );
 }
