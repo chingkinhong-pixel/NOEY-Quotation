@@ -1144,26 +1144,49 @@ const renderUpgradeModal = () => {
     }, {});
 
     return (
-      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-20">
-        <div className="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-6 shadow-sm sticky top-0 z-10">
-          <button onClick={() => setCurrentView('sales-history')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors">← 返回历史列表</button>
-          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-rose-100 text-rose-700 px-2 py-1 rounded">客户报价单</span></div>
-          <div className="w-24"></div>
+      <div className="min-h-screen bg-gray-100 font-sans flex flex-col items-center py-10 pb-20">
+        
+        {/* 顶部操作条 (不随打印输出) */}
+        <div className="w-full max-w-5xl px-4 md:px-0 mb-6 flex justify-between items-center print:hidden">
+          <button onClick={() => setCurrentView('sales-history')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors flex items-center gap-2">
+            <span>←</span> 返回列表
+          </button>
+          <button onClick={() => window.print()} className="bg-white border border-gray-200 px-4 py-2 rounded text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+            🖨️ 打印报价单
+          </button>
         </div>
 
-        <div className="max-w-5xl mx-auto mt-8 w-full px-6 space-y-8">
+        {/* 核心文档容器 A4 感 */}
+        <div className="bg-white w-full max-w-5xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] print:shadow-none print:w-full overflow-hidden">
           
-          {/* 主单信息压缩展示 */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900">{quote.customer_name || '未命名客户'}</h2>
-              <div className="text-gray-500 font-bold mt-1 text-xs">📞 {quote.customer_phone || '未留电话'} | 📍 {quote.delivery_address || '未留地址'}</div>
-            </div>
-            <div className="text-right">
-              <div className="font-mono text-gray-400 font-bold text-sm">{quote.quote_no}</div>
-              <div className="text-[10px] text-gray-400 mt-1 font-bold">报价日期: {new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</div>
+          {/* 文档 Header (品牌区) */}
+          <div className="px-8 md:px-12 pt-12 pb-8 border-b-2 border-black flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <img src="/LOGO英版.png" alt="NOEY" className="h-10 md:h-12 object-contain" />
+            <div className="text-left md:text-right text-xs text-gray-500 uppercase tracking-widest leading-relaxed">
+              <div className="mb-1 text-[10px] font-bold">Quotation No.</div>
+              <div className="text-gray-900 font-black text-sm mb-3">{quote.quote_no}</div>
+              <div className="mb-1 text-[10px] font-bold">Date</div>
+              <div className="text-gray-900 font-bold">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</div>
             </div>
           </div>
+
+          {/* 客户信息区域 (严谨文本格式) */}
+          <div className="px-8 md:px-12 py-8 bg-gray-50/50 border-b border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-6 text-[13px] leading-relaxed">
+            <div>
+              <span className="text-gray-500 mr-2">客户名称：</span>
+              <span className="font-black text-gray-900">{quote.customer_name || '未指定'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-2">联系电话：</span>
+              <span className="font-black text-gray-900">{quote.customer_phone || '未指定'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-2">交付地址：</span>
+              <span className="font-black text-gray-900">{quote.delivery_address || '未指定'}</span>
+            </div>
+          </div>
+
+          <div className="px-8 md:px-12 py-10">
 
           {/* 按空间循环渲染 */}
           {Object.entries(groupedCabinets).map(([space, spaceCabinets]) => (
