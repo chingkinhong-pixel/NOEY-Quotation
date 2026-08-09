@@ -1735,35 +1735,28 @@ const renderUpgradeModal = () => {
   // 【V4.01 视觉优化】：恢复居中高级商务风主页 (极简底部 Logo 印章)
   // ==========================================
   return (
-<div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans relative">
-      
-      {/* 核心操作区 (绝对居中) */}
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-6 z-10 mx-auto mt-[-5vh]">
-        
-        {/* 系统标题 */}
-        <div className="text-center mb-16 flex flex-col items-center">
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-3">NOEY QUOTATION SYSTEM</h1>
-          <p className="text-gray-400 font-bold tracking-[0.2em] text-xs">V4.01</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
         </div>
-        
-        {/* 三个功能模块 (保持原有逻辑与排版) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-          <button onClick={enterSalesWorkspace} className="bg-white p-10 shadow-sm hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
-            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 group-hover:-translate-y-1 transition-all">💻</div>
-            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">Quote Studio</h2>
-            <p className="text-gray-500 font-medium text-xs leading-relaxed">建立订单、配置方案、选择材料工艺，实时生成精准报价。</p>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
+          <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
+            <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Studio</h2>
+            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、配置柜体方案、选择材料工艺，并实时生成精准报价</p>
           </button>
 
-          <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 shadow-sm hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
-            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 group-hover:-translate-y-1 transition-all">📂</div>
-            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">Quote Archive</h2>
-            <p className="text-gray-500 font-medium text-xs leading-relaxed">管理历史报价档案，支持编辑或预览正式客户报价单。</p>
+          <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-blue-500 text-left group transition-all">
+            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">📂</div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Archive</h2>
+            <p className="text-gray-500 font-medium text-sm">管理历史报价，支持编辑或预览，生成客户报价</p>
           </button>
     
-          <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 shadow-sm hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
-            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 group-hover:-translate-y-1 transition-all">⚙️</div>
-            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">System Hub</h2>
-            <p className="text-gray-500 font-medium text-xs leading-relaxed">管理后台：维护材料字典、配置参数规则及基础业务数据。</p>
+          <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-gray-300 text-left group transition-all">
+            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">⚙️</div>
+            <h2 className="text-2xl font-black text-gray-800 mb-2">System Hub</h2>
+            <p className="text-gray-500 font-medium text-sm">系统管理：维护材料库、配置规则及基础业务数据</p>
           </button>
         </div>
       </div>
