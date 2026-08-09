@@ -748,9 +748,9 @@ const handleRemoveUpgrade = (upgId) => {
           cabinet_material_remark: cab.cabinet_material_remark || '',
           cabinet_total_price: calcs.baseTotal,
           // 【V4.0快照补充】
-          snap_cabinet_material_name: cabinets.find(m => m.id === cab.cabinet_mat_id)?.name || '',
-          snap_door_material_name: doors.find(m => m.id === cab.door_mat_id)?.door_type || '',
-          snap_door_surface_finish: cab.snap_door_surface_finish || '', // 直接取工作台人工确认后的值
+          snap_cabinet_material_name: cabDict ? cabDict.name : '',
+          snap_door_material_name: doorDict ? doorDict.name : '', // 修正：读取后台门板的具体名称
+          snap_door_surface_finish: cab.snap_door_surface_finish || '',
           excess_depth_fee: calcs.excessDepthFee,
           snap_standard_depth: rules.standard_depth || 600,
           snap_depth_ratio: calcs.depthRatio,
@@ -1144,26 +1144,49 @@ const renderUpgradeModal = () => {
     }, {});
 
     return (
-      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-20">
-        <div className="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-6 shadow-sm sticky top-0 z-10">
-          <button onClick={() => setCurrentView('sales-history')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors">← 返回历史列表</button>
-          <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span><span className="text-xs ml-2 bg-rose-100 text-rose-700 px-2 py-1 rounded">客户报价单</span></div>
-          <div className="w-24"></div>
+      <div className="min-h-screen bg-gray-100 font-sans flex flex-col items-center py-10 pb-20">
+        
+        {/* 顶部操作条 (不随打印输出) */}
+        <div className="w-full max-w-5xl px-4 md:px-0 mb-6 flex justify-between items-center print:hidden">
+          <button onClick={() => setCurrentView('sales-history')} className="text-sm font-bold text-gray-500 hover:text-black transition-colors flex items-center gap-2">
+            <span>←</span> 返回列表
+          </button>
+          <button onClick={() => window.print()} className="bg-white border border-gray-200 px-4 py-2 rounded text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+            🖨️ 打印报价单
+          </button>
         </div>
 
-        <div className="max-w-5xl mx-auto mt-8 w-full px-6 space-y-8">
+        {/* 核心文档容器 A4 感 */}
+        <div className="bg-white w-full max-w-5xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] print:shadow-none print:w-full overflow-hidden">
           
-          {/* 主单信息压缩展示 */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900">{quote.customer_name || '未命名客户'}</h2>
-              <div className="text-gray-500 font-bold mt-1 text-xs">📞 {quote.customer_phone || '未留电话'} | 📍 {quote.delivery_address || '未留地址'}</div>
-            </div>
-            <div className="text-right">
-              <div className="font-mono text-gray-400 font-bold text-sm">{quote.quote_no}</div>
-              <div className="text-[10px] text-gray-400 mt-1 font-bold">报价日期: {new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</div>
+          {/* 文档 Header (品牌区) */}
+          <div className="px-8 md:px-12 pt-12 pb-8 border-b-2 border-black flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <img src="/LOGO英版.png" alt="NOEY" className="h-10 md:h-12 object-contain" />
+            <div className="text-left md:text-right text-xs text-gray-500 uppercase tracking-widest leading-relaxed">
+              <div className="mb-1 text-[10px] font-bold">Quotation No.</div>
+              <div className="text-gray-900 font-black text-sm mb-3">{quote.quote_no}</div>
+              <div className="mb-1 text-[10px] font-bold">Date</div>
+              <div className="text-gray-900 font-bold">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</div>
             </div>
           </div>
+
+          {/* 客户信息区域 (严谨文本格式) */}
+          <div className="px-8 md:px-12 py-8 bg-gray-50/50 border-b border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-6 text-[13px] leading-relaxed">
+            <div>
+              <span className="text-gray-500 mr-2">客户名称：</span>
+              <span className="font-black text-gray-900">{quote.customer_name || '未指定'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-2">联系电话：</span>
+              <span className="font-black text-gray-900">{quote.customer_phone || '未指定'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-2">交付地址：</span>
+              <span className="font-black text-gray-900">{quote.delivery_address || '未指定'}</span>
+            </div>
+          </div>
+
+          <div className="px-8 md:px-12 py-10">
 
           {/* 按空间循环渲染 */}
           {Object.entries(groupedCabinets).map(([space, spaceCabinets]) => (
@@ -1283,8 +1306,8 @@ const renderUpgradeModal = () => {
                                         <span className="font-bold">{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
                                         {upg.remark && <span className="text-[10px] text-gray-500 mt-0.5 max-w-[200px] truncate" title={upg.remark}>说明: {upg.remark}</span>}
                                       </td>
-                                      <td className="py-3 px-4 text-gray-600 text-center text-xs">
-                                        {upg.quantity} <span className="text-[10px] text-gray-400">{upg.unit || ''}</span>
+                                      <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                                        <span className="font-bold text-gray-800">{upg.quantity}</span> <span className="text-gray-500 text-xs ml-1">{upg.unit || ''}</span>
                                       </td>
                                       <td className="py-3 px-4 text-gray-500 text-right text-xs">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</td>
                                       <td className="py-3 px-4 font-black text-gray-800 text-right">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</td>
@@ -1685,32 +1708,46 @@ const renderUpgradeModal = () => {
   if (currentView === 'admin-login') return renderAdminLogin();
   if (currentView === 'admin') return renderAdmin();
 
+// ==========================================
+  // 【V4.0 品牌升级】：系统主页 (Logo + Footer)
+  // ==========================================
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V2.0-A</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-between font-sans pt-24">
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-6">
+        <div className="text-center mb-16 flex flex-col items-center">
+          {/* 使用官方 Logo，限制最大高度避免突兀 */}
+          <img src="/LOGO英版.png" alt="NOEY Furniture" className="h-16 md:h-20 object-contain mb-6" />
+          <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-xs">Custom Furniture Quotation System</p>
         </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
-          <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
-            <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Studio</h2>
-            <p className="text-gray-500 font-medium text-sm">业务前线：建立订单、配置柜体方案、选择材料工艺，并实时生成精准报价</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          <button onClick={enterSalesWorkspace} className="bg-white p-10 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
+            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 transition-opacity">💻</div>
+            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">Quote Studio</h2>
+            <p className="text-gray-500 font-medium text-xs leading-relaxed">建立订单、配置方案、选择材料工艺，实时生成精准报价。</p>
           </button>
 
-          <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-blue-500 text-left group transition-all">
-            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">📂</div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Archive</h2>
-            <p className="text-gray-500 font-medium text-sm">管理历史报价，支持编辑或预览，生成客户报价</p>
+          <button onClick={() => setCurrentView('sales-history')} className="bg-white p-10 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
+            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 transition-opacity">📂</div>
+            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">Quote Archive</h2>
+            <p className="text-gray-500 font-medium text-xs leading-relaxed">管理历史报价档案，支持编辑或预览正式客户报价单。</p>
           </button>
     
-          <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-gray-300 text-left group transition-all">
-            <div className="text-5xl mb-6 grayscale group-hover:scale-110 transition-transform origin-left">⚙️</div>
-            <h2 className="text-2xl font-black text-gray-800 mb-2">System Hub</h2>
-            <p className="text-gray-500 font-medium text-sm">系统管理：维护材料库、配置规则及基础业务数据</p>
+          <button onClick={() => setCurrentView('admin-login')} className="bg-white p-10 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-xl border border-gray-100 hover:border-gray-300 text-left group transition-all duration-300 rounded-xl">
+            <div className="text-2xl mb-6 opacity-70 group-hover:opacity-100 transition-opacity">⚙️</div>
+            <h2 className="text-lg font-black text-gray-900 mb-2 tracking-wide">System Hub</h2>
+            <p className="text-gray-500 font-medium text-xs leading-relaxed">管理后台：维护材料字典、配置参数规则及基础业务数据。</p>
           </button>
         </div>
-        {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-3 rounded-full text-sm font-bold shadow-2xl z-50">{toast.message}</div>}
+      </div>
+
+      {/* 极简商务 Footer */}
+      <div className="w-full text-center py-8 mt-12 border-t border-gray-200 bg-gray-50">
+        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">NOEY Custom Furniture System</div>
+        <div className="text-[10px] font-medium text-gray-400">Designed for NOEY Furniture © 2026. All Rights Reserved.</div>
+      </div>
+
+      {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-3 text-sm font-bold shadow-2xl z-50 rounded animate-fade-in-down">{toast.message}</div>}
     </div>
   );
 }
