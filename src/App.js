@@ -1795,7 +1795,7 @@ const renderUpgradeModal = () => {
     //      © 2026 NOEY. All Rights Reserved.
     //  </div>
 
-    //  </div>
+      </div>
 
       {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-3 text-sm font-bold shadow-2xl z-50 rounded animate-fade-in-down">{toast.message}</div>}
     </div>
