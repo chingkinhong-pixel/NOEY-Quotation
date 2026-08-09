@@ -1325,14 +1325,24 @@ const renderUpgradeModal = () => {
               </div>
             </div>
           ))}
+          
+          {/* ⚠️ 核心修复：这里补上了闭合上面列表区的 div */}
+          </div> 
 
-          {/* 全案总计 */}
-          <div className="bg-black text-white p-6 rounded-2xl flex justify-between items-center shadow-xl mt-8 mb-12">
+          {/* 全案总计 (底部贴边，贴合 A4 文档感) */}
+          <div className="bg-black text-white px-8 md:px-12 py-8 flex justify-between items-center print:rounded-none">
             <span className="font-bold text-lg text-gray-300 tracking-widest uppercase">Total Amount</span>
             <span className="text-4xl font-black tracking-tighter">¥{Number(quote.total_amount || 0).toFixed(2)}</span>
           </div>
+        </div> {/* 闭合 A4 白色文档容器 */}
+
+        {/* 底部 Footer 版权信息 (仅在屏幕显示，打印时隐藏) */}
+        <div className="mt-8 text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold print:hidden">
+          <div className="mb-1 text-gray-500">NOEY Custom Furniture System</div>
+          <div>Designed for NOEY Furniture © 2026. All Rights Reserved.</div>
         </div>
-      </div>
+        
+      </div> {/* 闭合最外层 min-h-screen 容器 */}
     );
   };
 // ==========================================
