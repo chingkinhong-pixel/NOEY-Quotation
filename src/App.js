@@ -1760,33 +1760,42 @@ const renderUpgradeModal = () => {
           </button>
         </div>
 
-      {/* 极简印章式品牌 Footer */}
-      <div className="w-full text-center pb-12 pt-8 flex flex-col items-center justify-center">
+    <footer class="bg-[#111111] text-white py-16 px-6 text-center border-t-4 border-[#8C6A4F]">
+        <img src="/LOGO英版.png" alt="NOEY" class="h-6 object-contain mx-auto mb-8 opacity-90">
+        <div class="text-[10px] tracking-[0.2em] text-gray-400 uppercase space-y-3 font-light leading-loose">
+            <p>NOEY Furniture Manufacture</p>
+            <p>OUR PROMISE YOUR SATISFACTION</p>
+            <div class="w-8 h-px bg-gray-700 mx-auto my-4"></div>
+            <p>&copy; 2026 诺一家具. All Rights Reserved.</p>
+        </div>
+    </footer>
+        {/* 极简印章式品牌 Footer */}
+    //  <div className="w-full text-center pb-12 pt-8 flex flex-col items-center justify-center">
         
         {/* 圆形 Logo 容器 */}
-        <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-2.5 mb-5">
-           <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain opacity-90" />
-        </div>
+    //    <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-2.5 mb-5">
+    //       <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain opacity-90" />
+    //    </div>
         
         {/* 品牌名称 */}
-        <div className="text-[11px] font-black text-gray-800 uppercase tracking-[0.25em] mb-2">
-          NOEY FURNITURE MANUFACTURE
-        </div>
+    //    <div className="text-[11px] font-black text-gray-800 uppercase tracking-[0.25em] mb-2">
+    //      NOEY FURNITURE MANUFACTURE
+    //    </div>
         
         {/* 品牌理念 */}
-        <div className="text-[9px] font-medium text-gray-400 uppercase tracking-[0.2em] mb-6">
-          OUR PROMISE YOUR SATISFACTION
-        </div>
+    //    <div className="text-[9px] font-medium text-gray-400 uppercase tracking-[0.2em] mb-6">
+    //      OUR PROMISE YOUR SATISFACTION
+    //    </div>
         
         {/* 分割线 */}
-        <div className="w-8 border-b border-gray-300 mb-6"></div>
+    //    <div className="w-8 border-b border-gray-300 mb-6"></div>
         
         {/* 版权 */}
-        <div className="text-[9px] font-medium text-gray-400 tracking-wider">
-          © 2026 NOEY. All Rights Reserved.
-        </div>
+    //    <div className="text-[9px] font-medium text-gray-400 tracking-wider">
+    //      © 2026 NOEY. All Rights Reserved.
+    //  </div>
 
-      </div>
+    //  </div>
 
       {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-3 text-sm font-bold shadow-2xl z-50 rounded animate-fade-in-down">{toast.message}</div>}
     </div>
