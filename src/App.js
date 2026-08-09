@@ -1759,7 +1759,6 @@ const renderUpgradeModal = () => {
             <p className="text-gray-500 font-medium text-sm">系统管理：维护材料库、配置规则及基础业务数据</p>
           </button>
         </div>
-      </div>
 
       {/* 极简印章式品牌 Footer */}
       <div className="w-full text-center pb-12 pt-8 flex flex-col items-center justify-center">
