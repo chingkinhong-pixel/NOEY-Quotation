@@ -17,6 +17,7 @@ export default function App() {
   const [cabinets, setCabinets] = useState([]);
   const [doors, setDoors] = useState([]);
   const [upgrades, setUpgrades] = useState([]);
+  const [subUpgrades, setSubUpgrades] = useState([]); // 【V4.08 新增】二级工艺专属状态
   const [rules, setRules] = useState({ 
     id: null, standard_depth: 600, shallow_depth: 295, height_threshold: 1000, minimum_area: 1, minimum_width: 1000,
     depth_overage_enabled: true, depth_calculation_mode: 'ratio'
@@ -79,16 +80,18 @@ export default function App() {
   const fetchDictionaries = async () => {
     setIsLoading(true);
     try {
-      const [resCab, resDoor, resUpg, resRule] = await Promise.all([
+    const [resCab, resDoor, resUpg, resRule, resSubUpg] = await Promise.all([
         supabase.from('materials_cabinet').select('*').order('name'),
         supabase.from('materials_door').select('*').order('name'),
         supabase.from('upgrade_items').select('*').order('sort_order').order('name'),
-        supabase.from('pricing_rules').select('*').limit(1)
+        supabase.from('pricing_rules').select('*').limit(1),
+        supabase.from('upgrade_sub_items').select('*').order('created_at') // 拉取二级工艺
       ]);
       if (resCab.data) setCabinets(resCab.data);
       if (resDoor.data) setDoors(resDoor.data);
       if (resUpg.data) setUpgrades(resUpg.data);
       if (resRule.data && resRule.data.length > 0) setRules(resRule.data[0]);
+      if (resSubUpg.data) setSubUpgrades(resSubUpg.data);
     } catch (err) {
       showToast('数据字典加载失败', 'error');
     } finally {
