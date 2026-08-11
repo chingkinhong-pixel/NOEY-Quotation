@@ -46,27 +46,36 @@ export default function App() {
     minimum_quantity: 0, combo_children: []
   });
   // 【V4.08 新增】二级工艺表单状态与专属方法
+  const [editSubId, setEditSubId] = useState(null); // 【新增】二级工艺的编辑状态
   const [subUpgradeForm, setSubUpgradeForm] = useState({
     name: '', calculation_type: '按数量', unit: '', unit_price: '', minimum_quantity: 0, description: ''
   });
 
   const handleSaveSubUpgrade = async (e) => {
     e.preventDefault();
-    if (!editId) return; // 必须从属于某个一级工艺
+    if (!editId) return; 
     try {
       const payload = {
         parent_upgrade_id: editId, name: subUpgradeForm.name, calculation_type: subUpgradeForm.calculation_type,
         unit: subUpgradeForm.unit, unit_price: parseFloat(subUpgradeForm.unit_price) || 0,
-        upgrade_effect_type: 'add_cost', // 业务要求：二级工艺永远是追加费用
+        upgrade_effect_type: 'add_cost', 
         minimum_quantity: parseFloat(subUpgradeForm.minimum_quantity) || 0, description: subUpgradeForm.description
       };
-      await supabase.from('upgrade_sub_items').insert([payload]);
-      showToast('新增二级工艺成功');
+      
+      if (editSubId) {
+        await supabase.from('upgrade_sub_items').update(payload).eq('id', editSubId);
+        showToast('✅ 二级工艺修改成功');
+      } else {
+        await supabase.from('upgrade_sub_items').insert([payload]);
+        showToast('✅ 新增二级工艺成功');
+      }
+      
       setSubUpgradeForm({ name: '', calculation_type: '按数量', unit: '', unit_price: '', minimum_quantity: 0, description: '' });
+      setEditSubId(null);
       fetchDictionaries();
     } catch (err) { showToast('保存二级工艺失败', 'error'); }
   };
-
+  
   const handleDeleteSubUpgrade = async (id) => {
     if (!window.confirm('确定删除该附属工艺吗？')) return;
     try {
@@ -84,9 +93,9 @@ export default function App() {
   const [activeCabinetId, setActiveCabinetId] = useState(null);
   const [upgradeModal, setUpgradeModal] = useState({
     isOpen: false, activeCategory: '门板升级', selectedItem: null, inputQty: '', inputRemark: '',
-    unit_price_adjustment: 0, manual_door_area: ''
+    unit_price_adjustment: 0, manual_door_area: '', subInputs: {} // 【新增】保存二级工艺的独立输入数量
   });
-
+  
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
@@ -1687,25 +1696,28 @@ const renderUpgradeModal = () => {
                 </div>
               </form>
 
-              {/* 【V4.08 独立二级工艺面板】：仅当在编辑某个一级工艺时展示 */}
+              {/* 【V4.08 独立二级工艺面板】：支持新增与编辑 */}
               {editId && (
                 <div className="mt-8 bg-blue-50/50 p-6 rounded-2xl border-2 border-blue-100">
-                  <div className="flex items-center gap-2 mb-4 border-b border-blue-200 pb-2">
-                    <span className="text-lg">🔗</span>
-                    <h3 className="text-lg font-black text-blue-900">
-                      [{upgradeForm.name}] 专属附属计价项目
-                    </h3>
+                  <div className="flex items-center justify-between mb-4 border-b border-blue-200 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔗</span>
+                      <h3 className="text-lg font-black text-blue-900">[{upgradeForm.name}] 专属附属计价项目</h3>
+                    </div>
+                    {editSubId && (
+                       <button onClick={() => { setEditSubId(null); setSubUpgradeForm({ name: '', calculation_type: '按数量', unit: '', unit_price: '', minimum_quantity: 0, description: '' }); }} className="text-xs font-bold text-gray-500 hover:text-black">取消当前修改</button>
+                    )}
                   </div>
                   
-                  {/* 新增独立表单 */}
-                  <form onSubmit={handleSaveSubUpgrade} className="flex flex-wrap items-end gap-3 mb-6 bg-white p-4 rounded-xl border border-blue-100">
+                  {/* 编辑/新增表单 */}
+                  <form onSubmit={handleSaveSubUpgrade} className="flex flex-wrap items-start gap-3 mb-6 bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
                     <div className="flex-1 min-w-[200px]">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">附属工艺名称 Name</label>
-                      <input required value={subUpgradeForm.name} onChange={e=>setSubUpgradeForm({...subUpgradeForm, name:e.target.value})} placeholder="如: 玻璃门拉手" className="w-full border-2 border-gray-200 p-2 rounded-lg font-bold text-sm mt-1" />
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">附属工艺名称</label>
+                      <input required value={subUpgradeForm.name} onChange={e=>setSubUpgradeForm({...subUpgradeForm, name:e.target.value})} placeholder="如: 玻璃门拉手" className="w-full border-2 border-gray-200 p-2 rounded-lg font-bold text-sm mt-1 focus:border-blue-400" />
                     </div>
                     <div className="w-24">
                       <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">单价 (元)</label>
-                      <input required type="number" value={subUpgradeForm.unit_price} onChange={e=>setSubUpgradeForm({...subUpgradeForm, unit_price:e.target.value})} className="w-full border-2 border-gray-200 p-2 rounded-lg font-black text-rose-600 text-sm mt-1" />
+                      <input required type="number" step="0.01" value={subUpgradeForm.unit_price} onChange={e=>setSubUpgradeForm({...subUpgradeForm, unit_price:e.target.value})} className="w-full border-2 border-gray-200 p-2 rounded-lg font-black text-rose-600 text-sm mt-1" />
                     </div>
                     <div className="w-24">
                       <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">计价单位</label>
@@ -1715,11 +1727,17 @@ const renderUpgradeModal = () => {
                       <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">起算量</label>
                       <input type="number" step="0.01" value={subUpgradeForm.minimum_quantity} onChange={e=>setSubUpgradeForm({...subUpgradeForm, minimum_quantity:e.target.value})} className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg font-black text-blue-800 text-sm mt-1" />
                     </div>
-                    <button type="submit" className="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm h-[42px] hover:bg-blue-700">添加</button>
+                    <div className="w-full">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">特殊说明 (可选)</label>
+                      <input value={subUpgradeForm.description || ''} onChange={e=>setSubUpgradeForm({...subUpgradeForm, description:e.target.value})} placeholder="工艺备注提示" className="w-full border-2 border-gray-100 p-2 rounded-lg font-medium text-sm mt-1" />
+                    </div>
+                    <div className="w-full flex justify-end mt-2">
+                       <button type="submit" className="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 shadow-md">{editSubId ? '保存二级工艺修改' : '+ 确认添加二级工艺'}</button>
+                    </div>
                   </form>
 
                   {/* 专属子工艺列表 */}
-                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-gray-50 text-xs text-gray-500 border-b border-gray-100">
                         <tr><th className="p-3">附属项目名称</th><th className="p-3">单价</th><th className="p-3 text-center">起算量</th><th className="p-3 text-right">操作</th></tr>
@@ -1729,11 +1747,17 @@ const renderUpgradeModal = () => {
                           <tr><td colSpan="4" className="p-6 text-center text-gray-400 font-bold text-xs">尚无专属附属工艺</td></tr>
                         ) : (
                           subUpgrades.filter(sub => sub.parent_upgrade_id === editId).map(sub => (
-                            <tr key={sub.id}>
-                              <td className="p-3 font-bold text-gray-800">↳ {sub.name}</td>
+                            <tr key={sub.id} className="hover:bg-gray-50/50">
+                              <td className="p-3 font-bold text-gray-800">
+                                ↳ {sub.name}
+                                {sub.description && <div className="text-[10px] text-gray-400 font-normal mt-0.5">{sub.description}</div>}
+                              </td>
                               <td className="p-3 font-black text-rose-600">¥{sub.unit_price} / {sub.unit}</td>
                               <td className="p-3 text-center font-bold text-blue-600">{sub.minimum_quantity > 0 ? sub.minimum_quantity : '-'}</td>
-                              <td className="p-3 text-right"><button onClick={() => handleDeleteSubUpgrade(sub.id)} className="text-rose-500 hover:text-rose-700 font-bold text-xs bg-rose-50 px-2 py-1 rounded">删除</button></td>
+                              <td className="p-3 text-right">
+                                <button onClick={() => { setEditSubId(sub.id); setSubUpgradeForm(sub); }} className="text-blue-500 hover:text-blue-700 font-bold text-xs px-2 py-1 mr-2">编辑</button>
+                                <button onClick={() => handleDeleteSubUpgrade(sub.id)} className="text-rose-500 hover:text-rose-700 font-bold text-xs bg-rose-50 px-2 py-1 rounded">删除</button>
+                              </td>
                             </tr>
                           ))
                         )}
