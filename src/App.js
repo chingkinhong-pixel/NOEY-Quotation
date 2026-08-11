@@ -329,38 +329,54 @@ export default function App() {
     });
   };
   
-const handleDownloadPDF = () => {
+// ==========================================
+  // 【V4.04 新增】：直连本地的高精度 PDF 生成引擎 (彻底解决高度截断问题)
+  // ==========================================
+  const handleDownloadPDF = () => {
     setIsLoading(true);
     showToast('正在为您渲染并下载 PDF 文件，请稍候...', 'success');
+    
+    // 获取需要打印的 DOM 容器
     const element = document.getElementById('quote-document-container');
     const filename = `NOEY_Quotation_${previewData?.quote?.quote_no || 'Document'}.pdf`;
 
     const generatePDF = () => {
-      // 1. 记录原始样式
+      // 1. 记录原始样式，以便生成后恢复
       const originalCssText = element.style.cssText;
       const parent = element.parentElement;
       const originalParentCss = parent.style.cssText;
 
-      // 2. 强制设为左对齐且定宽，彻底杜绝由于浏览器窗口太窄导致截图被切断！
-      parent.style.cssText += 'align-items: flex-start !important; overflow: visible !important;';
-      element.style.cssText += 'width: 1024px !important; max-width: 1024px !important; margin: 0 !important; transform: none !important;';
+      // 2. 强制 DOM 完全展开，解决只截取屏幕可见部分的 Bug！
+      // 这里的关键是取消任何可能的 scroll，并获取真实的完整高度
+      parent.style.cssText += 'align-items: flex-start !important; overflow: visible !important; height: auto !important; max-height: none !important;';
+      element.style.cssText += 'width: 1024px !important; max-width: 1024px !important; margin: 0 !important; transform: none !important; height: auto !important; max-height: none !important; overflow: visible !important;';
 
+      // 准确测量完全展开后的真实高度
+      const scrollHeight = element.scrollHeight;
+
+      // 3. 配置高精度参数
       const opt = {
-        margin:       [10, 0, 10, 0], // 上下边距 10mm
+        margin:       [10, 0, 10, 0], // 上下留白 10mm
         filename:     filename,
-        image:        { type: 'jpeg', quality: 1 },
+        image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { 
           scale: 2, 
           useCORS: true, 
-          windowWidth: 1024, // ⚠️ 核心修复：强行指派虚拟视口宽度为 1024px
+          // ⚠️ 核心修复：强行指派视口尺寸，覆盖默认的浏览器窗口大小
+          windowWidth: 1024, 
+          windowHeight: scrollHeight, 
+          height: scrollHeight, // 强制画布高度
+          scrollY: 0,
           scrollX: 0,
-          scrollY: 0
+          logging: false // 关掉日志提升一点点速度
         },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        // 自动分页机制，按 a4 纵向切分长图
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
       
+      // 4. 调用库执行
       window.html2pdf().set(opt).from(element).save().then(() => {
-        // 3. 渲染完成后，瞬间恢复原有排版样式
+        // 渲染完成后，瞬间恢复原有排版样式
         element.style.cssText = originalCssText;
         parent.style.cssText = originalParentCss;
         setIsLoading(false);
@@ -373,9 +389,10 @@ const handleDownloadPDF = () => {
       });
     };
 
-    // 动态加载 PDF 生成引擎
+    // 动态无感加载 PDF 生成引擎 (如果没加载过的话)
     if (!window.html2pdf) {
       const script = document.createElement('script');
+      // 使用更稳定版本的 bundle
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.onload = generatePDF;
       document.body.appendChild(script);
