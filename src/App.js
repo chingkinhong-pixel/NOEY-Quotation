@@ -330,7 +330,7 @@ export default function App() {
   };
   
 // ==========================================
-  // 【V4.06 终极稳固版】：彻底解决 HTML2PDF 在各种分辨率下的截断、偏移问题
+  // 【V4.06 最终修复】：直连本地的高精度 PDF 生成引擎 (A4 原生像素渲染法)
   // ==========================================
   const handleDownloadPDF = () => {
     setIsLoading(true);
@@ -340,58 +340,38 @@ export default function App() {
     const filename = `NOEY_Quotation_${previewData?.quote?.quote_no || 'Document'}.pdf`;
 
     const generatePDF = () => {
-      // 1. 记录被修改元素的所有原始样式
-      const parent = element.parentElement;
-      const originalParentClass = parent.className;
-      const originalWidth = element.style.width;
+      // 1. 记录它原本在屏幕上的大尺寸
       const originalMaxWidth = element.style.maxWidth;
-      const originalMargin = element.style.margin;
+      const originalWidth = element.style.width;
 
-      // 2. 【核心必杀技】：剥离父级 Flex 居中，回归最原始的块级自然文档流 (强制靠左)
-      // 这能 100% 避免 html2canvas 算错 X 轴偏移量！
-      parent.className = "min-h-screen bg-gray-100 font-sans py-10 pb-20";
+      // 2. 🚨 核心真理修复：把网页强行缩小到 A4 纸的标准物理像素宽度 (800px)！
+      // 这样截出来的画布 1:1 完美契合 A4，再也不需要引擎去费力计算缩放和偏移了。
+      element.style.maxWidth = '800px';
+      element.style.width = '800px';
+
+      // 3. 极简参数，去掉了所有乱七八糟的坐标干扰
+      const opt = {
+        margin:       [10, 0, 10, 0], // 上下留白 10mm
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 1 },
+        html2canvas:  { scale: 2, useCORS: true }, 
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+      };
       
-      // 3. 强行锁定 1024px，避免由于窗口窄导致被切右边
-      element.style.width = '1024px';
-      element.style.maxWidth = '1024px';
-      element.style.margin = '0'; // 贴紧左侧
-
-      // 4. 延时 100 毫秒，给浏览器一点点时间完成左对齐的渲染，然后再截图
-      setTimeout(() => {
-        const opt = {
-          margin:       [10, 0, 10, 0], // 上下留白 10mm
-          filename:     filename,
-          image:        { type: 'jpeg', quality: 1 },
-          html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            windowWidth: 1024,
-            scrollX: 0,
-            scrollY: 0
-          },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-        };
-        
-        window.html2pdf().set(opt).from(element).save().then(() => {
-          // 5. 下载触发后，瞬间恢复屏幕居中，客户只会看到一次快速的闪烁
-          parent.className = originalParentClass;
-          element.style.width = originalWidth;
-          element.style.maxWidth = originalMaxWidth;
-          element.style.margin = originalMargin;
-          setIsLoading(false);
-          showToast('✅ PDF 报价单已成功下载到本地！');
-        }).catch(err => {
-          parent.className = originalParentClass;
-          element.style.width = originalWidth;
-          element.style.maxWidth = originalMaxWidth;
-          element.style.margin = originalMargin;
-          setIsLoading(false);
-          showToast('PDF生成失败，请尝试使用旁边的【打印】功能', 'error');
-        });
-      }, 100); 
+      window.html2pdf().set(opt).from(element).save().then(() => {
+        // 瞬间恢复成原来的大尺寸，客户毫无察觉
+        element.style.maxWidth = originalMaxWidth;
+        element.style.width = originalWidth;
+        setIsLoading(false);
+        showToast('✅ PDF 报价单已成功下载！');
+      }).catch(err => {
+        element.style.maxWidth = originalMaxWidth;
+        element.style.width = originalWidth;
+        setIsLoading(false);
+        showToast('PDF生成失败', 'error');
+      });
     };
 
-    // 动态无感加载库
     if (!window.html2pdf) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
@@ -1269,8 +1249,8 @@ const renderUpgradeModal = () => {
           </div>
         </div>
 
-        {/* 核心文档容器 (加入 ID 供插件捕捉，加入 print: 高密度排版类) */}
-        <div id="quote-document-container" className="bg-white w-full max-w-5xl shadow-2xl print:shadow-none print:w-full overflow-hidden">
+        {/* 核心文档容器 (移除 overflow-hidden 防止画布被一刀切) */}
+        <div id="quote-document-container" className="bg-white w-full max-w-5xl shadow-2xl print:shadow-none print:w-full pb-10">
           
           {/* 顶级 Header 阵列 */}
           <div className="px-10 md:px-16 pt-16 pb-12 print:px-8 print:pt-8 print:pb-6 flex flex-col md:flex-row print:flex-row justify-between items-start border-b-[3px] border-black">
