@@ -1162,14 +1162,14 @@ const renderUpgradeModal = () => {
         {/* 核心文档容器 (纯白、无圆角、极简) */}
         <div className="bg-white w-full max-w-5xl shadow-2xl print:shadow-none print:w-full overflow-hidden">
           
-          {/* 顶级 Header 阵列 */}
+        {/* 顶级 Header 阵列 */}
           <div className="px-10 md:px-16 pt-16 pb-12 flex flex-col md:flex-row justify-between items-start border-b-[3px] border-black">
-            {/* 左侧 Logo */}
-            <div className="mb-8 md:mb-0">
-              <img src="/LOGO英版.png" alt="NOEY" className="h-14 md:h-16 object-contain" />
+            {/* 左侧 Logo (等比放大，对齐右侧高度) */}
+            <div className="mb-8 md:mb-0 h-full flex items-start">
+              <img src="/LOGO英版.png" alt="NOEY" className="h-32 md:h-48 object-contain object-left-top" />
             </div>
             
-            {/* 右侧 标题与严格对齐的网格数据 */}
+          {/* 右侧 标题与严格对齐的网格数据 */}
             <div className="w-full md:w-auto flex flex-col items-start md:items-end">
               <h1 className="text-3xl font-black text-black tracking-widest uppercase mb-6">Quotation</h1>
               <table className="text-[13px] text-black w-full md:w-auto border-collapse">
