@@ -1508,8 +1508,12 @@ const renderUpgradeModal = () => {
                                     return (
                                       <tr key={upg.id} className={isChild ? "text-gray-600" : "text-black"}>
                                         <td className={`py-3 print:py-1 flex flex-col ${isChild ? "pl-6 border-l border-gray-300 ml-2" : ""}`}>
-                                          <span className={isChild ? "font-medium" : "font-bold"}>{isChild ? '— ' : ''}{upg.snap_upgrade_name}</span>
-                                          {upg.remark && <span className="text-[11px] print:text-[9px] text-gray-500 mt-1 print:mt-0.5 max-w-sm truncate" title={upg.remark}>备注: {upg.remark}</span>}
+                                          <span className={isChild ? "font-medium" : "font-bold text-gray-900"}>{isChild ? '— ' : ''}{upg.snap_upgrade_name}</span>
+                                          {upg.remark && (
+                                            <div className="text-[11px] print:text-[9px] text-gray-500 mt-1 print:mt-0.5 leading-relaxed pr-2">
+                                              <span className="font-bold text-gray-600">备注:</span> {upg.remark}
+                                            </div>
+                                          )}
                                         </td>
                                         <td className="py-3 print:py-1 text-center whitespace-nowrap">
                                           <span className="font-bold">{upg.quantity}</span>
