@@ -1034,7 +1034,7 @@ const renderUpgradeModal = () => {
                             <label className="block text-xs font-bold text-gray-600 mb-2">特殊说明</label>
                             <textarea value={upgradeModal.inputRemark} onChange={e=>setUpgradeModal({...upgradeModal, inputRemark:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm resize-none" rows="3" />
                           </div>
-                          {/* 【新增】：动态渲染关联的二级工艺独立输入框 */}
+                          {/* 【新增】：动态渲染关联的二级工艺独立输入框 (兼容安全版) */}
                           {(() => {
                             const relSubs = subUpgrades.filter(s => s.parent_upgrade_id === upgradeModal.selectedItem.id);
                             if (relSubs.length === 0) return null;
@@ -1049,8 +1049,10 @@ const renderUpgradeModal = () => {
                                             </div>
                                             <div className="w-24 shrink-0">
                                                 <label className="block text-[10px] font-bold text-blue-600 mb-1">数量设定</label>
-                                                <input type="number" step="0.01" value={upgradeModal.subInputs?.[sub.id] || ''} 
-                                                       onChange={e => setUpgradeModal({...upgradeModal, subInputs: {...upgradeModal.subInputs, [sub.id]: e.target.value}})} 
+                                                {/* ⚠️ 核心修复：移除了 ?. 语法，并增加了 || {} 兜底 */}
+                                                <input type="number" step="0.01" 
+                                                       value={(upgradeModal.subInputs && upgradeModal.subInputs[sub.id]) || ''} 
+                                                       onChange={e => setUpgradeModal({...upgradeModal, subInputs: {...(upgradeModal.subInputs || {}), [sub.id]: e.target.value}})} 
                                                        className="w-full border-2 border-blue-200 p-2 rounded-lg font-black text-sm text-center bg-white shadow-inner" />
                                             </div>
                                         </div>
