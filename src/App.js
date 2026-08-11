@@ -1699,21 +1699,50 @@ const renderUpgradeModal = () => {
           {adminView === 'rules' && (
              <div className="max-w-2xl space-y-6">
                <h2 className="text-2xl font-black">计价参数规则</h2>
-               <form onSubmit={handleSaveRules} className="bg-white p-8 rounded-xl shadow-sm border space-y-4 font-bold">
-                 <div><label className="block text-sm text-gray-500 mb-1">标准深度阈值 (mm)</label><input type="number" value={rules.standard_depth} onChange={e=>setRules({...rules, standard_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
-                 <div><label className="block text-sm text-gray-500 mb-1">浅柜判定界限 (mm)</label><input type="number" value={rules.shallow_depth} onChange={e=>setRules({...rules, shallow_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
-                 <div><label className="block text-sm text-gray-500 mb-1">面积/延米计价高度分水岭 (mm)</label><input type="number" value={rules.height_threshold} onChange={e=>setRules({...rules, height_threshold:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
-                <div className="flex items-center gap-2 mt-4 p-4 bg-gray-50 rounded-lg border">
-                   <input type="checkbox" checked={rules.depth_overage_enabled} onChange={e=>setRules({...rules, depth_overage_enabled:e.target.checked})} className="w-5 h-5 accent-black" />
-                   <label className="text-sm font-bold text-gray-800">启用超深自动加价逻辑 (按深度比例计算)</label>
+               <form onSubmit={handleSaveRules} className="bg-white p-8 rounded-xl shadow-sm border space-y-6 font-bold">
+                 
+                 {/* 深度规则区 */}
+                 <div className="space-y-4">
+                   <h3 className="text-sm uppercase tracking-widest text-gray-400 border-b pb-2">深度规则参数</h3>
+                   <div><label className="block text-sm text-gray-500 mb-1">标准深度阈值 (mm)</label><input type="number" value={rules.standard_depth} onChange={e=>setRules({...rules, standard_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
+                   <div><label className="block text-sm text-gray-500 mb-1">浅柜判定界限 (mm)</label><input type="number" value={rules.shallow_depth} onChange={e=>setRules({...rules, shallow_depth:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
                  </div>
-                 <div>
-                   <label className="block text-sm text-gray-500 mb-1 mt-4">超深计算模式 (未来预留)</label>
-                   <select disabled value={rules.depth_calculation_mode} className="w-full border-2 p-2 rounded-lg bg-gray-100 text-gray-400 font-bold">
-                     <option value="ratio">按深度比例计算 (Ratio)</option>
-                   </select>
+
+                 {/* 计价尺寸阈值区 */}
+                 <div className="space-y-4 mt-6">
+                   <h3 className="text-sm uppercase tracking-widest text-gray-400 border-b pb-2">面积与起算量阈值</h3>
+                   <div><label className="block text-sm text-gray-500 mb-1">高度分水岭：投影面积与延米的判定界限 (mm)</label><input type="number" value={rules.height_threshold} onChange={e=>setRules({...rules, height_threshold:e.target.value})} className="w-full border-2 p-2 rounded-lg" /></div>
+                   
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="block text-sm text-gray-500 mb-1">全局最低起算面积 (㎡)</label>
+                       <input type="number" step="0.01" value={rules.minimum_area} onChange={e=>setRules({...rules, minimum_area:parseFloat(e.target.value) || 0})} className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg" />
+                       <div className="text-xs text-gray-400 mt-1 font-normal">若实际计算 &lt; 此值，则按此值计价。</div>
+                     </div>
+                     <div>
+                       <label className="block text-sm text-gray-500 mb-1">全局最低起算延米宽 (mm)</label>
+                       <input type="number" value={rules.minimum_width} onChange={e=>setRules({...rules, minimum_width:parseFloat(e.target.value) || 0})} className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg" />
+                       <div className="text-xs text-gray-400 mt-1 font-normal">若实际计算 &lt; 此宽，则按此宽计算延米。</div>
+                     </div>
+                   </div>
                  </div>
-                 <button type="submit" className="w-full bg-black text-white p-3 rounded-lg font-black mt-4">更新全局规则</button>
+
+                 {/* 特殊加价逻辑区 */}
+                 <div className="space-y-4 mt-6">
+                   <h3 className="text-sm uppercase tracking-widest text-gray-400 border-b pb-2">特殊加价逻辑</h3>
+                   <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-lg border">
+                     <input type="checkbox" checked={rules.depth_overage_enabled} onChange={e=>setRules({...rules, depth_overage_enabled:e.target.checked})} className="w-5 h-5 accent-black" />
+                     <label className="text-sm font-bold text-gray-800">启用超深自动加价逻辑 (按深度比例计算)</label>
+                   </div>
+                   <div>
+                     <label className="block text-sm text-gray-500 mb-1">超深计算模式 (未来预留)</label>
+                     <select disabled value={rules.depth_calculation_mode} className="w-full border-2 p-2 rounded-lg bg-gray-100 text-gray-400 font-bold">
+                       <option value="ratio">按深度比例计算 (Ratio)</option>
+                     </select>
+                   </div>
+                 </div>
+
+                 <button type="submit" className="w-full bg-black text-white p-3 rounded-lg font-black mt-8 text-lg shadow-lg hover:shadow-xl transition-shadow">保存并更新全局规则</button>
                </form>
              </div>
           )}
