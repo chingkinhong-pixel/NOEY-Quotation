@@ -750,13 +750,13 @@ const handleConfirmAddUpgrade = () => {
 
     let itemsToAdd = [newUpgrade];
 
-// 【V4.08 真实关系映射】：从全局 subUpgrades 中筛出属于该工艺的二级工艺，直接带出
+    // 【V4.08 真实关系映射】：从全局 subUpgrades 中筛出属于该工艺的二级工艺，直接带出
     const relatedSubs = subUpgrades.filter(sub => sub.parent_upgrade_id === item.id);
     let childCorrectionMsg = '';
 
     if (relatedSubs.length > 0) {
       relatedSubs.forEach((childItem, index) => {
-        // ⚠️ 核心修复：移除了 ?. 语法，使用传统安全判定
+        // ⚠️ 核心修复：移除了所有的 ?. 语法，保证编译 100% 通过
         let childInput = parseFloat(upgradeModal.subInputs && upgradeModal.subInputs[childItem.id]) || 0;
         const childMin = parseFloat(childItem.minimum_quantity) || 0;
         
@@ -928,7 +928,6 @@ const renderUpgradeModal = () => {
     const activeUpgrades = upgrades.filter(u => u.status === true);
     const categories = ['门板升级', '五金系统', '灯光系统', '木作工艺', '其他'];
     
-    // 【1. 替换过滤逻辑】：叠加搜索过滤，严格限制在当前 activeCategory 下
     const filteredItems = activeUpgrades.filter(u => {
       const isCategoryMatch = (u.upgrade_category || '其他') === upgradeModal.activeCategory;
       const isSearchMatch = u.name && u.name.toLowerCase().includes(upgradeSearchQuery.toLowerCase());
@@ -940,13 +939,11 @@ const renderUpgradeModal = () => {
         <div className="bg-white rounded-3xl w-full max-w-5xl h-[80vh] shadow-2xl flex flex-col overflow-hidden">
           <div className="flex justify-between items-center p-6 border-b border-gray-100">
             <h2 className="text-xl font-black text-gray-900">✨ 挑选升级与工艺系统</h2>
-            {/* 【2. 关闭弹窗时清空搜索框】 */}
             <button onClick={() => { setUpgradeModal({...upgradeModal, isOpen: false}); setUpgradeSearchQuery(''); }} className="w-10 h-10 bg-gray-100 rounded-full font-bold text-gray-600">✕</button>
           </div>
           <div className="flex flex-1 overflow-hidden">
             <div className="w-48 bg-gray-50 border-r border-gray-100 flex flex-col p-4 gap-2">
               {categories.map(cat => (
-                /* 【3. 切换分类时清空搜索框】 */
                 <button key={cat} onClick={() => { setUpgradeModal({...upgradeModal, activeCategory: cat, selectedItem: null}); setUpgradeSearchQuery(''); }}
                   className={`text-left px-4 py-3 rounded-xl font-bold text-sm ${upgradeModal.activeCategory === cat ? 'bg-black text-white' : 'text-gray-500 hover:bg-white'}`}>
                   {cat}
@@ -955,7 +952,6 @@ const renderUpgradeModal = () => {
             </div>
             
             <div className="flex-1 flex overflow-hidden">
-              {/* 【4. 插入搜索框并包裹列表】 */}
               <div className="flex-1 flex flex-col border-r border-gray-100 bg-white">
                 <div className="p-4 border-b border-gray-50">
                    <input type="text" placeholder={`在 "${upgradeModal.activeCategory}" 中搜索工艺...`} 
@@ -963,12 +959,11 @@ const renderUpgradeModal = () => {
                           className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold focus:bg-white outline-none focus:border-black transition-colors" />
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start">
-                  
                   {filteredItems.map(item => (
                   <div key={item.id} onClick={() => {
                       const relSubs = subUpgrades.filter(s => s.parent_upgrade_id === item.id);
                       const initialSubInputs = {};
-                      // 选中时，读取每个二级工艺自己的最低起算量作为默认值（若为0则默认1）
+                      // 选中时，读取每个二级工艺自己的最低起算量作为默认值
                       relSubs.forEach(s => initialSubInputs[s.id] = s.minimum_quantity > 0 ? s.minimum_quantity : 1);
                       setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: '', subInputs: initialSubInputs});
                   }}
@@ -977,16 +972,18 @@ const renderUpgradeModal = () => {
                     <div className="text-sm font-black text-rose-600">¥{item.unit_price} <span className="text-xs text-gray-400">/ {item.unit}</span></div>
                   </div>
                 ))}
-              </div>
+                </div>
               </div>    
               <div className="w-80 bg-gray-50/50 p-6 flex flex-col">
                 {upgradeModal.selectedItem ? (
                   <div className="flex flex-col h-full">
                     <div className="mb-6"><div className="text-xl font-black">{upgradeModal.selectedItem.name}</div></div>
+                   
+                   {/* 这里是修复关键点：完全闭合内部函数块 */}
                    {(() => {
                       const isExcessDrawer = upgradeModal.selectedItem.calculation_type === 'excess_drawer' || upgradeModal.selectedItem.calculation_type === '超额抽屉规则';
                       return (
-                        <div className="space-y-5 flex-1">
+                        <div className="space-y-5 flex-1 overflow-y-auto pr-2">
                           <div>
                             <label className="block text-xs font-bold text-gray-600 mb-2">
                               {upgradeModal.selectedItem.calculation_type === '人工直接输金额' ? '输入总金额 (元)' : 
@@ -1022,6 +1019,7 @@ const renderUpgradeModal = () => {
                               </>
                             )}
                           </div>
+                          
                           <div className="grid grid-cols-2 gap-4">
                             {!isExcessDrawer && (
                               <div>
@@ -1036,11 +1034,13 @@ const renderUpgradeModal = () => {
                               </div>
                             )}
                           </div>
+                          
                           <div>
                             <label className="block text-xs font-bold text-gray-600 mb-2">特殊说明</label>
                             <textarea value={upgradeModal.inputRemark} onChange={e=>setUpgradeModal({...upgradeModal, inputRemark:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm resize-none" rows="3" />
                           </div>
-                          {/* 【新增】：动态渲染关联的二级工艺独立输入框 (兼容安全版) */}
+
+                          {/* 【二级工艺独立输入框：安全闭合版】 */}
                           {(() => {
                             const relSubs = subUpgrades.filter(s => s.parent_upgrade_id === upgradeModal.selectedItem.id);
                             if (relSubs.length === 0) return null;
@@ -1055,7 +1055,6 @@ const renderUpgradeModal = () => {
                                             </div>
                                             <div className="w-24 shrink-0">
                                                 <label className="block text-[10px] font-bold text-blue-600 mb-1">数量设定</label>
-                                                {/* ⚠️ 核心修复：移除了 ?. 语法，并增加了 || {} 兜底 */}
                                                 <input type="number" step="0.01" 
                                                        value={(upgradeModal.subInputs && upgradeModal.subInputs[sub.id]) || ''} 
                                                        onChange={e => setUpgradeModal({...upgradeModal, subInputs: {...(upgradeModal.subInputs || {}), [sub.id]: e.target.value}})} 
@@ -1066,7 +1065,12 @@ const renderUpgradeModal = () => {
                                 </div>
                             );
                           })()}
-                    <button onClick={handleConfirmAddUpgrade} className="w-full bg-black text-white py-4 rounded-xl font-black mt-4">确认加入核算</button>
+
+                        </div>
+                      );
+                    })()}
+                    
+                    <button onClick={handleConfirmAddUpgrade} className="w-full bg-black text-white py-4 rounded-xl font-black mt-4 shrink-0">确认加入核算</button>
                   </div>
                 ) : <div className="m-auto text-gray-400 font-bold">请在左侧选择工艺</div>}
               </div>
