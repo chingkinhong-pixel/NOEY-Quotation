@@ -297,28 +297,38 @@ export default function App() {
     }
   };
 
-  // ==========================================
-  // 【V4.03 新增】：直连本地的高精度 PDF 生成引擎
+// ==========================================
+  // 【V4.03 新增】：直连本地的高精度 PDF 生成引擎 (防截断修复)
   // ==========================================
   const generatePDF = (element, filename) => {
+    // 【核心修复】：临时强行锁死元素的桌面级宽度，防止 html2canvas 截取时被当前窗口尺寸截断
+    const originalWidth = element.style.width;
+    const originalMaxWidth = element.style.maxWidth;
+    element.style.width = '1024px';
+    element.style.maxWidth = '1024px';
+
     const opt = {
-      margin:       [10, 0, 10, 0], // A4 纸上下留白 10mm
+      margin:       [15, 0, 15, 0], // 上下留白 15mm，左右0 (因为内容区自带 px-16 的内边距)
       filename:     filename,
-      image:        { type: 'jpeg', quality: 0.98 },
-      // windowWidth: 1200 强制引擎以桌面宽度进行等比缩放渲染，实现缩小入页
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 1200 }, 
+      image:        { type: 'jpeg', quality: 1 },
+      html2canvas:  { scale: 2, useCORS: true, scrollY: 0 }, 
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
     window.html2pdf().set(opt).from(element).save().then(() => {
+      // 渲染完毕后，瞬间恢复原有响应式样式
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
       setIsLoading(false);
       showToast('✅ PDF 报价单已成功下载到本地！');
     }).catch(err => {
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
       setIsLoading(false);
       showToast('PDF生成失败，请尝试使用旁边的【打印】功能', 'error');
     });
   };
-
+  
   const handleDownloadPDF = () => {
     setIsLoading(true);
     showToast('正在为您渲染并下载 PDF 文件，请稍候...', 'success');
@@ -1226,13 +1236,6 @@ const renderUpgradeModal = () => {
                 </tbody>
               </table>
             </div>
-          </div>
-
-          {/* 客户信息区域 */}
-          <div className="px-10 md:px-16 py-8 print:px-8 print:py-4 bg-gray-50/50 border-b border-gray-200 grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-6 print:gap-4 text-[13px] print:text-[10px] leading-relaxed">
-            <div><span className="text-gray-500 mr-2">客户名称：</span><span className="font-black text-gray-900">{quote.customer_name || '未指定'}</span></div>
-            <div><span className="text-gray-500 mr-2">联系电话：</span><span className="font-black text-gray-900">{quote.customer_phone || '未指定'}</span></div>
-            <div><span className="text-gray-500 mr-2">交付地址：</span><span className="font-black text-gray-900">{quote.delivery_address || '未指定'}</span></div>
           </div>
 
           {/* 柜体清单主循环区域 */}
