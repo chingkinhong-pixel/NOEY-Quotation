@@ -746,6 +746,7 @@ const handleRemoveUpgrade = (upgId) => {
           door_unit_adjustment: parseFloat(cab.door_unit_adjustment) || 0,
           snap_final_cabinet_price: calcs.finalCabUnitPrice, snap_final_door_price: calcs.finalDoorUnitPrice,
           cabinet_material_remark: cab.cabinet_material_remark || '',
+          door_material_remark: cab.door_material_remark || '', // 核心修复：确保门板备注存入数据库
           cabinet_total_price: calcs.baseTotal,
           // 【V4.0快照补充】
           snap_cabinet_material_name: cabinets.find(m => m.id === cab.cabinet_mat_id)?.name || '',
@@ -1029,19 +1030,16 @@ const renderUpgradeModal = () => {
               {/* 门板选配 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black">🚪 门板选配</h3><div className="font-bold text-gray-500">门板核算: <span className="text-black ml-1">¥{currentCalcs.doorPortionTotal.toFixed(0)}</span></div></div>
+                
+                {/* 第一排：基础属性 (5列网格，底价占2列) */}
                 <div className="grid grid-cols-5 gap-4 mb-4">
                   <div className="col-span-2">
                     <label className="text-xs font-bold text-gray-500">系统门板底价 (或敞开柜)</label>
-                    <div className="col-span-full mt-2">
-                      <label className="text-xs font-bold text-gray-500">选材备注</label>
-                      <input value={activeCabinet.door_material_remark || ''} onChange={e=>updateActiveCabinet('door_material_remark', e.target.value)} placeholder="特殊说明、非标要求等" className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white transition-colors" />
-                    </div>
                     <select 
                       value={activeCabinet.door_mat_id} 
                       onChange={e => {
                         const val = e.target.value;
                         const doorDict = doors.find(d => d.id === val);
-                        // 【核心】：切换门板时，自动带出后台的表面工艺作为默认值，但允许人工后续修改
                         setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? { ...c, door_mat_id: val, snap_door_surface_finish: doorDict ? (doorDict.surface_finish || '') : '' } : c));
                       }} 
                       className="w-full border-2 p-2 rounded-lg font-bold mt-1"
@@ -1050,14 +1048,22 @@ const renderUpgradeModal = () => {
                       {doors.map(d => <option key={d.id} value={d.id}>{d.name} (¥{d.base_price})</option>)}
                     </select>
                   </div>
-                  <div><label className="text-xs font-bold text-blue-600">表面工艺(可改)</label><input value={activeCabinet.snap_door_surface_finish} onChange={e=>updateActiveCabinet('snap_door_surface_finish', e.target.value)} placeholder="如:肤感膜" className="w-full border-2 border-blue-100 p-2 rounded-lg font-bold mt-1 bg-blue-50 focus:bg-white" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">指定品牌</label><input value={activeCabinet.snap_door_brand} onChange={e=>updateActiveCabinet('snap_door_brand', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">指定颜色</label><input value={activeCabinet.snap_door_color} onChange={e=>updateActiveCabinet('snap_door_color', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-blue-600">表面工艺(可改)</label><input value={activeCabinet.snap_door_surface_finish || ''} onChange={e=>updateActiveCabinet('snap_door_surface_finish', e.target.value)} placeholder="如:肤感膜" className="w-full border-2 border-blue-100 p-2 rounded-lg font-bold mt-1 bg-blue-50 focus:bg-white" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">指定品牌</label><input value={activeCabinet.snap_door_brand || ''} onChange={e=>updateActiveCabinet('snap_door_brand', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">指定颜色</label><input value={activeCabinet.snap_door_color || ''} onChange={e=>updateActiveCabinet('snap_door_color', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                 </div>
+
+                {/* 第二排：选材备注 (单列占满) */}
+                <div className="mb-4">
+                  <label className="text-xs font-bold text-gray-500">选材备注</label>
+                  <input value={activeCabinet.door_material_remark || ''} onChange={e=>updateActiveCabinet('door_material_remark', e.target.value)} placeholder="特殊说明、非标要求等" className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white transition-colors" />
+                </div>
+
+                {/* 第三排：人工调价 */}
                 <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
                   <div className="text-sm font-black text-gray-900">人工调价 (元/㎡)</div>
                   <div className="flex items-center gap-4">
-                    <input type="number" placeholder="+0" value={activeCabinet.door_unit_adjustment} onChange={e=>updateActiveCabinet('door_unit_adjustment', e.target.value)} className="w-24 border-2 p-2 rounded-lg font-black text-center" />
+                    <input type="number" placeholder="+0" value={activeCabinet.door_unit_adjustment || ''} onChange={e=>updateActiveCabinet('door_unit_adjustment', e.target.value)} className="w-24 border-2 p-2 rounded-lg font-black text-center" />
                     <div className="text-right border-l pl-4"><div className="text-xs font-bold text-gray-500">最终单价快照</div><div className="text-xl font-black">¥{currentCalcs.finalDoorUnitPrice}</div></div>
                   </div>
                 </div>
