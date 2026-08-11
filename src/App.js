@@ -330,80 +330,68 @@ export default function App() {
   };
   
 // ==========================================
-  // 【V4.05 最终修复】：直连本地的高精度 PDF 生成引擎 (彻底解决 X 轴偏移与截断)
+  // 【V4.06 终极稳固版】：彻底解决 HTML2PDF 在各种分辨率下的截断、偏移问题
   // ==========================================
   const handleDownloadPDF = () => {
     setIsLoading(true);
     showToast('正在为您渲染并下载 PDF 文件，请稍候...', 'success');
     
-    // 获取需要打印的 DOM 容器
     const element = document.getElementById('quote-document-container');
     const filename = `NOEY_Quotation_${previewData?.quote?.quote_no || 'Document'}.pdf`;
 
     const generatePDF = () => {
-      // 1. 记录原始样式，以便生成后恢复
-      const originalCssText = element.style.cssText;
+      // 1. 记录被修改元素的所有原始样式
       const parent = element.parentElement;
-      const originalParentCss = parent.style.cssText;
+      const originalParentClass = parent.className;
+      const originalWidth = element.style.width;
+      const originalMaxWidth = element.style.maxWidth;
+      const originalMargin = element.style.margin;
 
-      // 2. 【核心大招】：使用绝对定位，将元素强行钉在屏幕左上角(0,0)，
-      // 彻底消除因为 margin: auto 或 flex 居中带来的 X 轴偏移计算错误！
-      element.style.cssText += `
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 1024px !important;
-        max-width: 1024px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        transform: none !important;
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        z-index: 9999 !important;
-      `;
+      // 2. 【核心必杀技】：剥离父级 Flex 居中，回归最原始的块级自然文档流 (强制靠左)
+      // 这能 100% 避免 html2canvas 算错 X 轴偏移量！
+      parent.className = "min-h-screen bg-gray-100 font-sans py-10 pb-20";
       
-      // 准确测量完全展开且归零后的真实高度
-      const scrollHeight = element.scrollHeight;
+      // 3. 强行锁定 1024px，避免由于窗口窄导致被切右边
+      element.style.width = '1024px';
+      element.style.maxWidth = '1024px';
+      element.style.margin = '0'; // 贴紧左侧
 
-      // 3. 配置高精度参数
-      const opt = {
-        margin:       [10, 0, 10, 0], // 上下留白 10mm
-        filename:     filename,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-          scale: 2, 
-          useCORS: true, 
-          windowWidth: 1024, 
-          windowHeight: scrollHeight, 
-          height: scrollHeight,
-          // 强行指定截取的起始点为 0,0
-          x: 0,
-          y: 0,
-          scrollX: 0,
-          scrollY: 0,
-          logging: false
-        },
-        // 自动分页机制
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-      };
-      
-      // 4. 调用库执行
-      window.html2pdf().set(opt).from(element).save().then(() => {
-        // 渲染完成后，瞬间恢复原有排版样式，客户毫无察觉
-        element.style.cssText = originalCssText;
-        parent.style.cssText = originalParentCss;
-        setIsLoading(false);
-        showToast('✅ PDF 报价单已成功下载到本地！');
-      }).catch(err => {
-        element.style.cssText = originalCssText;
-        parent.style.cssText = originalParentCss;
-        setIsLoading(false);
-        showToast('PDF生成失败，请尝试使用旁边的【打印】功能', 'error');
-      });
+      // 4. 延时 100 毫秒，给浏览器一点点时间完成左对齐的渲染，然后再截图
+      setTimeout(() => {
+        const opt = {
+          margin:       [10, 0, 10, 0], // 上下留白 10mm
+          filename:     filename,
+          image:        { type: 'jpeg', quality: 1 },
+          html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            windowWidth: 1024,
+            scrollX: 0,
+            scrollY: 0
+          },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+        };
+        
+        window.html2pdf().set(opt).from(element).save().then(() => {
+          // 5. 下载触发后，瞬间恢复屏幕居中，客户只会看到一次快速的闪烁
+          parent.className = originalParentClass;
+          element.style.width = originalWidth;
+          element.style.maxWidth = originalMaxWidth;
+          element.style.margin = originalMargin;
+          setIsLoading(false);
+          showToast('✅ PDF 报价单已成功下载到本地！');
+        }).catch(err => {
+          parent.className = originalParentClass;
+          element.style.width = originalWidth;
+          element.style.maxWidth = originalMaxWidth;
+          element.style.margin = originalMargin;
+          setIsLoading(false);
+          showToast('PDF生成失败，请尝试使用旁边的【打印】功能', 'error');
+        });
+      }, 100); 
     };
 
-    // 动态无感加载 PDF 生成引擎
+    // 动态无感加载库
     if (!window.html2pdf) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
