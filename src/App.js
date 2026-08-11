@@ -767,7 +767,7 @@ const handleRemoveUpgrade = (upgId) => {
             const calculatedMatch = calcs.calculatedUpgrades.find(cu => cu.id === u.id);
            return {
               cabinet_id: insertedCab.id, upgrade_item_id: u.item_id,
-              quantity: calculatedMatch.calculatedQty, remark: u.remark || '',
+              quantity: calculatedMatch.calculatedQty, unit: u.unit || '', remark: u.remark || '',
               snap_unit_price: calculatedMatch.snap_final_unit_price, snap_upgrade_effect_type: u.upgrade_effect_type,
               snap_upgrade_name: u.name, snap_base_door_price: calculatedMatch.snap_base_door_price,
               snap_upgrade_price: calculatedMatch.finalAmount,
@@ -1317,7 +1317,9 @@ const renderUpgradeModal = () => {
                                       {/* 【V4.02修正】：严谨显示：数量 + 单位 */}
                                       <td className="py-3 text-center whitespace-nowrap">
                                         <span className="font-bold">{upg.quantity}</span>
-                                        <span className="ml-1 text-gray-500">{upg.unit || ''}</span>
+                                        <span className="ml-1 text-gray-500 text-[10px]">
+                                          {upg.unit || (upg.calculation_type && upg.calculation_type.includes('面积') ? '㎡' : upg.calculation_type && upg.calculation_type.includes('延米') ? 'm' : '项')}
+                                        </span>
                                       </td>
                                       <td className="py-3 text-right">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</td>
                                       <td className="py-3 font-bold text-right">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</td>
