@@ -1217,7 +1217,7 @@ const renderUpgradeModal = () => {
   };
 
 // ==========================================
-  // 【V4.03 优化】：商务级客户报价展示单 (分离屏显与打印高密度排版)
+  // 【V4.07 最终优化】：商务级客户报价展示单 (极致高密度打印排版)
   // ==========================================
   const renderQuotePreview = () => {
     if (!previewData) return null;
@@ -1249,42 +1249,43 @@ const renderUpgradeModal = () => {
           </div>
         </div>
 
-        {/* 核心文档容器 (移除 overflow-hidden 防止画布被一刀切) */}
-        <div id="quote-document-container" className="bg-white w-full max-w-5xl shadow-2xl print:shadow-none print:w-full pb-10">
+        {/* 核心文档容器 (移除 overflow-hidden 防止被切) */}
+        <div id="quote-document-container" className="bg-white w-full max-w-5xl shadow-2xl print:shadow-none print:w-full pb-10 print:pb-0">
           
-          {/* 顶级 Header 阵列 */}
-          <div className="px-10 md:px-16 pt-16 pb-12 print:px-8 print:pt-8 print:pb-6 flex flex-col md:flex-row print:flex-row justify-between items-start border-b-[3px] border-black">
-            {/* 左侧 Logo (等比放大) */}
-            <div className="mb-8 md:mb-0 print:mb-0 h-full flex items-start">
-              <img src="/LOGO英版.png" alt="NOEY" className="h-32 md:h-48 print:h-24 object-contain object-left-top" />
+          {/* 顶级 Header 阵列 (完美锁定左右对齐，匹配高度) */}
+          <div className="px-10 md:px-16 pt-16 pb-12 print:px-8 print:pt-6 print:pb-4 flex flex-col md:flex-row print:flex-row justify-between items-start border-b-[3px] border-black">
+            {/* 左侧 Logo (强制限制最大宽度，防止被原始图片比例撑爆) */}
+            <div className="w-full md:w-1/2 print:w-1/2 mb-8 md:mb-0 print:mb-0 flex items-start">
+              <img src="/LOGO英版.png" alt="NOEY" className="h-32 md:h-48 print:h-auto print:w-full print:max-w-[200px] object-contain object-left-top" />
             </div>
             
-            {/* 右侧 标题与严格对齐的网格数据 */}
-            <div className="w-full md:w-auto flex flex-col items-start md:items-end print:items-end">
-              <h1 className="text-3xl print:text-xl font-black text-black tracking-widest uppercase mb-6 print:mb-4">Quotation</h1>
-              <table className="text-[13px] print:text-[10px] text-black w-full md:w-auto border-collapse">
+            {/* 右侧 标题与严格对齐的网格数据 (收紧间距) */}
+            <div className="w-full md:w-1/2 print:w-1/2 flex flex-col items-start md:items-end print:items-end">
+              <h1 className="text-3xl print:text-2xl font-black text-black tracking-widest uppercase mb-6 print:mb-3">Quotation</h1>
+              <table className="text-[13px] print:text-[11px] text-black border-collapse">
                 <tbody>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">单号CODE:</td><td className="font-bold text-right pb-1.5">{quote.quote_no}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">日期DATE:</td><td className="font-bold text-right pb-1.5">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">客户CUST:</td><td className="font-bold text-right pb-1.5">{quote.customer_name || '未指定'}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">电话TELE:</td><td className="font-bold text-right pb-1.5">{quote.customer_phone || '未指定'}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">地址ADDR:</td><td className="font-bold text-right pb-1.5">{quote.delivery_address || '未指定'}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">单号CODE:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.quote_no}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">日期DATE:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">客户CUST:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.customer_name || '未指定'}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">电话TELE:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.customer_phone || '未指定'}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">地址ADDR:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.delivery_address || '未指定'}</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* 柜体清单主循环区域 */}
-          <div className="px-10 md:px-16 py-12 print:px-8 print:py-6">
+          {/* 柜体清单主循环区域 (极限压缩垂直空间) */}
+          <div className="px-10 md:px-16 py-12 print:px-8 print:py-4">
             {Object.entries(groupedCabinets).map(([space, spaceCabinets]) => (
-              <div key={space} className="mb-14 print:mb-8 page-break-inside-avoid">
+              <div key={space} className="mb-14 print:mb-6 page-break-inside-avoid">
                 {/* 空间大标题 */}
-                <div className="flex justify-between items-end border-b-2 border-gray-900 pb-2 mb-8 print:mb-4">
-                  <h3 className="text-xl print:text-lg font-black text-black tracking-[0.1em] uppercase">{space}</h3>
+                <div className="flex justify-between items-end border-b-2 border-gray-900 pb-2 mb-8 print:mb-3">
+                  <h3 className="text-xl print:text-base font-black text-black tracking-[0.1em] uppercase">{space}</h3>
                   <span className="text-[11px] print:text-[9px] text-gray-500 font-bold uppercase tracking-widest">/ {spaceCabinets.length} UNIT(S)</span>
                 </div>
                 
-                <div className="space-y-12 print:space-y-6">
+                {/* 极限压缩 space-y */}
+                <div className="space-y-12 print:space-y-4">
                   {spaceCabinets.map(cab => {
                     const cabUpgrades = upgrades.filter(u => u.cabinet_id === cab.id);
                     const excessDepthFee = Number(cab.excess_depth_fee || 0);
@@ -1309,28 +1310,29 @@ const renderUpgradeModal = () => {
 
                     return (
                       <div key={cab.id} className="page-break-inside-avoid border border-gray-300 print:border-gray-400 bg-white">
-                        {/* 柜体 Item 头部 */}
-                        <div className="bg-gray-100 px-6 py-3 print:px-4 print:py-1.5 flex justify-between items-baseline border-b border-gray-300">
-                          <h4 className="font-black text-gray-900 text-base print:text-sm">{cab.name.split('｜')[1] || cab.name}</h4>
+                        {/* 柜体 Item 头部 (压缩 padding) */}
+                        <div className="bg-gray-100 px-6 py-3 print:px-3 print:py-1.5 flex justify-between items-baseline border-b border-gray-300">
+                          <h4 className="font-black text-gray-900 text-base print:text-[13px]">{cab.name.split('｜')[1] || cab.name}</h4>
                           <span className="text-[11px] print:text-[9px] text-gray-600 font-bold tracking-widest font-mono">
                             W {cab.width} × H {cab.height} × D {cab.depth} mm
                           </span>
                         </div>
 
-                        <div className="p-6 print:p-4">
-                          {/* 配置明细表 (强制双列横向紧凑排版) */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-x-12 print:gap-x-6 gap-y-8 print:gap-y-4 text-[13px] print:text-[10px] text-black">
+                        <div className="p-6 print:p-3">
+                          {/* 配置明细表 (强制双列，极限压缩 gap) */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-x-12 print:gap-x-6 gap-y-8 print:gap-y-2 text-[13px] print:text-[11px] text-black">
                             {/* 柜体列 */}
                             <div>
-                              <div className="font-black text-gray-900 mb-3 print:mb-1.5 border-b border-gray-300 pb-1.5 uppercase tracking-widest text-[11px] print:text-[9px]">柜体配置 CABINET</div>
-                              <div className="space-y-2 print:space-y-1 text-gray-800">
+                              <div className="font-black text-gray-900 mb-3 print:mb-1 border-b border-gray-300 pb-1.5 print:pb-0.5 uppercase tracking-widest text-[11px] print:text-[10px]">柜体配置 CABINET</div>
+                              {/* 压缩明细行距 */}
+                              <div className="space-y-2 print:space-y-0.5 text-gray-800">
                                 <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">材料类型</span><span className="font-bold">{dispCabType}</span></div>
                                 <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">指定品牌</span><span className="font-bold">{cab.snap_cabinet_brand || '-'}</span></div>
                                 <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">颜色款式</span><span className="font-bold">{cab.snap_cabinet_color || '-'}</span></div>
                                 <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">规格参数</span><span className="font-bold">{cab.cabinet_thickness || 18}mm / {cab.snap_back_panel_spec || '-'}</span></div>
                               </div>
                               {cab.cabinet_material_remark && (
-                                <div className="mt-4 print:mt-2 pt-3 print:pt-1.5 border-t border-gray-100">
+                                <div className="mt-4 print:mt-1.5 pt-3 print:pt-1 border-t border-gray-100">
                                   <div className="text-gray-500 font-medium mb-1 print:mb-0">选材备注：</div>
                                   <div className="font-medium text-gray-900 leading-relaxed">{cab.cabinet_material_remark}</div>
                                 </div>
@@ -1340,20 +1342,20 @@ const renderUpgradeModal = () => {
                             {/* 门板列 */}
                             {hasNoDoor ? (
                               <div>
-                                <div className="font-black text-gray-900 mb-3 print:mb-1.5 border-b border-gray-300 pb-1.5 uppercase tracking-widest text-[11px] print:text-[9px]">门板配置 DOOR</div>
-                                <div className="text-gray-500 italic py-2">开放式柜体 (无门板)</div>
+                                <div className="font-black text-gray-900 mb-3 print:mb-1 border-b border-gray-300 pb-1.5 print:pb-0.5 uppercase tracking-widest text-[11px] print:text-[10px]">门板配置 DOOR</div>
+                                <div className="text-gray-500 italic py-2 print:py-0">开放式柜体 (无门板)</div>
                               </div>
                             ) : (
                               <div>
-                                <div className="font-black text-gray-900 mb-3 print:mb-1.5 border-b border-gray-300 pb-1.5 uppercase tracking-widest text-[11px] print:text-[9px]">门板配置 DOOR</div>
-                                <div className="space-y-2 print:space-y-1 text-gray-800">
+                                <div className="font-black text-gray-900 mb-3 print:mb-1 border-b border-gray-300 pb-1.5 print:pb-0.5 uppercase tracking-widest text-[11px] print:text-[10px]">门板配置 DOOR</div>
+                                <div className="space-y-2 print:space-y-0.5 text-gray-800">
                                   <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">材料类型</span><span className="font-bold">{dispDoorType}</span></div>
                                   <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">指定品牌</span><span className="font-bold">{cab.snap_door_brand || '-'}</span></div>
                                   <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">颜色款式</span><span className="font-bold">{cab.snap_door_color || '-'}</span></div>
                                   <div className="grid grid-cols-[100px_1fr] print:grid-cols-[70px_1fr]"><span className="text-gray-500 font-medium">表面工艺</span><span className="font-bold">{cab.snap_door_surface_finish || '未记录'}</span></div>
                                 </div>
                                 {cab.door_material_remark && (
-                                  <div className="mt-4 print:mt-2 pt-3 print:pt-1.5 border-t border-gray-100">
+                                  <div className="mt-4 print:mt-1.5 pt-3 print:pt-1 border-t border-gray-100">
                                     <div className="text-gray-500 font-medium mb-1 print:mb-0">选材备注：</div>
                                     <div className="font-medium text-gray-900 leading-relaxed">{cab.door_material_remark}</div>
                                   </div>
@@ -1364,42 +1366,42 @@ const renderUpgradeModal = () => {
 
                           {/* 超深及特殊费用 */}
                           {excessDepthFee > 0 && (
-                            <div className="mt-6 print:mt-4 border-l-2 border-black pl-4 py-1 text-[13px] print:text-[10px] flex justify-between">
+                            <div className="mt-6 print:mt-2.5 border-l-2 border-black pl-4 print:pl-3 py-1 text-[13px] print:text-[11px] flex justify-between">
                               <span className="text-gray-600 font-medium">超出标准深度附加费 (实深 {cab.depth}mm)</span>
                               <span className="font-black text-gray-900">+ ¥{excessDepthFee.toFixed(2)}</span>
                             </div>
                           )}
 
                           {/* 基础单价与尺寸合计 */}
-                          <div className="mt-6 print:mt-4 border border-black p-4 print:p-2.5 flex flex-col md:flex-row print:flex-row justify-between items-center text-[13px] print:text-[10px]">
+                          <div className="mt-6 print:mt-2.5 border border-black p-4 print:p-2 flex flex-col md:flex-row print:flex-row justify-between items-center text-[13px] print:text-[11px]">
                             <div className="flex gap-8 text-black w-full md:w-auto print:w-auto mb-4 md:mb-0 print:mb-0">
                                <div>
-                                 <div className="text-gray-500 font-medium mb-1">{hasNoDoor ? '开放式单价' : '综合单价'}</div>
+                                 <div className="text-gray-500 font-medium mb-1 print:mb-0">{hasNoDoor ? '开放式单价' : '综合单价'}</div>
                                  <div className="font-bold">¥{comprehensiveUnitPrice.toFixed(2)}<span className="text-[10px] print:text-[8px] font-normal text-gray-500"> /{unitLabel}</span></div>
                                </div>
                                <div className="w-px bg-gray-300"></div>
                                <div>
-                                 <div className="text-gray-500 font-medium mb-1">{isArea ? '计价面积' : '计价长度'}</div>
+                                 <div className="text-gray-500 font-medium mb-1 print:mb-0">{isArea ? '计价面积' : '计价长度'}</div>
                                  <div className="font-bold">{displayQty.toFixed(2)}<span className="text-[10px] print:text-[8px] font-normal text-gray-500"> {unitLabel}</span></div>
                                </div>
                             </div>
                             <div className="text-right w-full md:w-auto print:w-auto">
-                              <div className="text-gray-500 font-medium text-xs print:text-[9px] mb-1">柜体部分金额</div>
+                              <div className="text-gray-500 font-medium text-xs print:text-[10px] mb-1 print:mb-0">柜体部分金额</div>
                               <div className="font-black text-lg print:text-base text-black">¥{comprehensiveTotalAmount.toFixed(2)}</div>
                             </div>
                           </div>
 
                           {/* 附属工艺与五金清单 */}
                           {cabUpgrades.length > 0 && (
-                            <div className="mt-8 print:mt-4 border-t-2 border-black pt-4 print:pt-2">
-                              <div className="text-[11px] print:text-[9px] font-black text-black mb-4 print:mb-2 uppercase tracking-widest">附加工艺与五金 UPGRADES</div>
-                              <table className="w-full text-left text-[13px] print:text-[10px] text-black">
+                            <div className="mt-8 print:mt-2.5 border-t-2 border-black pt-4 print:pt-1.5">
+                              <div className="text-[11px] print:text-[10px] font-black text-black mb-4 print:mb-1.5 uppercase tracking-widest">附加工艺与五金 UPGRADES</div>
+                              <table className="w-full text-left text-[13px] print:text-[11px] text-black">
                                 <thead className="border-b border-gray-300">
                                   <tr>
-                                    <th className="py-2 print:py-1 font-medium text-gray-500">工艺说明</th>
-                                    <th className="py-2 print:py-1 font-medium text-gray-500 text-center">计价数量</th>
-                                    <th className="py-2 print:py-1 font-medium text-gray-500 text-right">单价</th>
-                                    <th className="py-2 print:py-1 font-medium text-gray-500 text-right">小计金额</th>
+                                    <th className="py-2 print:py-0.5 font-medium text-gray-500">工艺说明</th>
+                                    <th className="py-2 print:py-0.5 font-medium text-gray-500 text-center">计价数量</th>
+                                    <th className="py-2 print:py-0.5 font-medium text-gray-500 text-right">单价</th>
+                                    <th className="py-2 print:py-0.5 font-medium text-gray-500 text-right">小计金额</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -1407,16 +1409,16 @@ const renderUpgradeModal = () => {
                                     const isChild = !!upg.parent_record_id;
                                     return (
                                       <tr key={upg.id} className={isChild ? "text-gray-600" : "text-black"}>
-                                        <td className={`py-3 print:py-1.5 flex flex-col ${isChild ? "pl-6 border-l border-gray-300 ml-2" : ""}`}>
+                                        <td className={`py-3 print:py-1 flex flex-col ${isChild ? "pl-6 border-l border-gray-300 ml-2" : ""}`}>
                                           <span className={isChild ? "font-medium" : "font-bold"}>{isChild ? '— ' : ''}{upg.snap_upgrade_name}</span>
-                                          {upg.remark && <span className="text-[11px] print:text-[8px] text-gray-500 mt-1 max-w-sm truncate" title={upg.remark}>备注: {upg.remark}</span>}
+                                          {upg.remark && <span className="text-[11px] print:text-[9px] text-gray-500 mt-1 print:mt-0.5 max-w-sm truncate" title={upg.remark}>备注: {upg.remark}</span>}
                                         </td>
-                                        <td className="py-3 print:py-1.5 text-center whitespace-nowrap">
+                                        <td className="py-3 print:py-1 text-center whitespace-nowrap">
                                           <span className="font-bold">{upg.quantity}</span>
                                           <span className="ml-1 text-gray-500">{upg.unit || ''}</span>
                                         </td>
-                                        <td className="py-3 print:py-1.5 text-right">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</td>
-                                        <td className="py-3 print:py-1.5 font-bold text-right">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</td>
+                                        <td className="py-3 print:py-1 text-right">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</td>
+                                        <td className="py-3 print:py-1 font-bold text-right">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</td>
                                       </tr>
                                     );
                                   })}
@@ -1426,8 +1428,8 @@ const renderUpgradeModal = () => {
                           )}
 
                           {/* 单柜汇总底线 */}
-                          <div className="mt-8 print:mt-4 pt-4 print:pt-2 border-t border-black flex justify-between items-end">
-                            <span className="text-[11px] print:text-[9px] font-black text-black uppercase tracking-widest">Subtotal</span> 
+                          <div className="mt-8 print:mt-2 pt-4 print:pt-1.5 border-t border-black flex justify-between items-end">
+                            <span className="text-[11px] print:text-[10px] font-black text-black uppercase tracking-widest">Subtotal</span> 
                             <span className="text-2xl print:text-lg font-black text-black tracking-tight">¥{Number(cab.cabinet_total_price || 0).toFixed(2)}</span>
                           </div>
                         </div>
