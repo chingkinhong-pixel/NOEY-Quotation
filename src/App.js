@@ -1015,7 +1015,7 @@ const renderUpgradeModal = () => {
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div><label className="text-xs font-bold text-gray-500">板材厚度(mm)</label><input type="number" value={activeCabinet.cabinet_thickness} onChange={e=>updateActiveCabinet('cabinet_thickness', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                   <div><label className="text-xs font-bold text-gray-500">基础背板</label><select value={activeCabinet.snap_back_panel_spec} onChange={e=>updateActiveCabinet('snap_back_panel_spec', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option>9mm标准</option><option>18mm需升级</option></select></div>
-                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">综合选材备注</label><input value={activeCabinet.cabinet_material_remark} onChange={e=>updateActiveCabinet('cabinet_material_remark', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">选材备注</label><input placeholder="特殊说明、非标要求等" value={activeCabinet.cabinet_material_remark || ''} onChange={e=>updateActiveCabinet('cabinet_material_remark', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white transition-colors" /></div>
                 </div>
                 <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
                   <div className="text-sm font-black text-gray-900">人工调价 (元/㎡)</div>
@@ -1032,9 +1032,9 @@ const renderUpgradeModal = () => {
                 <div className="grid grid-cols-5 gap-4 mb-4">
                   <div className="col-span-2">
                     <label className="text-xs font-bold text-gray-500">系统门板底价 (或敞开柜)</label>
-                    <div className="mt-2">
-                      <label className="text-xs font-bold text-gray-500">特殊门板及客户要求备注</label>
-                      <input value={activeCabinet.door_material_remark || ''} onChange={e=>updateActiveCabinet('door_material_remark', e.target.value)} placeholder="如: 特殊颜色、非标纹理等补充说明" className="w-full border-2 border-dashed border-gray-300 p-2 rounded-lg font-medium text-sm mt-1 bg-gray-50" />
+                    <div className="col-span-full mt-2">
+                      <label className="text-xs font-bold text-gray-500">选材备注</label>
+                      <input value={activeCabinet.door_material_remark || ''} onChange={e=>updateActiveCabinet('door_material_remark', e.target.value)} placeholder="特殊说明、非标要求等" className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white transition-colors" />
                     </div>
                     <select 
                       value={activeCabinet.door_mat_id} 
