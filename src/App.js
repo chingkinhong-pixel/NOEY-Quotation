@@ -45,6 +45,36 @@ export default function App() {
     combo_type: 'single', upgrade_material: '', upgrade_style: '', upgrade_specification: '',
     minimum_quantity: 0, combo_children: []
   });
+  // 【V4.08 新增】二级工艺表单状态与专属方法
+  const [subUpgradeForm, setSubUpgradeForm] = useState({
+    name: '', calculation_type: '按数量', unit: '', unit_price: '', minimum_quantity: 0, description: ''
+  });
+
+  const handleSaveSubUpgrade = async (e) => {
+    e.preventDefault();
+    if (!editId) return; // 必须从属于某个一级工艺
+    try {
+      const payload = {
+        parent_upgrade_id: editId, name: subUpgradeForm.name, calculation_type: subUpgradeForm.calculation_type,
+        unit: subUpgradeForm.unit, unit_price: parseFloat(subUpgradeForm.unit_price) || 0,
+        upgrade_effect_type: 'add_cost', // 业务要求：二级工艺永远是追加费用
+        minimum_quantity: parseFloat(subUpgradeForm.minimum_quantity) || 0, description: subUpgradeForm.description
+      };
+      await supabase.from('upgrade_sub_items').insert([payload]);
+      showToast('新增二级工艺成功');
+      setSubUpgradeForm({ name: '', calculation_type: '按数量', unit: '', unit_price: '', minimum_quantity: 0, description: '' });
+      fetchDictionaries();
+    } catch (err) { showToast('保存二级工艺失败', 'error'); }
+  };
+
+  const handleDeleteSubUpgrade = async (id) => {
+    if (!window.confirm('确定删除该附属工艺吗？')) return;
+    try {
+      await supabase.from('upgrade_sub_items').delete().eq('id', id);
+      showToast('删除成功');
+      fetchDictionaries();
+    } catch (err) { showToast('删除失败', 'error'); }
+  };
 
   // 4. 销售工作台专属状态
   const [quoteInfo, setQuoteInfo] = useState({ 
@@ -679,11 +709,10 @@ const handleConfirmAddUpgrade = () => {
     const item = upgradeModal.selectedItem;
     if (!item) return;
 
-    // 起算量硬拦截验证 (第一层防呆)
+    // 【第一重防呆】：一级工艺起算量硬拦截
     const minQ = parseFloat(item.minimum_quantity) || 0;
     let finalInputQty = parseFloat(upgradeModal.inputQty) || 0;
     
-    // 对于按柜宽自动算，如果用户没填，让它过（引擎会用系统计算）。如果填了，必须大于最小量
     if (item.calculation_type === '按柜宽自动算') {
       if (upgradeModal.inputQty !== '' && finalInputQty < minQ) {
          finalInputQty = minQ;
@@ -700,46 +729,39 @@ const handleConfirmAddUpgrade = () => {
 
     const parentId = 'upg-' + Date.now();
     
-    // 生成一级工艺
+    // 生成一级工艺记录
     const newUpgrade = {
-      id: parentId, item_id: item.id, name: item.name, category: item.upgrade_category,
-      unit: item.unit, 
-      snap_original_unit_price: item.unit_price, 
-      unit_price_adjustment: parseFloat(upgradeModal.unit_price_adjustment) || 0,
-      calculation_type: item.calculation_type,
-      upgrade_effect_type: item.upgrade_effect_type, replace_calculation_mode: item.replace_calculation_mode,
-      input_quantity: finalInputQty,
-      minimum_quantity: item.minimum_quantity,
-      manual_door_area: upgradeModal.manual_door_area,
-      remark: upgradeModal.inputRemark || '', // 特殊说明
-      combo_type: item.combo_type,
+      id: parentId, item_id: item.id, name: item.name, category: item.upgrade_category, unit: item.unit, 
+      snap_original_unit_price: item.unit_price, unit_price_adjustment: parseFloat(upgradeModal.unit_price_adjustment) || 0,
+      calculation_type: item.calculation_type, upgrade_effect_type: item.upgrade_effect_type, replace_calculation_mode: item.replace_calculation_mode,
+      input_quantity: finalInputQty, minimum_quantity: item.minimum_quantity,
+      manual_door_area: upgradeModal.manual_door_area, remark: upgradeModal.inputRemark || '', combo_type: 'single',
       parent_record_id: null
     };
 
     let itemsToAdd = [newUpgrade];
 
-    // 【V4.0】处理二级工艺自动带出逻辑
-    if (item.combo_children && Array.isArray(item.combo_children) && item.combo_children.length > 0) {
-      item.combo_children.forEach((childId, index) => {
-        const childItem = upgrades.find(u => u.id === childId);
-        if (childItem && childItem.status) {
-          // 二级工艺默认继承一级工艺的输入量，但其自身也有最小起算量限制
-          const childMin = parseFloat(childItem.minimum_quantity) || 0;
-          const childInput = Math.max(finalInputQty, childMin);
-          
-          itemsToAdd.push({
-            id: parentId + '-child-' + index, item_id: childItem.id, name: childItem.name, category: childItem.upgrade_category,
-            unit: childItem.unit, snap_original_unit_price: childItem.unit_price, unit_price_adjustment: 0,
-            calculation_type: childItem.calculation_type, upgrade_effect_type: childItem.upgrade_effect_type, replace_calculation_mode: childItem.replace_calculation_mode,
-            input_quantity: childInput, // 继承数量
-            minimum_quantity: childItem.minimum_quantity,
-            manual_door_area: '', remark: '附属二级工艺自动关联', // 标识来源
-            combo_type: 'single',
-            parent_record_id: parentId // 核心：绑定父子关系
-          });
-        }
+    // 【V4.08 真实关系映射】：从全局 subUpgrades 中筛出属于该工艺的二级工艺，直接带出
+    const relatedSubs = subUpgrades.filter(sub => sub.parent_upgrade_id === item.id);
+    
+    if (relatedSubs.length > 0) {
+      relatedSubs.forEach((childItem, index) => {
+        // 【第二重防呆】：二级工艺自身起算量拦截
+        const childMin = parseFloat(childItem.minimum_quantity) || 0;
+        // 默认继承一级数量，但绝不能低于自身的最低起算量
+        const childInput = Math.max(finalInputQty, childMin);
+        
+        itemsToAdd.push({
+          id: parentId + '-child-' + index, item_id: childItem.id, name: childItem.name, category: item.upgrade_category, // 继承分类方便展示
+          unit: childItem.unit, snap_original_unit_price: childItem.unit_price, unit_price_adjustment: 0,
+          calculation_type: childItem.calculation_type, upgrade_effect_type: childItem.upgrade_effect_type, replace_calculation_mode: null,
+          input_quantity: childInput, minimum_quantity: childItem.minimum_quantity,
+          manual_door_area: '', remark: childItem.description || '专属附加工艺', // 标识来源
+          combo_type: 'single',
+          parent_record_id: parentId // 绝对隔离：绑定父子关系快照
+        });
       });
-      showToast(`已添加工艺及自动关联的 ${itemsToAdd.length - 1} 项二级配件`);
+      showToast(`已添加工艺，并自动带出 ${relatedSubs.length} 项附属工艺`);
     } else {
       showToast(`已添加工艺: ${item.name}`);
     }
