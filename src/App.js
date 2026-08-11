@@ -750,27 +750,33 @@ const handleConfirmAddUpgrade = () => {
 
     let itemsToAdd = [newUpgrade];
 
-    // 【V4.08 真实关系映射】：从全局 subUpgrades 中筛出属于该工艺的二级工艺，直接带出
+// 【V4.08 真实关系映射】：从全局 subUpgrades 中筛出属于该工艺的二级工艺，直接带出
     const relatedSubs = subUpgrades.filter(sub => sub.parent_upgrade_id === item.id);
-    
+    let childCorrectionMsg = '';
+
     if (relatedSubs.length > 0) {
       relatedSubs.forEach((childItem, index) => {
-        // 【第二重防呆】：二级工艺自身起算量拦截
+        // ⚠️ 核心修复：移除了 ?. 语法，使用传统安全判定
+        let childInput = parseFloat(upgradeModal.subInputs && upgradeModal.subInputs[childItem.id]) || 0;
         const childMin = parseFloat(childItem.minimum_quantity) || 0;
-        // 默认继承一级数量，但绝不能低于自身的最低起算量
-        const childInput = Math.max(finalInputQty, childMin);
+        
+        // 自动纠正：低于后台设置的起算量，强行拉回
+        if (childInput < childMin) {
+            childInput = childMin; 
+            childCorrectionMsg = `部分附属工艺低于自身起算量，已自动纠正`;
+        }
         
         itemsToAdd.push({
-          id: parentId + '-child-' + index, item_id: childItem.id, name: childItem.name, category: item.upgrade_category, // 继承分类方便展示
+          id: parentId + '-child-' + index, item_id: childItem.id, name: childItem.name, category: item.upgrade_category, 
           unit: childItem.unit, snap_original_unit_price: childItem.unit_price, unit_price_adjustment: 0,
           calculation_type: childItem.calculation_type, upgrade_effect_type: childItem.upgrade_effect_type, replace_calculation_mode: null,
           input_quantity: childInput, minimum_quantity: childItem.minimum_quantity,
-          manual_door_area: '', remark: childItem.description || '专属附加工艺', // 标识来源
+          manual_door_area: '', remark: childItem.description || '', // 继承二级工艺后台填的说明
           combo_type: 'single',
           parent_record_id: parentId // 绝对隔离：绑定父子关系快照
         });
       });
-      showToast(`已添加工艺，并自动带出 ${relatedSubs.length} 项附属工艺`);
+      showToast(`已添加工艺。${childCorrectionMsg}`);
     } else {
       showToast(`已添加工艺: ${item.name}`);
     }
