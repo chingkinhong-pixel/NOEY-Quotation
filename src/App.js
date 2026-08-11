@@ -329,20 +329,58 @@ export default function App() {
     });
   };
   
-  const handleDownloadPDF = () => {
+const handleDownloadPDF = () => {
     setIsLoading(true);
     showToast('正在为您渲染并下载 PDF 文件，请稍候...', 'success');
     const element = document.getElementById('quote-document-container');
     const filename = `NOEY_Quotation_${previewData?.quote?.quote_no || 'Document'}.pdf`;
-    
-    // 动态无感加载 html2pdf.js，不影响系统首屏性能
+
+    const generatePDF = () => {
+      // 1. 记录原始样式
+      const originalCssText = element.style.cssText;
+      const parent = element.parentElement;
+      const originalParentCss = parent.style.cssText;
+
+      // 2. 强制设为左对齐且定宽，彻底杜绝由于浏览器窗口太窄导致截图被切断！
+      parent.style.cssText += 'align-items: flex-start !important; overflow: visible !important;';
+      element.style.cssText += 'width: 1024px !important; max-width: 1024px !important; margin: 0 !important; transform: none !important;';
+
+      const opt = {
+        margin:       [10, 0, 10, 0], // 上下边距 10mm
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 1 },
+        html2canvas:  { 
+          scale: 2, 
+          useCORS: true, 
+          windowWidth: 1024, // ⚠️ 核心修复：强行指派虚拟视口宽度为 1024px
+          scrollX: 0,
+          scrollY: 0
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      window.html2pdf().set(opt).from(element).save().then(() => {
+        // 3. 渲染完成后，瞬间恢复原有排版样式
+        element.style.cssText = originalCssText;
+        parent.style.cssText = originalParentCss;
+        setIsLoading(false);
+        showToast('✅ PDF 报价单已成功下载到本地！');
+      }).catch(err => {
+        element.style.cssText = originalCssText;
+        parent.style.cssText = originalParentCss;
+        setIsLoading(false);
+        showToast('PDF生成失败，请尝试使用旁边的【打印】功能', 'error');
+      });
+    };
+
+    // 动态加载 PDF 生成引擎
     if (!window.html2pdf) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = () => generatePDF(element, filename);
+      script.onload = generatePDF;
       document.body.appendChild(script);
     } else {
-      generatePDF(element, filename);
+      generatePDF();
     }
   };
   
