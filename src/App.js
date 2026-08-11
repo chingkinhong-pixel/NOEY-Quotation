@@ -1670,22 +1670,7 @@ const renderUpgradeModal = () => {
                     </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 mb-4">
-                  <div className="col-span-2">
-                    <label className="text-xs font-bold text-gray-500">二级工艺关联管理</label>
-                    <select multiple value={upgradeForm.combo_children || []} onChange={e => {
-                        const selected = Array.from(e.target.selectedOptions, option => option.value);
-                        setUpgradeForm({...upgradeForm, combo_children: selected, combo_type: selected.length > 0 ? 'bundle' : 'single'});
-                      }} 
-                      className="w-full border-2 p-2 rounded-lg font-bold mt-1 h-24 text-sm"
-                    >
-                      {/* 列出所有其他工艺供多选 */}
-                      {upgrades.filter(u => u.id !== upgradeForm.id).map(u => (
-                        <option key={u.id} value={u.id}>{u.name} (¥{u.unit_price})</option>
-                      ))}
-                    </select>
-                    <div className="text-[10px] text-gray-400 mt-1">按住 Ctrl/Cmd 多选。开单时将自动关联计价。</div>
-                  </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <div><label className="text-xs font-bold text-gray-500">特殊工艺备注提示</label><input value={upgradeForm.description || ''} onChange={e=>setUpgradeForm({...upgradeForm, description:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                   <div><label className="text-xs font-bold text-rose-600">限制：最低起算量</label><input type="number" step="0.01" value={upgradeForm.minimum_quantity} onChange={e=>setUpgradeForm({...upgradeForm, minimum_quantity:e.target.value})} className="w-full border-2 border-rose-200 p-2 rounded-lg font-black text-rose-700 mt-1 bg-rose-50" /></div>
                 </div>
@@ -1701,6 +1686,63 @@ const renderUpgradeModal = () => {
                   <button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold shadow-lg hover:shadow-xl">{editId ? '保存当前修改' : '确认新增工艺'}</button>
                 </div>
               </form>
+
+              {/* 【V4.08 独立二级工艺面板】：仅当在编辑某个一级工艺时展示 */}
+              {editId && (
+                <div className="mt-8 bg-blue-50/50 p-6 rounded-2xl border-2 border-blue-100">
+                  <div className="flex items-center gap-2 mb-4 border-b border-blue-200 pb-2">
+                    <span className="text-lg">🔗</span>
+                    <h3 className="text-lg font-black text-blue-900">
+                      [{upgradeForm.name}] 专属附属计价项目
+                    </h3>
+                  </div>
+                  
+                  {/* 新增独立表单 */}
+                  <form onSubmit={handleSaveSubUpgrade} className="flex flex-wrap items-end gap-3 mb-6 bg-white p-4 rounded-xl border border-blue-100">
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">附属工艺名称 Name</label>
+                      <input required value={subUpgradeForm.name} onChange={e=>setSubUpgradeForm({...subUpgradeForm, name:e.target.value})} placeholder="如: 玻璃门拉手" className="w-full border-2 border-gray-200 p-2 rounded-lg font-bold text-sm mt-1" />
+                    </div>
+                    <div className="w-24">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">单价 (元)</label>
+                      <input required type="number" value={subUpgradeForm.unit_price} onChange={e=>setSubUpgradeForm({...subUpgradeForm, unit_price:e.target.value})} className="w-full border-2 border-gray-200 p-2 rounded-lg font-black text-rose-600 text-sm mt-1" />
+                    </div>
+                    <div className="w-24">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">计价单位</label>
+                      <input required value={subUpgradeForm.unit} onChange={e=>setSubUpgradeForm({...subUpgradeForm, unit:e.target.value})} placeholder="如: 个" className="w-full border-2 border-gray-200 p-2 rounded-lg font-bold text-sm mt-1" />
+                    </div>
+                    <div className="w-24">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">起算量</label>
+                      <input type="number" step="0.01" value={subUpgradeForm.minimum_quantity} onChange={e=>setSubUpgradeForm({...subUpgradeForm, minimum_quantity:e.target.value})} className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg font-black text-blue-800 text-sm mt-1" />
+                    </div>
+                    <button type="submit" className="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm h-[42px] hover:bg-blue-700">添加</button>
+                  </form>
+
+                  {/* 专属子工艺列表 */}
+                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50 text-xs text-gray-500 border-b border-gray-100">
+                        <tr><th className="p-3">附属项目名称</th><th className="p-3">单价</th><th className="p-3 text-center">起算量</th><th className="p-3 text-right">操作</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {subUpgrades.filter(sub => sub.parent_upgrade_id === editId).length === 0 ? (
+                          <tr><td colSpan="4" className="p-6 text-center text-gray-400 font-bold text-xs">尚无专属附属工艺</td></tr>
+                        ) : (
+                          subUpgrades.filter(sub => sub.parent_upgrade_id === editId).map(sub => (
+                            <tr key={sub.id}>
+                              <td className="p-3 font-bold text-gray-800">↳ {sub.name}</td>
+                              <td className="p-3 font-black text-rose-600">¥{sub.unit_price} / {sub.unit}</td>
+                              <td className="p-3 text-center font-bold text-blue-600">{sub.minimum_quantity > 0 ? sub.minimum_quantity : '-'}</td>
+                              <td className="p-3 text-right"><button onClick={() => handleDeleteSubUpgrade(sub.id)} className="text-rose-500 hover:text-rose-700 font-bold text-xs bg-rose-50 px-2 py-1 rounded">删除</button></td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* 【新增】：工艺列表顶部搜索框 */}
               <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mt-6 mb-6">
                 <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 focus-within:border-black transition-colors">
