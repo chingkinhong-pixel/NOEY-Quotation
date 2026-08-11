@@ -1262,13 +1262,38 @@ const renderUpgradeModal = () => {
             {/* 右侧 标题与严格对齐的网格数据 (收紧间距) */}
             <div className="w-full md:w-1/2 print:w-1/2 flex flex-col items-start md:items-end print:items-end">
               <h1 className="text-3xl print:text-2xl font-black text-black tracking-widest uppercase mb-6 print:mb-3">Quotation</h1>
-              <table className="text-[13px] print:text-[11px] text-black border-collapse">
+                <table className="text-[13px] print:text-[11px] text-black border-collapse">
                 <tbody>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">单号CODE:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.quote_no}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">日期DATE:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">客户CUST:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.customer_name || '未指定'}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">电话TELE:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.customer_phone || '未指定'}</td></tr>
-                  <tr><td className="text-gray-500 font-medium text-left pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">地址ADDR:</td><td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.delivery_address || '未指定'}</td></tr>
+                  <tr>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">
+                      <div className="flex justify-between w-[92px] print:w-[78px]"><span>单号</span><span>CODE:</span></div>
+                    </td>
+                    <td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.quote_no}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">
+                      <div className="flex justify-between w-[92px] print:w-[78px]"><span>日期</span><span>DATE:</span></div>
+                    </td>
+                    <td className="font-bold text-right pb-1.5 print:pb-0.5">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">
+                      <div className="flex justify-between w-[92px] print:w-[78px]"><span>客户</span><span>CUST:</span></div>
+                    </td>
+                    <td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.customer_name || '未指定'}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">
+                      <div className="flex justify-between w-[92px] print:w-[78px]"><span>电话</span><span>TELE:</span></div>
+                    </td>
+                    <td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.customer_phone || '未指定'}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-4 pb-1.5 print:pb-0.5 whitespace-nowrap">
+                      <div className="flex justify-between w-[92px] print:w-[78px]"><span>地址</span><span>ADDR:</span></div>
+                    </td>
+                    <td className="font-bold text-right pb-1.5 print:pb-0.5">{quote.delivery_address || '未指定'}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
