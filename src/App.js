@@ -959,7 +959,13 @@ const renderUpgradeModal = () => {
                 <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start">
                   
                   {filteredItems.map(item => (
-                  <div key={item.id} onClick={() => setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: ''})}
+                  <div key={item.id} onClick={() => {
+                      const relSubs = subUpgrades.filter(s => s.parent_upgrade_id === item.id);
+                      const initialSubInputs = {};
+                      // 选中时，读取每个二级工艺自己的最低起算量作为默认值（若为0则默认1）
+                      relSubs.forEach(s => initialSubInputs[s.id] = s.minimum_quantity > 0 ? s.minimum_quantity : 1);
+                      setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: '', subInputs: initialSubInputs});
+                  }}
                     className={`p-4 border-2 rounded-2xl cursor-pointer ${upgradeModal.selectedItem?.id === item.id ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'}`}>
                     <div className="flex justify-between font-bold mb-2"><span>{item.name}</span><span className="text-xs border px-1 rounded">{item.calculation_type}</span></div>
                     <div className="text-sm font-black text-rose-600">¥{item.unit_price} <span className="text-xs text-gray-400">/ {item.unit}</span></div>
