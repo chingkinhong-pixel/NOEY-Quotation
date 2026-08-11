@@ -1034,9 +1034,30 @@ const renderUpgradeModal = () => {
                             <label className="block text-xs font-bold text-gray-600 mb-2">特殊说明</label>
                             <textarea value={upgradeModal.inputRemark} onChange={e=>setUpgradeModal({...upgradeModal, inputRemark:e.target.value})} className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm resize-none" rows="3" />
                           </div>
-                        </div>
-                      );
-                    })()}
+                          {/* 【新增】：动态渲染关联的二级工艺独立输入框 */}
+                          {(() => {
+                            const relSubs = subUpgrades.filter(s => s.parent_upgrade_id === upgradeModal.selectedItem.id);
+                            if (relSubs.length === 0) return null;
+                            return (
+                                <div className="mt-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100 space-y-3">
+                                    <div className="text-xs font-black text-blue-900 uppercase tracking-widest mb-2 border-b border-blue-200 pb-2">专属附属工艺 (独立计量)</div>
+                                    {relSubs.map(sub => (
+                                        <div key={sub.id} className="flex justify-between items-center gap-4">
+                                            <div className="flex-1">
+                                                <div className="text-sm font-bold text-gray-800">{sub.name}</div>
+                                                <div className="text-[10px] text-gray-500">单价: ¥{sub.unit_price}/{sub.unit} | 最低起算: <span className="font-bold text-blue-600">{sub.minimum_quantity || '无'}</span></div>
+                                            </div>
+                                            <div className="w-24 shrink-0">
+                                                <label className="block text-[10px] font-bold text-blue-600 mb-1">数量设定</label>
+                                                <input type="number" step="0.01" value={upgradeModal.subInputs?.[sub.id] || ''} 
+                                                       onChange={e => setUpgradeModal({...upgradeModal, subInputs: {...upgradeModal.subInputs, [sub.id]: e.target.value}})} 
+                                                       className="w-full border-2 border-blue-200 p-2 rounded-lg font-black text-sm text-center bg-white shadow-inner" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                          })()}
                     <button onClick={handleConfirmAddUpgrade} className="w-full bg-black text-white py-4 rounded-xl font-black mt-4">确认加入核算</button>
                   </div>
                 ) : <div className="m-auto text-gray-400 font-bold">请在左侧选择工艺</div>}
