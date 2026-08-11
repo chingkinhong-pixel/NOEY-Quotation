@@ -1126,13 +1126,12 @@ const renderUpgradeModal = () => {
   };
 
 // ==========================================
-  // 【V4.0 视觉优化】：商务级客户报价单 (高端事务所 PDF 风格)
+  // 【V4.02 优化】：纯净商务级 PDF 报价提案单
   // ==========================================
   const renderQuotePreview = () => {
     if (!previewData) return null;
     const { quote, cabinets, upgrades } = previewData;
 
-    // 按空间名称分组逻辑保持不变
     const groupedCabinets = cabinets.reduce((groups, cab) => {
       let spaceName = '未分类空间';
       if (cab.name && cab.name.includes('｜')) spaceName = cab.name.split('｜')[0].trim();
@@ -1150,60 +1149,46 @@ const renderUpgradeModal = () => {
             <span>←</span> 返回列表
           </button>
           <button onClick={() => window.print()} className="bg-white border border-gray-200 px-4 py-2 rounded text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
-            🖨️ 打印 / 导出提案
+            🖨️ 打印报价文件
           </button>
         </div>
 
-        {/* 核心文档容器 A4 感 (取消无意义底色，大量留白) */}
+        {/* 核心文档容器 (纯白、无圆角、极简) */}
         <div className="bg-white w-full max-w-5xl shadow-2xl print:shadow-none print:w-full overflow-hidden">
           
-          {/* 文档 Header (品牌区 + 客户信息区合并) */}
-          <div className="px-10 md:px-16 pt-16 pb-12 border-b-2 border-gray-900 flex flex-col md:flex-row justify-between items-start">
-            
-            {/* 左侧：Logo + 文档属性 */}
-            <div className="flex flex-col mb-8 md:mb-0">
-              <img src="/LOGO英版.png" alt="NOEY" className="h-10 object-contain mb-6 origin-left" />
-              <div className="text-gray-900 font-black tracking-[0.2em] text-2xl uppercase">Quotation</div>
-              <div className="text-gray-400 text-[10px] tracking-widest uppercase mt-1 font-bold">Proposal Document</div>
+          {/* 顶级 Header 阵列 */}
+          <div className="px-10 md:px-16 pt-16 pb-12 flex flex-col md:flex-row justify-between items-start border-b-[3px] border-black">
+            {/* 左侧 Logo */}
+            <div className="mb-8 md:mb-0">
+              <img src="/LOGO英版.png" alt="NOEY" className="h-14 md:h-16 object-contain" />
             </div>
-
-            {/* 右侧：单据与客户信息 (正式商务排版，无Emoji) */}
-            <div className="text-[13px] text-gray-800 space-y-2 md:text-right w-full md:w-auto">
-              <div className="flex justify-between md:justify-end items-center gap-8">
-                <span className="text-gray-400 text-left w-20">报价单号：</span>
-                <span className="font-bold text-gray-900 font-mono tracking-wider">{quote.quote_no}</span>
-              </div>
-              <div className="flex justify-between md:justify-end items-center gap-8">
-                <span className="text-gray-400 text-left w-20">报价日期：</span>
-                <span className="font-bold text-gray-900 tracking-wider">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span>
-              </div>
-              <div className="h-4 border-b border-gray-100 mb-4"></div> {/* 视觉分割线 */}
-              <div className="flex justify-between md:justify-end items-start gap-8">
-                <span className="text-gray-400 text-left w-20 pt-0.5">客户名称：</span>
-                <span className="font-black text-gray-900 text-sm">{quote.customer_name || '未指定'}</span>
-              </div>
-              <div className="flex justify-between md:justify-end items-center gap-8">
-                <span className="text-gray-400 text-left w-20">联系电话：</span>
-                <span className="font-bold text-gray-900 font-mono tracking-wider">{quote.customer_phone || '未指定'}</span>
-              </div>
-              <div className="flex justify-between md:justify-end items-start gap-8">
-                <span className="text-gray-400 text-left w-20 pt-0.5">交付地址：</span>
-                <span className="font-bold text-gray-900 max-w-[200px] text-right leading-tight">{quote.delivery_address || '未指定'}</span>
-              </div>
+            
+            {/* 右侧 标题与严格对齐的网格数据 */}
+            <div className="w-full md:w-auto flex flex-col items-start md:items-end">
+              <h1 className="text-3xl font-black text-black tracking-widest uppercase mb-6">Quotation</h1>
+              <table className="text-[13px] text-black w-full md:w-auto border-collapse">
+                <tbody>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">单号CODE:</td><td className="font-bold text-right pb-1.5">{quote.quote_no}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">日期DATE:</td><td className="font-bold text-right pb-1.5">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">客户CUST:</td><td className="font-bold text-right pb-1.5">{quote.customer_name || '未指定'}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">电话TELE:</td><td className="font-bold text-right pb-1.5">{quote.customer_phone || '未指定'}</td></tr>
+                  <tr><td className="text-gray-500 font-medium text-left pr-6 pb-1.5 whitespace-nowrap">地址ADDR:</td><td className="font-bold text-right pb-1.5">{quote.delivery_address || '未指定'}</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* 柜体清单区域 (紧凑化) */}
-          <div className="px-10 md:px-16 py-10">
+          {/* 柜体清单主循环区域 */}
+          <div className="px-10 md:px-16 py-12">
             {Object.entries(groupedCabinets).map(([space, spaceCabinets]) => (
-              <div key={space} className="mb-10 page-break-inside-avoid">
-                {/* 空间标题 */}
-                <h3 className="text-base font-black text-gray-900 border-b border-gray-200 pb-2 mb-6 uppercase tracking-widest flex justify-between items-end">
-                  {space}
-                  <span className="text-[10px] text-gray-400 font-bold">/ {spaceCabinets.length} UNIT(S)</span>
-                </h3>
+              <div key={space} className="mb-14 page-break-inside-avoid">
+                {/* 空间大标题 */}
+                <div className="flex justify-between items-end border-b-2 border-gray-900 pb-2 mb-8">
+                  <h3 className="text-xl font-black text-black tracking-[0.1em] uppercase">{space}</h3>
+                  <span className="text-[11px] text-gray-500 font-bold uppercase tracking-widest">/ {spaceCabinets.length} UNIT(S)</span>
+                </div>
                 
-                <div className="space-y-6">
+                <div className="space-y-12">
                   {spaceCabinets.map(cab => {
                     const cabUpgrades = upgrades.filter(u => u.cabinet_id === cab.id);
                     const excessDepthFee = Number(cab.excess_depth_fee || 0);
@@ -1227,109 +1212,127 @@ const renderUpgradeModal = () => {
                     const dispDoorType = cab.snap_door_material_name || (cab.snap_door_brand && !cab.snap_door_brand.includes('系统') ? cab.snap_door_brand : '定制门板');
 
                     return (
-                      <div key={cab.id} className="border border-gray-300 bg-white page-break-inside-avoid">
-                        {/* 柜体单号与尺寸 Header */}
-                        <div className="bg-[#F8F9FA] px-6 py-3 flex justify-between items-center border-b border-gray-200">
-                          <div className="font-black text-gray-800 text-sm tracking-wide">{cab.name.split('｜')[1] || cab.name}</div>
-                          <div className="text-[11px] font-mono text-gray-500 font-bold tracking-widest">
+                      <div key={cab.id} className="page-break-inside-avoid">
+                        {/* 柜体 Item 头部 */}
+                        <div className="flex justify-between items-baseline mb-4">
+                          <h4 className="font-black text-gray-900 text-base">{cab.name.split('｜')[1] || cab.name}</h4>
+                          <span className="text-[11px] text-gray-500 font-bold tracking-widest font-mono">
                             W {cab.width} × H {cab.height} × D {cab.depth} mm
-                          </div>
+                          </span>
                         </div>
 
-                        <div className="p-6">
-                          {/* 材料配置说明 */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 text-sm">
-                            <div>
-                              <div className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-1 text-[10px] uppercase tracking-widest">柜体配置 Cabinet</div>
-                              <div className="space-y-2 text-gray-700 text-xs">
-                                <div className="flex justify-between"><span className="text-gray-400">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
-                                <div className="flex justify-between"><span className="text-gray-400">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
-                                <div className="flex justify-between"><span className="text-gray-400">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
-                                <div className="flex justify-between"><span className="text-gray-400">规格参数</span><span className="font-bold text-gray-900">{cab.cabinet_thickness || 18}mm / {cab.snap_back_panel_spec || '-'}</span></div>
-                              </div>
-                              {cab.cabinet_material_remark && <div className="mt-3 pt-2 border-t border-dashed border-gray-200 text-xs text-gray-500"><span className="font-bold text-gray-700">选材备注:</span> {cab.cabinet_material_remark}</div>}
+                        {/* 配置明细表 (双列排版) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 text-[13px] text-black">
+                          {/* 柜体列 */}
+                          <div>
+                            <div className="font-black text-gray-900 mb-3 border-b border-gray-300 pb-1.5 uppercase tracking-widest text-[11px]">柜体配置 CABINET</div>
+                            <div className="space-y-2 text-gray-800">
+                              <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">材料类型</span><span className="font-bold">{dispCabType}</span></div>
+                              <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">指定品牌</span><span className="font-bold">{cab.snap_cabinet_brand || '-'}</span></div>
+                              <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">颜色款式</span><span className="font-bold">{cab.snap_cabinet_color || '-'}</span></div>
+                              <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">规格参数</span><span className="font-bold">{cab.cabinet_thickness || 18}mm / {cab.snap_back_panel_spec || '-'}</span></div>
                             </div>
-
-                            {hasNoDoor ? (
-                              <div>
-                                <div className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-1 text-[10px] uppercase tracking-widest">门板配置 Door</div>
-                                <div className="text-gray-400 text-center py-4 bg-[#F8F9FA] border border-gray-100 text-xs font-bold">开放式柜体 (无门板)</div>
-                              </div>
-                            ) : (
-                              <div>
-                                <div className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-1 text-[10px] uppercase tracking-widest">门板配置 Door</div>
-                                <div className="space-y-2 text-gray-700 text-xs">
-                                  <div className="flex justify-between"><span className="text-gray-400">材料类型</span><span className="font-bold text-gray-900">{dispDoorType}</span></div>
-                                  <div className="flex justify-between"><span className="text-gray-400">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
-                                  <div className="flex justify-between"><span className="text-gray-400">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_door_color || '-'}</span></div>
-                                  <div className="flex justify-between"><span className="text-gray-400">表面工艺</span><span className="font-bold text-gray-900">{cab.snap_door_surface_finish || '未记录'}</span></div>
-                                </div>
-                                {cab.door_material_remark && <div className="mt-3 pt-2 border-t border-dashed border-gray-200 text-xs text-gray-500"><span className="font-bold text-gray-700">选材备注:</span> {cab.door_material_remark}</div>}
+                            {cab.cabinet_material_remark && (
+                              <div className="mt-4 pt-3 border-t border-gray-100">
+                                <div className="text-gray-500 font-medium mb-1">选材备注：</div>
+                                <div className="font-medium text-gray-900 leading-relaxed">{cab.cabinet_material_remark}</div>
                               </div>
                             )}
                           </div>
 
-                          {/* 超深及特殊费用 */}
-                          {excessDepthFee > 0 && (
-                            <div className="mb-6 bg-gray-50 border border-gray-200 px-4 py-2 flex justify-between items-center text-xs">
-                              <span className="font-bold text-gray-700">超出标准深度附加费 (实深 {cab.depth}mm)</span>
-                              <span className="font-black text-gray-900">+ ¥{excessDepthFee.toFixed(2)}</span>
+                          {/* 门板列 */}
+                          {hasNoDoor ? (
+                            <div>
+                              <div className="font-black text-gray-900 mb-3 border-b border-gray-300 pb-1.5 uppercase tracking-widest text-[11px]">门板配置 DOOR</div>
+                              <div className="text-gray-500 italic py-2">开放式柜体 (无门板)</div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="font-black text-gray-900 mb-3 border-b border-gray-300 pb-1.5 uppercase tracking-widest text-[11px]">门板配置 DOOR</div>
+                              <div className="space-y-2 text-gray-800">
+                                <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">材料类型</span><span className="font-bold">{dispDoorType}</span></div>
+                                <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">指定品牌</span><span className="font-bold">{cab.snap_door_brand || '-'}</span></div>
+                                <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">颜色款式</span><span className="font-bold">{cab.snap_door_color || '-'}</span></div>
+                                <div className="grid grid-cols-[100px_1fr]"><span className="text-gray-500 font-medium">表面工艺</span><span className="font-bold">{cab.snap_door_surface_finish || '未记录'}</span></div>
+                              </div>
+                              {cab.door_material_remark && (
+                                <div className="mt-4 pt-3 border-t border-gray-100">
+                                  <div className="text-gray-500 font-medium mb-1">选材备注：</div>
+                                  <div className="font-medium text-gray-900 leading-relaxed">{cab.door_material_remark}</div>
+                                </div>
+                              )}
                             </div>
                           )}
+                        </div>
 
-                          {/* 基础单价与合计区块 */}
-                          <div className="border border-gray-200 bg-[#F8F9FA] px-6 py-4 flex flex-col md:flex-row justify-between items-center text-sm mb-6">
-                            <div className="flex gap-8 text-xs w-full md:w-auto mb-4 md:mb-0">
-                               <div><div className="text-gray-500 mb-1">{hasNoDoor ? '开放式单价' : '综合单价'}</div><div className="font-black text-gray-900 tracking-wider">¥{comprehensiveUnitPrice.toFixed(2)}<span className="text-[10px] font-normal text-gray-500"> /{unitLabel}</span></div></div>
-                               <div className="w-px bg-gray-300"></div>
-                               <div><div className="text-gray-500 mb-1">{isArea ? '计价面积' : '计价长度'}</div><div className="font-black text-gray-900 tracking-wider">{displayQty.toFixed(2)}<span className="text-[10px] font-normal text-gray-500"> {unitLabel}</span></div></div>
-                            </div>
-                            <div className="text-right w-full md:w-auto">
-                              <div className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">Subtotal</div>
-                              <div className="font-black text-lg text-gray-900 tracking-tight">¥{comprehensiveTotalAmount.toFixed(2)}</div>
-                            </div>
+                        {/* 超深及特殊费用 */}
+                        {excessDepthFee > 0 && (
+                          <div className="mt-6 border-l-2 border-black pl-4 py-1 text-[13px] flex justify-between">
+                            <span className="text-gray-600 font-medium">超出标准深度附加费 (实深 {cab.depth}mm)</span>
+                            <span className="font-black text-gray-900">+ ¥{excessDepthFee.toFixed(2)}</span>
                           </div>
+                        )}
 
-                          {/* 附属工艺清单 (极简表格) */}
-                          {cabUpgrades.length > 0 && (
-                            <div className="border-t border-gray-200 pt-4 px-2">
-                              <div className="text-[10px] font-bold text-gray-900 mb-3 uppercase tracking-widest">附加工艺与五金 Upgrades</div>
-                              <table className="w-full text-left text-xs">
-                                <thead className="text-gray-400 border-b border-gray-200">
-                                  <tr>
-                                    <th className="py-2 px-2 font-normal">工艺说明</th>
-                                    <th className="py-2 px-2 font-normal text-center">计价数量</th>
-                                    <th className="py-2 px-2 font-normal text-right">单价</th>
-                                    <th className="py-2 px-2 font-normal text-right">小计金额</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                  {cabUpgrades.map(upg => {
-                                    const isChild = !!upg.parent_record_id;
-                                    return (
-                                      <tr key={upg.id} className={isChild ? "text-gray-500 bg-gray-50/50" : "text-gray-900"}>
-                                        <td className={`py-2.5 px-2 flex flex-col ${isChild ? "pl-6" : ""}`}>
-                                          <span className={isChild ? "font-normal" : "font-bold"}>{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
-                                          {upg.remark && <span className="text-[10px] text-gray-400 mt-0.5 truncate max-w-xs" title={upg.remark}>备注: {upg.remark}</span>}
-                                        </td>
-                                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                                          <span className="font-bold">{upg.quantity}</span> <span className="text-[10px] text-gray-500">{upg.unit || ''}</span>
-                                        </td>
-                                        <td className="py-2.5 px-2 text-right">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</td>
-                                        <td className="py-2.5 px-2 font-bold text-right">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-
-                          {/* 最终单柜大汇总 */}
-                          <div className="mt-4 pt-4 border-t border-gray-900 flex justify-between items-end px-2">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Unit Cost</span> 
-                            <span className="text-xl font-black text-gray-900 tracking-tight">¥{Number(cab.cabinet_total_price || 0).toFixed(2)}</span>
+                        {/* 基础单价与尺寸合计 */}
+                        <div className="mt-6 border border-black p-4 flex flex-col md:flex-row justify-between items-center text-[13px]">
+                          <div className="flex gap-8 text-black w-full md:w-auto mb-4 md:mb-0">
+                             <div>
+                               <div className="text-gray-500 font-medium mb-1">{hasNoDoor ? '开放式单价' : '综合单价'}</div>
+                               <div className="font-bold">¥{comprehensiveUnitPrice.toFixed(2)}<span className="text-[10px] font-normal text-gray-500"> /{unitLabel}</span></div>
+                             </div>
+                             <div className="w-px bg-gray-300"></div>
+                             <div>
+                               <div className="text-gray-500 font-medium mb-1">{isArea ? '计价面积' : '计价长度'}</div>
+                               <div className="font-bold">{displayQty.toFixed(2)}<span className="text-[10px] font-normal text-gray-500"> {unitLabel}</span></div>
+                             </div>
                           </div>
+                          <div className="text-right w-full md:w-auto">
+                            <div className="text-gray-500 font-medium text-xs mb-1">柜体部分金额</div>
+                            <div className="font-black text-lg text-black">¥{comprehensiveTotalAmount.toFixed(2)}</div>
+                          </div>
+                        </div>
+
+                        {/* 附属工艺与五金清单 */}
+                        {cabUpgrades.length > 0 && (
+                          <div className="mt-8 border-t-2 border-black pt-4">
+                            <div className="text-[11px] font-black text-black mb-4 uppercase tracking-widest">附加工艺与五金 UPGRADES</div>
+                            <table className="w-full text-left text-[13px] text-black">
+                              <thead className="border-b border-gray-300">
+                                <tr>
+                                  <th className="py-2 font-medium text-gray-500">工艺说明</th>
+                                  <th className="py-2 font-medium text-gray-500 text-center">计价数量</th>
+                                  <th className="py-2 font-medium text-gray-500 text-right">单价</th>
+                                  <th className="py-2 font-medium text-gray-500 text-right">小计金额</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {cabUpgrades.map(upg => {
+                                  const isChild = !!upg.parent_record_id;
+                                  return (
+                                    <tr key={upg.id} className={isChild ? "text-gray-600" : "text-black"}>
+                                      <td className={`py-3 flex flex-col ${isChild ? "pl-6 border-l border-gray-300 ml-2" : ""}`}>
+                                        <span className={isChild ? "font-medium" : "font-bold"}>{isChild ? '— ' : ''}{upg.snap_upgrade_name}</span>
+                                        {upg.remark && <span className="text-[11px] text-gray-500 mt-1 max-w-sm truncate" title={upg.remark}>备注: {upg.remark}</span>}
+                                      </td>
+                                      {/* 【V4.02修正】：严谨显示：数量 + 单位 */}
+                                      <td className="py-3 text-center whitespace-nowrap">
+                                        <span className="font-bold">{upg.quantity}</span>
+                                        <span className="ml-1 text-gray-500">{upg.unit || ''}</span>
+                                      </td>
+                                      <td className="py-3 text-right">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</td>
+                                      <td className="py-3 font-bold text-right">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {/* 单柜汇总底线 */}
+                        <div className="mt-8 pt-4 border-t border-black flex justify-between items-end">
+                          <span className="text-[11px] font-black text-black uppercase tracking-widest">Subtotal</span> 
+                          <span className="text-2xl font-black text-black tracking-tight">¥{Number(cab.cabinet_total_price || 0).toFixed(2)}</span>
                         </div>
                       </div>
                     );
@@ -1339,22 +1342,20 @@ const renderUpgradeModal = () => {
             ))}
           </div>
 
-          {/* 全案总计 Footer (高级感贴边黑块) */}
-          <div className="bg-[#111111] text-white px-10 md:px-16 py-10 flex flex-col md:flex-row justify-between items-center print:rounded-none">
-            <div className="mb-4 md:mb-0 text-center md:text-left">
-              <div className="text-gray-400 text-[10px] font-bold mb-1 tracking-[0.2em] uppercase">Total Amount</div>
-              <div className="font-bold text-base text-white tracking-widest">整单全案总计金额</div>
+          {/* 全案总计 Footer (黑底白字形成压迫与正式感) */}
+          <div className="bg-black text-white px-10 md:px-16 py-12 flex flex-col md:flex-row justify-between items-center print:border-t-[4px] print:border-black print:bg-white print:text-black">
+            <div className="mb-2 md:mb-0 text-center md:text-left">
+              <span className="font-bold text-sm tracking-widest uppercase block md:inline text-gray-300 print:text-black">Total Amount</span>
             </div>
-            <span className="text-5xl font-black tracking-tighter">¥{Number(quote.total_amount || 0).toFixed(2)}</span>
+            <span className="text-4xl font-black tracking-tighter">¥{Number(quote.total_amount || 0).toFixed(2)}</span>
           </div>
-        </div> 
+        </div>
 
-        {/* 底部版权信息 (仅在屏幕显示，打印时隐藏) */}
-        <div className="mt-10 text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold print:hidden">
+        {/* 底部版权信息 (屏幕专属，打印时自动消失) */}
+        <div className="mt-12 text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold print:hidden">
           <div className="mb-1 text-gray-500">NOEY Custom Furniture System</div>
           <div>Designed for NOEY Furniture © 2026. All Rights Reserved.</div>
         </div>
-        
       </div>
     );
   };
