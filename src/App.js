@@ -330,7 +330,7 @@ export default function App() {
   };
   
 // ==========================================
-  // 【V4.04 新增】：直连本地的高精度 PDF 生成引擎 (彻底解决高度截断问题)
+  // 【V4.05 最终修复】：直连本地的高精度 PDF 生成引擎 (彻底解决 X 轴偏移与截断)
   // ==========================================
   const handleDownloadPDF = () => {
     setIsLoading(true);
@@ -346,12 +346,24 @@ export default function App() {
       const parent = element.parentElement;
       const originalParentCss = parent.style.cssText;
 
-      // 2. 强制 DOM 完全展开，解决只截取屏幕可见部分的 Bug！
-      // 这里的关键是取消任何可能的 scroll，并获取真实的完整高度
-      parent.style.cssText += 'align-items: flex-start !important; overflow: visible !important; height: auto !important; max-height: none !important;';
-      element.style.cssText += 'width: 1024px !important; max-width: 1024px !important; margin: 0 !important; transform: none !important; height: auto !important; max-height: none !important; overflow: visible !important;';
-
-      // 准确测量完全展开后的真实高度
+      // 2. 【核心大招】：使用绝对定位，将元素强行钉在屏幕左上角(0,0)，
+      // 彻底消除因为 margin: auto 或 flex 居中带来的 X 轴偏移计算错误！
+      element.style.cssText += `
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 1024px !important;
+        max-width: 1024px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        z-index: 9999 !important;
+      `;
+      
+      // 准确测量完全展开且归零后的真实高度
       const scrollHeight = element.scrollHeight;
 
       // 3. 配置高精度参数
@@ -362,21 +374,23 @@ export default function App() {
         html2canvas:  { 
           scale: 2, 
           useCORS: true, 
-          // ⚠️ 核心修复：强行指派视口尺寸，覆盖默认的浏览器窗口大小
           windowWidth: 1024, 
           windowHeight: scrollHeight, 
-          height: scrollHeight, // 强制画布高度
-          scrollY: 0,
+          height: scrollHeight,
+          // 强行指定截取的起始点为 0,0
+          x: 0,
+          y: 0,
           scrollX: 0,
-          logging: false // 关掉日志提升一点点速度
+          scrollY: 0,
+          logging: false
         },
-        // 自动分页机制，按 a4 纵向切分长图
+        // 自动分页机制
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
       
       // 4. 调用库执行
       window.html2pdf().set(opt).from(element).save().then(() => {
-        // 渲染完成后，瞬间恢复原有排版样式
+        // 渲染完成后，瞬间恢复原有排版样式，客户毫无察觉
         element.style.cssText = originalCssText;
         parent.style.cssText = originalParentCss;
         setIsLoading(false);
@@ -389,10 +403,9 @@ export default function App() {
       });
     };
 
-    // 动态无感加载 PDF 生成引擎 (如果没加载过的话)
+    // 动态无感加载 PDF 生成引擎
     if (!window.html2pdf) {
       const script = document.createElement('script');
-      // 使用更稳定版本的 bundle
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.onload = generatePDF;
       document.body.appendChild(script);
