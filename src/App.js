@@ -1583,6 +1583,7 @@ const renderUpgradeModal = () => {
              {Number(quote.discount_final_price || quote.total_amount || 0).toFixed(2)}
           </div>
         </div>
+      </div>
     );
   };
 // ==========================================
