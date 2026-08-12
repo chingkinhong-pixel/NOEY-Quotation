@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import QRCode from 'qrcode'; // 确保在文件顶部引入
 
 const rawSupabaseUrl = 'https://muwzdigtehcperweliyg.supabase.co/rest/v1/'; 
 const supabaseKey = 'sb_publishable_SGHvdmqpvo3Z6GekTtk4cA_PcvbDGpd';
@@ -156,6 +157,45 @@ export default function App() {
     }
   };
 
+  // ==========================================
+  // 【新增】：原生路由拦截与客户页数据加载
+  // ==========================================
+  useEffect(() => {
+    const path = window.location.pathname;
+    // 拦截 /quote-view/:id 路由
+    if (path.startsWith('/quote-view/')) {
+      const quoteId = path.split('/quote-view/')[1]?.replace(/\/$/, '');
+      if (quoteId) handleLoadClientView(quoteId);
+    }
+  }, []);
+
+  const handleLoadClientView = async (quoteId) => {
+    setIsLoading(true);
+    try {
+      // 脱离后台验证，直接根据 ID 获取快照数据
+      const { data: quoteData, error: quoteErr } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
+      if (quoteErr || !quoteData) throw new Error('报价单不存在');
+
+      const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quoteData.id);
+      if (cabErr) throw cabErr;
+
+      let upgData = [];
+      if (cabData && cabData.length > 0) {
+        const { data: uData, error: upgErr } = await supabase.from('quote_upgrades').select('*').in('cabinet_id', cabData.map(c => c.id));
+        if (upgErr) throw upgErr;
+        upgData = uData || [];
+      }
+
+      setPreviewData({ quote: quoteData, cabinets: cabData || [], upgrades: upgData });
+      setCurrentView('quote-view'); // 切换至客户独立视图
+    } catch (err) {
+      showToast('获取客户报价单失败，链接可能无效', 'error');
+      setCurrentView('home');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
     if (currentView === 'admin' || currentView === 'sales' || currentView === 'sales-history') {
       fetchDictionaries();
