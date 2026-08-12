@@ -210,7 +210,8 @@ export default function App() {
 
   // 4. 销售工作台专属状态
   const [quoteInfo, setQuoteInfo] = useState({ 
-    quoteNo: '', customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中', terms_content: ''
+    quoteNo: '', customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中', terms_content: '',
+    discountFinalPrice: '' // 【新增】工作台最终结算价缓存
   });
   const [quoteCabinets, setQuoteCabinets] = useState([]);
   const [activeCabinetId, setActiveCabinetId] = useState(null);
@@ -465,7 +466,7 @@ export default function App() {
   const enterSalesWorkspace = () => {
     setQuoteInfo({ 
       quoteNo: generateQuoteNo(), customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中',
-      terms_content: rules.terms_template || DEFAULT_TERMS // 开单时自动抓取当前系统最新条款模板
+      terms_content: rules.terms_template || DEFAULT_TERMS, discountFinalPrice: '' // 重置折扣价
     });
     const initCabId = 'cab-' + Date.now();
     setQuoteCabinets([{ 
@@ -474,10 +475,10 @@ export default function App() {
       door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: []
     }]);
     setActiveCabinetId(initCabId);
-    setSalesOrigin('home'); // 【导航优化】：标记从首页新建进入
+    setSalesOrigin('home'); 
     setCurrentView('sales');
   };
-
+  
 // 【修复】：删除防呆拦截
   const handleDeleteQuote = async (quoteId) => {
     const quote = historyList.find(q => q.id === quoteId);
@@ -610,25 +611,27 @@ export default function App() {
     }
   };
   
-  // 【修复】：历史报价重组引擎 (增加防篡改拦截)
+    // 【修复】：历史报价重组引擎 (增加防篡改拦截与折扣价)
   const handleLoadQuoteForEditing = async (quote) => {
-    // ⚠️ 防篡改拦截：如果已经签字或条款已锁定
+    // ⚠️ 防篡改拦截：强提示包含结算价
     if (quote.is_signed || quote.terms_locked) {
-      if (!window.confirm("⚠️ 此报价已被客户签字确认，是否继续编辑？\n继续编辑将清除现有的客户签字与确认状态！")) return;
-      await supabase.from('quotes').update({ is_signed: false, customer_signature: null, signed_at: null, terms_locked: false }).eq('id', quote.id);
+      if (!window.confirm("⚠️ 此报价已被客户确认（含最终结算价），是否继续编辑？\n继续编辑将清除客户签名并解除锁定。")) return;
+      await supabase.from('quotes').update({ is_signed: false, customer_signature: null, signed_at: null, terms_locked: false, status: '已保存草稿' }).eq('id', quote.id);
       quote.is_signed = false;
       quote.customer_signature = null;
       quote.terms_locked = false;
+      quote.status = '已保存草稿';
     }
     
     setIsLoading(true);
     try {
-      // 1. 还原主单信息
-     setQuoteInfo({
-      quoteNo: quote.quote_no, customerName: quote.customer_name || '',
-      customerPhone: quote.customer_phone || '', deliveryAddress: quote.delivery_address || '', status: quote.status || '编辑中',
-      terms_content: quote.terms_content || rules.terms_template || DEFAULT_TERMS // 读取历史快照或最新模板
-    });
+      // 1. 还原主单信息 (加入 discountFinalPrice 映射)
+      setQuoteInfo({
+        quoteNo: quote.quote_no, customerName: quote.customer_name || '',
+        customerPhone: quote.customer_phone || '', deliveryAddress: quote.delivery_address || '', status: quote.status || '编辑中',
+        terms_content: quote.terms_content || rules.terms_template || DEFAULT_TERMS,
+        discountFinalPrice: quote.discount_final_price || '' // 【回显】：历史成交价
+      });
 
       const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
       if (cabErr) throw cabErr;
