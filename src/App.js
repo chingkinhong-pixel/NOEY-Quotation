@@ -1912,6 +1912,7 @@ const renderUpgradeModal = () => {
               </div>
             </div>
           )}
+        </div> 
 
         {/* 底部版权信息 (仅在屏幕显示，打印及导出PDF时自动隐藏) */}
         <div className="mt-12 text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold print:hidden">
