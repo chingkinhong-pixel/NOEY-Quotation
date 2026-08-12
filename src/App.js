@@ -1551,6 +1551,13 @@ const renderUpgradeModal = () => {
             <span>←</span> 返回列表
           </button>
           <div className="flex gap-4">
+            {/* 加入这行分享按钮 */}
+            <button onClick={() => {
+              const url = `${window.location.origin}/quote-view/${previewData.quote.id}`;
+              setShareModal({ isOpen: true, url });
+            }} className="bg-black text-white px-5 py-2 rounded text-sm font-bold hover:bg-gray-800 shadow-lg flex items-center gap-2">
+              ✨ 客户分享
+            </button>
             <button onClick={() => window.print()} className="bg-white border border-gray-200 px-4 py-2 rounded text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2">
               🖨️ 打印格式
             </button>
@@ -2252,6 +2259,7 @@ const renderUpgradeModal = () => {
   );
 
   if (currentView === 'quote-preview') return renderQuotePreview();
+  if (currentView === 'quote-view') return renderClientView(); // 【新增】客户端分享页面
   if (currentView === 'sales-history') return renderSalesHistory();
   if (currentView === 'sales') return renderSalesWorkspace();
   if (currentView === 'admin-login') return renderAdminLogin();
