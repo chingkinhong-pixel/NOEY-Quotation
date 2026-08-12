@@ -479,11 +479,11 @@ export default function App() {
     setCurrentView('sales');
   };
   
-// 【修复】：删除防呆拦截
+  // 【修复】：删除防呆拦截 (强提示)
   const handleDeleteQuote = async (quoteId) => {
     const quote = historyList.find(q => q.id === quoteId);
     const warningMsg = quote?.is_signed 
-      ? "⚠️ 此报价已被客户确认签字，强烈建议保留记录！\n确定要强行删除吗？删除后无法恢复！" 
+      ? "⚠️ 此报价已被客户确认（含签字与最终结算价）！\n确定要强行删除吗？删除后无法恢复！" 
       : "确定删除该报价草稿？删除后无法恢复";
     
     if (!window.confirm(warningMsg)) return;
@@ -940,14 +940,12 @@ const handleRemoveUpgrade = (upgId) => {
       const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0);
 
       const quotePayload = {
-        quote_no: quoteInfo.quoteNo, 
-        customer_name: quoteInfo.customerName,
-        customer_phone: quoteInfo.customerPhone, 
-        delivery_address: quoteInfo.deliveryAddress,
+        quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
+        customer_phone: quoteInfo.customerPhone, delivery_address: quoteInfo.deliveryAddress,
         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
-        total_amount: grandTotal, updated_at: new Date().toISOString(), // 【新增】：每次保存刷新修改时间
-        terms_content: quoteInfo.terms_content, // 【新增】：固化当前条款快照
-        terms_version: 'v1.0'
+        total_amount: grandTotal, updated_at: new Date().toISOString(),
+        terms_content: quoteInfo.terms_content, terms_version: 'v1.0',
+        discount_final_price: parseFloat(quoteInfo.discountFinalPrice) || null // 【新增】保存最终人工结算价
       };
 
       let currentQuoteId = null;
@@ -1416,20 +1414,35 @@ const renderUpgradeModal = () => {
           </div>
         </div>
 
-        {/* 底部悬浮算账条 */}
+       {/* 底部悬浮算账条 (支持最终结算磋商价) */}
         <div className="fixed bottom-0 right-0 left-80 bg-white border-t p-4 flex justify-between items-center shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-20">
           <div className="flex gap-6 pl-4 font-bold text-sm">
             <div><div className="text-[10px] text-gray-400">柜体</div>¥{currentCalcs.cabinetPortionTotal.toFixed(0)}</div>
             <div><div className="text-[10px] text-gray-400">门板</div>¥{currentCalcs.doorPortionTotal.toFixed(0)}</div>
             <div><div className="text-[10px] text-gray-400">工艺</div><span className="text-rose-600">¥{currentCalcs.upgradePortionTotal.toFixed(0)}</span></div>
           </div>
-          <div className="flex gap-8 items-center pr-4">
-            <div className="text-right"><div className="text-xs text-gray-500">当前单柜合计</div><div className="text-2xl font-black">¥{currentCalcs.baseTotal.toFixed(0)}</div></div>
+          <div className="flex gap-6 items-center pr-4">
+            <div className="text-right">
+              <div className="text-xs text-gray-500">当前单柜合计</div>
+              <div className="text-xl font-black text-gray-800">¥{currentCalcs.baseTotal.toFixed(0)}</div>
+            </div>
             <div className="h-10 w-px bg-gray-200"></div>
-            <div className="text-right"><div className="text-xs text-gray-500">整单全案总计</div><div className="text-3xl font-black text-black">¥{grandTotal.toFixed(0)}</div></div>
+            <div className="text-right">
+              <div className="text-xs text-gray-500">系统全案总计</div>
+              <div className={`text-2xl font-black transition-colors ${quoteInfo.discountFinalPrice ? 'text-gray-400 line-through' : 'text-black'}`}>
+                ¥{grandTotal.toFixed(0)}
+              </div>
+            </div>
+            <div className="h-10 w-px bg-gray-200"></div>
+            <div className="text-right flex flex-col items-end">
+              <div className="text-[10px] font-black text-rose-600 tracking-widest uppercase mb-1">Discount / 最终结算价</div>
+              <div className="flex items-center gap-1">
+                <span className="text-lg font-black text-rose-600">¥</span>
+                <input type="number" placeholder="默认系统总价" value={quoteInfo.discountFinalPrice} onChange={e=>setQuoteInfo({...quoteInfo, discountFinalPrice:e.target.value})} className="w-32 border-2 border-rose-200 bg-rose-50 px-3 py-1 rounded-lg font-black text-2xl text-rose-600 outline-none focus:border-rose-400 focus:bg-white text-right shadow-inner transition-colors" />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
     );
   };
 
