@@ -8,6 +8,78 @@ const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================================
+// 【常量】：默认 NOEY 报价条款模板
+// ==========================================
+const DEFAULT_TERMS = `一、合同与确认
+1.1 本报价单经甲乙双方确认后，与正式合同具有同等法律效力。
+1.2 本报价所对应的设计方案、结构图纸及清单为本报价单的重要组成部分。
+1.3 甲方须在确认设计方案及报价内容无误后签字确认，确认后双方不得单方面更改。
+1.4 如需调整方案或产品内容，须经双方协商一致，并重新确认图纸及报价后方可执行。
+1.5 因单方擅自更改设计或图纸所产生的延期或额外费用，由变更方承担。
+1.6 如设计图纸由甲方提供，甲方须确保图纸准确无误，否则因图纸问题导致的一切后果由甲方承担。
+1.7 本报价有效期为 7天，超期需重新确认价格。
+二、产品与质量说明
+2.1 所有产品均按确认图纸进行生产。
+2.2 板材、铝型材、实木、台面等材料因天然或工艺原因，颜色及纹理存在轻微差异，属正常现象，不视为质量问题。
+2.3 产品与样品之间存在合理色差及纹理差异，乙方保证整体效果相似即视为合格。
+2.4 产品尺寸允许存在 ±2%误差范围，属行业合理标准，不视为质量问题。
+2.5 效果图及展示图片仅供参考，最终以确认的结构图及清单为准。
+三、安装与现场责任
+3.1 安装前，甲方需提供完整的水、电、燃气等管线走位信息或明确标识。
+3.2 如因甲方未提供或标识不清导致施工过程中产生损坏，相关责任由甲方承担。
+3.3 安装现场需具备基本施工条件，否则产生的额外费用由甲方承担。
+3.4 所有尺寸以现场最终复尺为准。
+四、付款与交付
+4.1 订单确认后，甲方需支付总金额的 50%作为定金。
+4.2 出货前三天需支付 40%货款，否则乙方有权暂停发货。
+4.3 安装完成并验收无误后，支付剩余尾款。
+4.4 若订单金额低于 ¥5000，需全额付款后方可生产。
+4.5 生产周期自确认最终图纸并支付定金后次日开始计算，周期为约 25个自然日（具体以实际工艺为准）。
+五、价格与配置说明
+5.1 本报价已包含标准五金配置（如普通铰链、普通三节轨、基础拉手、衣通等）。
+5.2 非标五金或升级配置需另行计价。
+5.3 厨房电器、水槽、拉篮等厨具不包含在本报价内，如需代购或安装需另行收费。
+5.4 抽屉配置规则：每延米柜体默认包含1个普通抽屉（宽≤650mm），超出部分：¥120/个。
+5.5 推拉门缓冲器：¥280/个（每扇门需根据开启方式配置）。
+5.6 柜体计价规则：高度 <1m：按延米计价，高度 ≥1m：按平方米计价，最低计价单位：1㎡。
+5.7 特殊异型结构、复杂工艺另行报价。
+六、费用与售后说明
+6.1 本报价为未含税价格，如需开票加收 6%税费。
+6.2 本报价包含中山范围内配送及安装费用。
+6.3 无电梯或特殊搬运环境产生的费用另行收取。
+6.4 柜类产品质保 2年，五金件质保 1年。
+6.5 提供终身有偿维护服务。`;
+
+// ==========================================
+// 【组件】：统一规范的条款渲染引擎 (支持 PDF 与移动端)
+// ==========================================
+const RenderTermsBlock = ({ content }) => {
+  if (!content) return null;
+  return (
+    <div className="px-6 md:px-16 print:px-8 py-8 print:py-4 bg-white border-t border-gray-200 page-break-inside-avoid">
+      <div className="flex justify-center items-center mb-6 print:mb-3">
+         <div className="h-px bg-gray-200 w-12 md:w-24"></div>
+         <h3 className="mx-4 text-sm font-black text-gray-800 tracking-widest uppercase">报价条款 Terms & Conditions</h3>
+         <div className="h-px bg-gray-200 w-12 md:w-24"></div>
+      </div>
+      <div className="text-[12px] print:text-[10px] text-gray-600 leading-relaxed print:leading-normal max-w-4xl mx-auto space-y-1.5">
+        {content.split('\n').map((line, idx) => {
+          const text = line.trim();
+          if (!text) return null;
+          // 智能识别大标题并加粗放大
+          const isTitle = /^[一二三四五六七八九十]、/.test(text);
+          return (
+            <div key={idx} className={`${isTitle ? 'font-black text-gray-900 text-[13px] print:text-[11px] mt-5 print:mt-2 mb-2' : 'pl-2 md:pl-4'}`}>
+              {text}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
 // 【组件】：纯原生手写签字 Canvas (防跨域与第三方报错)
 // ==========================================
 const NativeSignaturePad = ({ onSave, onClear }) => {
@@ -138,7 +210,7 @@ export default function App() {
 
   // 4. 销售工作台专属状态
   const [quoteInfo, setQuoteInfo] = useState({ 
-    quoteNo: '', customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中' 
+    quoteNo: '', customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中', terms_content: ''
   });
   const [quoteCabinets, setQuoteCabinets] = useState([]);
   const [activeCabinetId, setActiveCabinetId] = useState(null);
@@ -393,7 +465,10 @@ export default function App() {
   };
 
   const enterSalesWorkspace = () => {
-    setQuoteInfo({ quoteNo: generateQuoteNo(), customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中' });
+    setQuoteInfo({ 
+      quoteNo: generateQuoteNo(), customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中',
+      terms_content: rules.terms_template || DEFAULT_TERMS // 开单时自动抓取当前系统最新条款模板
+    });
     const initCabId = 'cab-' + Date.now();
     setQuoteCabinets([{ 
       id: initCabId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
@@ -537,23 +612,25 @@ export default function App() {
     }
   };
   
-// 【修复】：历史报价重组引擎 (增加防篡改拦截)
+  // 【修复】：历史报价重组引擎 (增加防篡改拦截)
   const handleLoadQuoteForEditing = async (quote) => {
-    // ⚠️ 防篡改拦截：如果已经签字，编辑前必须确认并清空签字记录
-    if (quote.is_signed) {
+    // ⚠️ 防篡改拦截：如果已经签字或条款已锁定
+    if (quote.is_signed || quote.terms_locked) {
       if (!window.confirm("⚠️ 此报价已被客户签字确认，是否继续编辑？\n继续编辑将清除现有的客户签字与确认状态！")) return;
-      await supabase.from('quotes').update({ is_signed: false, customer_signature: null, signed_at: null }).eq('id', quote.id);
+      await supabase.from('quotes').update({ is_signed: false, customer_signature: null, signed_at: null, terms_locked: false }).eq('id', quote.id);
       quote.is_signed = false;
       quote.customer_signature = null;
+      quote.terms_locked = false;
     }
     
     setIsLoading(true);
     try {
       // 1. 还原主单信息
-      setQuoteInfo({
-        quoteNo: quote.quote_no, customerName: quote.customer_name || '',
-        customerPhone: quote.customer_phone || '', deliveryAddress: quote.delivery_address || '', status: quote.status || '编辑中'
-      });
+     setQuoteInfo({
+      quoteNo: quote.quote_no, customerName: quote.customer_name || '',
+      customerPhone: quote.customer_phone || '', deliveryAddress: quote.delivery_address || '', status: quote.status || '编辑中',
+      terms_content: quote.terms_content || rules.terms_template || DEFAULT_TERMS // 读取历史快照或最新模板
+    });
 
       const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
       if (cabErr) throw cabErr;
