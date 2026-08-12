@@ -29,6 +29,7 @@ export default function App() {
   const [previewData, setPreviewData] = useState(null); // 【新增】：存储预览所需的数据
   const [salesOrigin, setSalesOrigin] = useState('home');// 【V4.0 导航优化】：记录 Quote Studio 的来路来源，决定返回按钮去哪
   const [upgradeSearchQuery, setUpgradeSearchQuery] = useState('');// 【新增】：控制工艺弹窗内的独立搜索
+  const [shareModal, setShareModal] = useState({ isOpen: false, url: '' }); // 【新增】分享弹窗状态
   
   // 3. 后台管理台专属状态
   const [adminView, setAdminView] = useState('upgrade'); 
@@ -195,6 +196,14 @@ export default function App() {
       setIsLoading(false);
     }
   };
+
+  // 【新增】：监听弹窗打开并绘制二维码
+  useEffect(() => {
+    if (shareModal.isOpen && shareModal.url) {
+      const canvas = document.getElementById('share-qr-canvas');
+      if (canvas) QRCode.toCanvas(canvas, shareModal.url, { width: 200, margin: 1 });
+    }
+  }, [shareModal.isOpen, shareModal.url]);
   
   useEffect(() => {
     if (currentView === 'admin' || currentView === 'sales' || currentView === 'sales-history') {
@@ -1346,6 +1355,33 @@ const renderUpgradeModal = () => {
 
     return (
       <div className="min-h-screen bg-gray-100 font-sans flex flex-col items-center py-10 pb-20">
+
+        {/* 专属客户分享二维码弹窗 */}
+        {shareModal.isOpen && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6 backdrop-blur-sm print:hidden">
+            <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center relative">
+              <button onClick={() => setShareModal({ isOpen: false, url: '' })} className="absolute top-4 right-4 text-gray-400 hover:text-black font-bold">✕</button>
+              
+              <img src="/LOGO英版.png" alt="NOEY" className="h-10 mb-6 object-contain" />
+              
+              <div className="p-2 border-2 border-gray-100 rounded-2xl mb-4 bg-white shadow-sm flex justify-center">
+                {/* Canvas 用于 qrcode 库渲染 */}
+                <canvas id="share-qr-canvas" className="w-[200px] h-[200px]"></canvas>
+              </div>
+              
+              <div className="text-center w-full mb-6">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Order No.</div>
+                <div className="font-mono font-black text-gray-900">{previewData?.quote?.quote_no}</div>
+              </div>
+              
+              <div className="text-sm font-bold text-blue-600 bg-blue-50 px-6 py-2 rounded-full mb-6">✨ 扫码查看专属报价</div>
+
+              <button onClick={() => { navigator.clipboard.writeText(shareModal.url); showToast('链接已复制'); }} className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800">
+                🔗 复制分享链接
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* 顶部操作条 (包含新增的直接下载 PDF 按钮) */}
         <div className="w-full max-w-5xl px-4 md:px-0 mb-6 flex justify-between items-center print:hidden">
