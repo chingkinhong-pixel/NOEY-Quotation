@@ -1478,8 +1478,40 @@ const renderUpgradeModal = () => {
           <div className="space-y-6">
             {cabinets.map((cab, idx) => {
               const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
+              
+              // ==========================================
+              // 【新增】：同步系统预览的计价与快照兜底逻辑
+              // ==========================================
+              const w = parseFloat(cab.width) || 0;
+              const h = parseFloat(cab.height) || 0;
+              const isArea = h > (rules?.height_threshold || 1000);
+              
+              // 优先级1：快照面积兜底  优先级2：系统规则推导
+              const fallbackQty = Number(cab.snap_calc_area || cab.quantity || 0);
+              const displayQty = fallbackQty > 0 ? fallbackQty : (isArea ? Math.max((w * h) / 1000000, rules?.minimum_area || 1) : Math.max(w / 1000, (rules?.minimum_width || 1000) / 1000));
+              const unitLabel = isArea ? '㎡' : 'm';
+
+              const cabUnitPrice = Number(cab.snap_final_cabinet_price || 0);
+              const doorUnitPrice = Number(cab.snap_final_door_price || 0);
+              const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
+
+              // 严格读取已有金额进行逆推，绝不重新计算核心费用
+              const excessDepthFee = Number(cab.excess_depth_fee || 0);
+              const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
+              const openCabinetSalesPrice = cab.snap_base_cabinet_cost ? Number(cab.snap_base_cabinet_cost) : Math.max(0, Number(cab.cabinet_total_price || 0) - excessDepthFee - upgradesTotal);
+              
+              const comprehensiveTotalAmount = hasNoDoor ? openCabinetSalesPrice : ((cabUnitPrice + doorUnitPrice) * displayQty);
+              let comprehensiveUnitPrice = displayQty > 0 ? (comprehensiveTotalAmount / displayQty) : 0;
+
+              // 终极单价兜底 (防止开放式柜体单价显示异常)
+              if (comprehensiveUnitPrice === 0 && Number(cab.cabinet_total_price) > 0 && displayQty > 0) {
+                 comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
+              }
+              // ==========================================
+
               return (
                 <div key={cab.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
+          
                   {/* 柜体表头 */}
                   <div className="bg-gray-900 text-white p-4 flex justify-between items-center">
                     <div className="font-black text-sm">{idx + 1}. {cab.name}</div>
@@ -1538,9 +1570,17 @@ const renderUpgradeModal = () => {
                       </div>
                     )}
                     
-                    <div className="pt-4 mt-2 border-t-2 border-gray-100 flex justify-between items-end">
-                      <span className="text-xs font-bold text-gray-400">单组小计 Subtotal</span>
-                      <span className="text-xl font-black text-gray-900">¥ {Number(cab.cabinet_total_price).toFixed(2)}</span>
+                   {/* 【修复】：移动端计价信息模块 (双列紧凑布局) */}
+                    <div className="pt-4 mt-3 border-t border-gray-100">
+                      <div className="flex justify-between items-center mb-3 px-1">
+                        <span className="text-[11px] text-gray-500 font-medium">计价{isArea ? '面积' : '长度'}：{displayQty.toFixed(2)} {unitLabel}</span>
+                        <span className="text-[11px] text-gray-800 font-medium">{hasNoDoor ? '单价' : '综合单价'}：¥{comprehensiveUnitPrice.toFixed(2)} /{unitLabel}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-end bg-gray-50 -mx-4 px-4 py-3 border-t border-gray-100">
+                        <span className="text-xs font-bold text-gray-500">单组小计 Subtotal</span>
+                        <span className="text-xl font-black text-gray-900">¥ {Number(cab.cabinet_total_price).toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
