@@ -265,26 +265,26 @@ export default function App() {
     }
   };
 
-  // 【新增】：客户签字提交逻辑
+  // 【修复】：客户签字持久化保存
   const handleConfirmSignature = async (base64Image) => {
     setIsLoading(true);
     try {
+      const now = new Date().toISOString();
       await supabase.from('quotes').update({ 
-        signature: base64Image, 
-        status: 'confirmed' 
+        customer_signature: base64Image, 
+        is_signed: true, 
+        signed_at: now,
+        status: '已确认签字' 
       }).eq('id', previewData.quote.id);
       
-      // 更新当前视图状态，锁定页面
       setPreviewData(prev => ({ 
         ...prev, 
-        quote: { ...prev.quote, signature: base64Image, status: 'confirmed' } 
+        quote: { ...prev.quote, customer_signature: base64Image, is_signed: true, signed_at: now, status: '已确认签字' } 
       }));
-      showToast('✅ 报价单已成功签署！', 'success');
+      showToast('✅ 报价单已成功签署并永久固化！', 'success');
     } catch (err) {
       showToast('签字提交失败，请重试', 'error');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   // 【新增】：监听弹窗打开并绘制二维码
@@ -424,34 +424,27 @@ export default function App() {
     setCurrentView('sales');
   };
 
-  // ==========================================
-  // 【新增】：删除历史草稿
-  // ==========================================
+// 【修复】：删除防呆拦截
   const handleDeleteQuote = async (quoteId) => {
-    if (!window.confirm("确定删除该报价草稿？删除后无法恢复")) return;
+    const quote = historyList.find(q => q.id === quoteId);
+    const warningMsg = quote?.is_signed 
+      ? "⚠️ 此报价已被客户确认签字，强烈建议保留记录！\n确定要强行删除吗？删除后无法恢复！" 
+      : "确定删除该报价草稿？删除后无法恢复";
+    
+    if (!window.confirm(warningMsg)) return;
     setIsLoading(true);
     try {
-      // 1. 先查出该订单的所有柜体ID
       const { data: cabs } = await supabase.from('quote_cabinets').select('id').eq('quote_id', quoteId);
       if (cabs && cabs.length > 0) {
         const cabIds = cabs.map(c => c.id);
-        // 2. 根据柜体ID，删除底层工艺 (规避 quote_id 不存在的报错)
         await supabase.from('quote_upgrades').delete().in('cabinet_id', cabIds);
       }
-      // 3. 删除柜体
       await supabase.from('quote_cabinets').delete().eq('quote_id', quoteId);
-      // 4. 删除主单
       await supabase.from('quotes').delete().eq('id', quoteId);
-      
-      showToast('草稿已彻底删除');
-      fetchHistoryList(); // 刷新列表
-    } catch (err) {
-      showToast('删除失败: ' + err.message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
+      showToast('记录已彻底删除');
+      fetchHistoryList();
+    } catch (err) { showToast('删除失败: ' + err.message, 'error'); } finally { setIsLoading(false); }
   };
-
   // ==========================================
   // 【新增】：拉取数据并进入只读预览模式
   // ==========================================
@@ -563,24 +556,27 @@ export default function App() {
     }
   };
   
-  // 【Phase 2 新增】：历史报价重组引擎 (读取并逆向还原为编辑状态)
+// 【修复】：历史报价重组引擎 (增加防篡改拦截)
   const handleLoadQuoteForEditing = async (quote) => {
+    // ⚠️ 防篡改拦截：如果已经签字，编辑前必须确认并清空签字记录
+    if (quote.is_signed) {
+      if (!window.confirm("⚠️ 此报价已被客户签字确认，是否继续编辑？\n继续编辑将清除现有的客户签字与确认状态！")) return;
+      await supabase.from('quotes').update({ is_signed: false, customer_signature: null, signed_at: null }).eq('id', quote.id);
+      quote.is_signed = false;
+      quote.customer_signature = null;
+    }
+    
     setIsLoading(true);
     try {
       // 1. 还原主单信息
       setQuoteInfo({
-        quoteNo: quote.quote_no,
-        customerName: quote.customer_name || '',
-        customerPhone: quote.customer_phone || '',
-        deliveryAddress: quote.delivery_address || '',
-        status: quote.status || '编辑中'
+        quoteNo: quote.quote_no, customerName: quote.customer_name || '',
+        customerPhone: quote.customer_phone || '', deliveryAddress: quote.delivery_address || '', status: quote.status || '编辑中'
       });
 
-      // 2. 拉取柜体明细
       const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
       if (cabErr) throw cabErr;
 
-      // 3. 拉取工艺明细 (修复：因 quote_upgrades 无 quote_id 字段，改用 cabinet_id 批量关联查询)
       let upgData = [];
       if (cabData && cabData.length > 0) {
         const cabinetIds = cabData.map(cab => cab.id);
@@ -589,93 +585,47 @@ export default function App() {
         upgData = uData || [];
       }
 
-      // 3. 逆向组装柜体数组
       if (cabData && cabData.length > 0) {
         const reconstructedCabinets = cabData.map(dbCab => {
-          // --- Name 拆分容错处理 ---
-          let space = '未知空间';
-          let cabinetType = '未知柜体';
+          let space = '未知空间'; let cabinetType = '未知柜体';
           if (dbCab.name) {
             if (dbCab.name.includes('｜')) {
               const parts = dbCab.name.split('｜');
-              space = parts[0] || space;
-              cabinetType = parts[1] || cabinetType;
-            } else {
-              space = dbCab.name; // 无法拆分则全塞进 space
-            }
+              space = parts[0] || space; cabinetType = parts[1] || cabinetType;
+            } else space = dbCab.name;
           }
 
-          // --- 组装挂载在该柜体下的工艺 ---
           const cabUpgrades = upgData.filter(u => u.cabinet_id === dbCab.id).map(dbUpg => {
-            // 在当前字典库里寻找匹配项以补全静态规则 (容错：若已被物理删除，则取空对象)
             const dictItem = upgrades.find(u => u.id === dbUpg.upgrade_item_id) || {};
-            
             return {
-              id: dbUpg.id, // 使用历史记录的主键作为唯一标识，而不是新生成
-              item_id: dbUpg.upgrade_item_id,
+              id: dbUpg.id, item_id: dbUpg.upgrade_item_id,
               name: dbUpg.snap_upgrade_name || dictItem.name || '已失效未知工艺',
-              category: dictItem.upgrade_category || '未知分类',
-              unit: dictItem.unit || '项',
-              // 强制优先使用当时的历史快照价格！
-              snap_original_unit_price: dbUpg.snap_original_unit_price || 0,
-              unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
-              
-              // 关键计算规则：优先使用字典当前规则，若字典失效则启用默认安全降级
-              calculation_type: dictItem.calculation_type || '按面积㎡',
-              upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
+              category: dictItem.upgrade_category || '未知分类', unit: dictItem.unit || '项',
+              snap_original_unit_price: dbUpg.snap_original_unit_price || 0, unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
+              calculation_type: dictItem.calculation_type || '按面积㎡', upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
               replace_calculation_mode: dictItem.replace_calculation_mode || null,
-              
-              input_quantity: dbUpg.input_quantity || 0,
-              minimum_quantity: dictItem.minimum_quantity || 0,
-              manual_door_area: dbUpg.manual_door_area || '',
-              remark: dbUpg.remark || '',
-              combo_type: dictItem.combo_type || 'single',
-              
-              // 属性快照恢复
-              snap_material: dbUpg.snap_material || '',
-              snap_style: dbUpg.snap_style || '',
-              snap_specification: dbUpg.snap_specification || '',
+              input_quantity: dbUpg.input_quantity || 0, minimum_quantity: dictItem.minimum_quantity || 0,
+              manual_door_area: dbUpg.manual_door_area || '', remark: dbUpg.remark || '', combo_type: dictItem.combo_type || 'single',
+              snap_material: dbUpg.snap_material || '', snap_style: dbUpg.snap_style || '', snap_specification: dbUpg.snap_specification || '',
               parent_record_id: dbUpg.parent_record_id || null
             };
           });
 
-          // --- 组装单柜数据 ---
           return {
-            id: dbCab.id, // 关键：沿用真实 DB ID，避免下次保存错乱
-            space: space,
-            cabinetType: cabinetType,
-            width: dbCab.width || '',
-            height: dbCab.height || '',
-            depth: dbCab.depth || '',
-            // 系统选材关联 ID (用于计算引擎匹配底价)
-            cabinet_mat_id: dbCab.cabinet_mat_id || '',
-            door_mat_id: dbCab.door_mat_id || '',
-            
-            // 人工选配与快照
-            snap_cabinet_brand: dbCab.snap_cabinet_brand || '',
-            snap_cabinet_color: dbCab.snap_cabinet_color || '',
-            cabinet_thickness: dbCab.cabinet_thickness || '18',
-            cabinet_material_remark: dbCab.cabinet_material_remark || '',
-            snap_back_panel_spec: dbCab.snap_back_panel_spec || '9mm标准',
-            cabinet_unit_adjustment: dbCab.cabinet_unit_adjustment || '',
-            
-            snap_door_brand: dbCab.snap_door_brand || '',
-            snap_door_color: dbCab.snap_door_color || '',
-            door_unit_adjustment: dbCab.door_unit_adjustment || '',
-            // 【V4.0 新增】恢复备注快照
-            cabinet_material_remark: dbCab.cabinet_material_remark || '',
-            door_material_remark: dbCab.door_material_remark || '',
-            snap_door_surface_finish: dbCab.snap_door_surface_finish || '',
-            
-            // 挂载上一步重组好的工艺数组
-            upgrades: cabUpgrades
+            id: dbCab.id, space: space, cabinetType: cabinetType,
+            width: dbCab.width || '', height: dbCab.height || '', depth: dbCab.depth || '',
+            cabinet_mat_id: dbCab.cabinet_mat_id || '', door_mat_id: dbCab.door_mat_id || '',
+            snap_cabinet_brand: dbCab.snap_cabinet_brand || '', snap_cabinet_color: dbCab.snap_cabinet_color || '',
+            cabinet_thickness: dbCab.cabinet_thickness || '18', cabinet_material_remark: dbCab.cabinet_material_remark || '',
+            snap_back_panel_spec: dbCab.snap_back_panel_spec || '9mm标准', cabinet_unit_adjustment: dbCab.cabinet_unit_adjustment || '',
+            snap_door_brand: dbCab.snap_door_brand || '', snap_door_color: dbCab.snap_door_color || '',
+            door_unit_adjustment: dbCab.door_unit_adjustment || '', door_material_remark: dbCab.door_material_remark || '',
+            snap_door_surface_finish: dbCab.snap_door_surface_finish || '', upgrades: cabUpgrades
           };
         });
-        
         setQuoteCabinets(reconstructedCabinets);
         setActiveCabinetId(reconstructedCabinets[0].id);
       } else {
-        // 极端异常兜底：若该单据在数据库中没有任何柜体，强行塞一个空柜体防崩
         const fallbackId = 'cab-fallback-' + Date.now();
         setQuoteCabinets([{ 
           id: fallbackId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
@@ -684,17 +634,12 @@ export default function App() {
         }]);
         setActiveCabinetId(fallbackId);
       }
-
-      // 4. 数据完全重组后，切入编辑工作台
-      setSalesOrigin('sales-history'); // 【导航优化】：标记从历史列表进入
+      setSalesOrigin('sales-history');
       setCurrentView('sales');
       showToast('草稿已成功恢复！');
     } catch (err) {
-      console.error("恢复草稿失败详情:", err);
       showToast('读取草稿失败: ' + err.message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
   
   const activeCabinet = quoteCabinets.find(c => c.id === activeCabinetId) || quoteCabinets[0];
