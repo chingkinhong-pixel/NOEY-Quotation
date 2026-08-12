@@ -1443,6 +1443,7 @@ const renderUpgradeModal = () => {
             </div>
           </div>
         </div>
+      </div>
     );
   };
 
