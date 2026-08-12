@@ -7,7 +7,9 @@ const supabaseKey = 'sb_publishable_SGHvdmqpvo3Z6GekTtk4cA_PcvbDGpd';
 const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 【新增】：纯原生手写签字 Canvas 组件
+// ==========================================
+// 【组件】：纯原生手写签字 Canvas (防跨域与第三方报错)
+// ==========================================
 const NativeSignaturePad = ({ onSave, onClear }) => {
   const canvasRef = React.useRef(null);
   const [isDrawing, setIsDrawing] = React.useState(false);
@@ -32,44 +34,23 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
     return { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
   };
 
-  const startDrawing = (e) => {
-    e.preventDefault();
-    setIsDrawing(true);
-    const ctx = canvasRef.current.getContext('2d');
-    const { x, y } = getCoordinates(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const ctx = canvasRef.current.getContext('2d');
-    const { x, y } = getCoordinates(e);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
+  const startDrawing = (e) => { e.preventDefault(); setIsDrawing(true); const ctx = canvasRef.current.getContext('2d'); const { x, y } = getCoordinates(e); ctx.beginPath(); ctx.moveTo(x, y); };
+  const draw = (e) => { e.preventDefault(); if (!isDrawing) return; const ctx = canvasRef.current.getContext('2d'); const { x, y } = getCoordinates(e); ctx.lineTo(x, y); ctx.stroke(); };
   const endDrawing = () => setIsDrawing(false);
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (onClear) onClear();
   };
 
   return (
     <div className="w-full flex flex-col items-center">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-48 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 touch-none cursor-crosshair"
-        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseOut={endDrawing}
-        onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing}
-      />
-      <div className="flex gap-4 mt-4 w-full">
-        <button onClick={clearCanvas} className="flex-1 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">清除重签</button>
-        <button onClick={() => onSave(canvasRef.current.toDataURL('image/png'))} className="flex-1 py-3 bg-black text-white font-bold rounded-xl shadow-lg hover:bg-gray-800">✅ 确认签字</button>
+      <canvas ref={canvasRef} className="w-full h-56 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 touch-none cursor-crosshair mb-4"
+        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseOut={endDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing} />
+      <div className="flex gap-4 w-full">
+        <button onClick={clearCanvas} className="w-1/3 py-4 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">重写</button>
+        <button onClick={() => onSave(canvasRef.current.toDataURL('image/png'))} className="flex-1 py-4 bg-black text-white font-bold rounded-xl shadow-lg hover:bg-gray-800 text-lg">✅ 确认并提交签字</button>
       </div>
     </div>
   );
@@ -1374,62 +1355,115 @@ const renderUpgradeModal = () => {
   };
 
 // ==========================================
-  // 【新增】：独立客户端分享页面 (纯只读 / 适配移动端 / 带签字板)
+  // 【重构】：独立客户端扫码页 (全字段展示 + 签名锁定)
   // ==========================================
   const renderClientView = () => {
     if (!previewData) return null;
     const { quote, cabinets, upgrades } = previewData;
 
     return (
-      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-24">
+      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-28 selection:bg-black selection:text-white">
         {/* 顶部 Header */}
-        <div className="bg-white py-6 shadow-sm flex flex-col items-center sticky top-0 z-10">
+        <div className="bg-white py-6 shadow-sm flex flex-col items-center sticky top-0 z-10 border-b border-gray-200">
           <img src="/LOGO英版.png" alt="NOEY" className="h-8 mb-2 object-contain" />
-          <div className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">Quotation Review</div>
+          <div className="text-xs font-black text-gray-900 tracking-widest uppercase">Quotation Review</div>
         </div>
 
         {/* 基础信息 */}
-        <div className="p-4 mt-4">
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-2 text-sm">
-            <div className="flex justify-between border-b pb-2 mb-2"><span className="text-gray-400 font-bold">订单编号</span><span className="font-mono font-black">{quote.quote_no}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400 font-bold">客户名称</span><span className="font-bold">{quote.customer_name || '-'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400 font-bold">出单日期</span><span className="font-bold">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span></div>
+        <div className="p-4 mt-2">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-3 text-sm">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-1"><span className="text-gray-500 font-bold">订单编号</span><span className="font-mono font-black text-base">{quote.quote_no}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500 font-bold">客户名称</span><span className="font-black text-gray-900">{quote.customer_name || '-'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500 font-bold">出单日期</span><span className="font-bold text-gray-800">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span></div>
+            <div className="flex justify-between items-start"><span className="text-gray-500 font-bold whitespace-nowrap">交付地址</span><span className="font-bold text-gray-800 text-right">{quote.delivery_address || '-'}</span></div>
           </div>
         </div>
 
-        {/* 方案明细 - 极简显示 */}
-        <div className="px-4 mt-4">
-          <h2 className="text-xs font-black text-gray-900 tracking-widest uppercase mb-3 pl-2 border-l-4 border-black">定制方案明细</h2>
-          <div className="space-y-4">
+        {/* 方案明细 - 全量级数据映射 */}
+        <div className="px-4 mt-2">
+          <h2 className="text-sm font-black text-gray-900 tracking-widest uppercase mb-4 pl-3 border-l-4 border-black">定制方案明细</h2>
+          <div className="space-y-6">
             {cabinets.map((cab, idx) => {
               const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
               return (
-                <div key={cab.id} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                  <div className="font-black text-gray-900 mb-1">{idx + 1}. {cab.name}</div>
-                  <div className="text-[10px] text-gray-400 font-mono mb-3">W{cab.width} × H{cab.height} × D{cab.depth} mm</div>
-                  <div className="text-xs text-gray-600 mb-1"><span className="font-bold text-gray-400">柜体：</span>{cab.snap_cabinet_material_name || '-'}</div>
-                  <div className="text-xs text-gray-600"><span className="font-bold text-gray-400">门板：</span>{cab.snap_door_material_name || '-'}</div>
-                  {cabUpgs.length > 0 && (
-                     <div className="mt-3 pt-3 border-t border-gray-50 flex flex-wrap gap-1">
-                       {cabUpgs.map(u => (
-                         <span key={u.id} className="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded">{u.snap_upgrade_name}</span>
-                       ))}
-                     </div>
-                  )}
-                  <div className="mt-4 text-right font-black text-gray-900">¥{Number(cab.cabinet_total_price).toFixed(2)}</div>
+                <div key={cab.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
+                  {/* 柜体表头 */}
+                  <div className="bg-gray-900 text-white p-4 flex justify-between items-center">
+                    <div className="font-black text-sm">{idx + 1}. {cab.name}</div>
+                    <div className="text-xs font-mono text-gray-300">W{cab.width}×H{cab.height}×D{cab.depth}</div>
+                  </div>
+
+                  <div className="p-4 space-y-4">
+                    {/* 柜体与门板全字段 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* 柜体配置 */}
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
+                         <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🗄️ 柜体配置</div>
+                         <div className="space-y-2">
+                           <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_cabinet_material_name || '-'}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
+                           {cab.cabinet_material_remark && <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
+                         </div>
+                      </div>
+
+                      {/* 门板配置 */}
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
+                         <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🚪 门板配置</div>
+                         <div className="space-y-2">
+                           <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_door_material_name || '-'}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_door_color || '-'}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500">表面工艺</span><span className="font-bold text-gray-900">{cab.snap_door_surface_finish || '-'}</span></div>
+                           {cab.door_material_remark && <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500">备注</span><span className="font-bold text-rose-600 text-right">{cab.door_material_remark}</span></div>}
+                         </div>
+                      </div>
+                    </div>
+
+                    {/* 工艺配置 (严谨缩进与全量展示) */}
+                    {cabUpgs.length > 0 && (
+                      <div>
+                        <div className="font-black text-gray-900 text-xs mb-2">✨ 升级工艺与五金</div>
+                        <div className="border border-gray-200 rounded-xl overflow-hidden text-xs">
+                           {cabUpgs.map((upg, i) => {
+                             const isChild = !!upg.parent_record_id;
+                             return (
+                               <div key={upg.id} className={`p-3 flex flex-wrap justify-between items-center border-b border-gray-100 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} ${isChild ? 'pl-8 border-l-4 border-l-gray-300' : ''}`}>
+                                 <div className="w-full mb-2">
+                                    <span className={isChild ? "font-bold text-gray-700" : "font-black text-gray-900"}>{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
+                                    {upg.remark && <div className="text-[10px] text-gray-500 mt-1">备注: {upg.remark}</div>}
+                                 </div>
+                                 <div className="flex justify-between w-full text-gray-600 font-mono">
+                                   <span>{upg.quantity} {upg.unit}</span>
+                                   <span>¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</span>
+                                   <span className="font-black text-rose-600">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
+                                 </div>
+                               </div>
+                             );
+                           })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="pt-4 mt-2 border-t-2 border-gray-100 flex justify-between items-end">
+                      <span className="text-xs font-bold text-gray-400">单组小计 Subtotal</span>
+                      <span className="text-xl font-black text-gray-900">¥ {Number(cab.cabinet_total_price).toFixed(2)}</span>
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* 签字确认区 */}
-        <div className="p-4 mt-8 bg-white border-t-[3px] border-black pt-8 page-break-inside-avoid">
-          <h3 className="text-sm font-black text-black tracking-widest uppercase mb-6 text-center">客户签字 Signature</h3>
-          {quote.status === 'confirmed' && quote.signature ? (
-             <div className="w-full flex flex-col items-center">
-               <img src={quote.signature} alt="Client Signature" className="h-32 object-contain border-b-2 border-gray-200 px-8 pb-2" />
-               <div className="mt-4 text-xs font-bold text-green-600">✅ 报价单已于 {new Date().toLocaleDateString('zh-CN')} 签字确认锁定</div>
+        {/* 签字确认区 (只读锁定 / 书写画板) */}
+        <div className="p-6 mt-10 bg-white border-t-[4px] border-black page-break-inside-avoid">
+          <h3 className="text-sm font-black text-black tracking-[0.2em] uppercase mb-6 text-center">客户签字 Signature</h3>
+          {quote.is_signed && quote.customer_signature ? (
+             <div className="w-full flex flex-col items-center border-2 border-gray-100 p-6 rounded-2xl bg-gray-50">
+               <img src={quote.customer_signature} alt="Client Signature" className="h-32 object-contain border-b border-gray-300 px-4 pb-4 w-full" />
+               <div className="mt-4 text-xs font-bold text-gray-500">✅ 本报价单已由客户确认无误</div>
+               <div className="mt-1 text-xs font-mono text-gray-400">确认时间: {new Date(quote.signed_at).toLocaleString('zh-CN')}</div>
              </div>
           ) : (
              <NativeSignaturePad onSave={handleConfirmSignature} />
@@ -1437,14 +1471,13 @@ const renderUpgradeModal = () => {
         </div>
 
         {/* 底部悬浮总价 */}
-        <div className="fixed bottom-0 left-0 right-0 bg-black text-white px-6 py-4 flex justify-between items-center z-20 pb-safe">
-          <div className="text-[10px] font-bold text-gray-400 uppercase">Total Amount</div>
-          <div className="text-xl font-black">¥ {Number(quote.total_amount || 0).toFixed(2)}</div>
+        <div className="fixed bottom-0 left-0 right-0 bg-black text-white px-6 py-5 flex justify-between items-center z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] pb-safe">
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Amount / 全案总计</div>
+          <div className="text-2xl font-black">¥ {Number(quote.total_amount || 0).toFixed(2)}</div>
         </div>
       </div>
     );
   };
-
 // ==========================================
   // 【V4.07 最终优化】：商务级客户报价展示单 (极致高密度打印排版)
   // ==========================================
@@ -1463,27 +1496,26 @@ const renderUpgradeModal = () => {
     return (
       <div className="min-h-screen bg-gray-100 font-sans flex flex-col items-center py-10 pb-20">
 
-        {/* 专属客户分享二维码弹窗 */}
+        {/* 专属客户分享二维码弹窗 (高定视觉版) */}
         {shareModal.isOpen && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6 backdrop-blur-sm print:hidden">
             <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center relative">
-              <button onClick={() => setShareModal({ isOpen: false, url: '' })} className="absolute top-4 right-4 text-gray-400 hover:text-black font-bold">✕</button>
+              <button onClick={() => setShareModal({ isOpen: false, url: '' })} className="absolute top-4 right-4 text-gray-400 hover:text-black font-black text-xl">✕</button>
               
-              <img src="/LOGO英版.png" alt="NOEY" className="h-10 mb-6 object-contain" />
+              <div className="text-xl font-black text-gray-900 mb-2 tracking-widest">报价确认单</div>
+              <img src="/LOGO英版.png" alt="NOEY" className="h-8 mb-6 object-contain" />
               
-              <div className="p-2 border-2 border-gray-100 rounded-2xl mb-4 bg-white shadow-sm flex justify-center">
-                {/* Canvas 用于 qrcode 库渲染 */}
+              <div className="p-3 border-2 border-gray-100 rounded-2xl mb-5 bg-white shadow-sm">
                 <canvas id="share-qr-canvas" className="w-[200px] h-[200px]"></canvas>
               </div>
               
-              <div className="text-center w-full mb-6">
+              <div className="text-center w-full mb-6 bg-gray-50 p-4 rounded-xl">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Order No.</div>
-                <div className="font-mono font-black text-gray-900">{previewData?.quote?.quote_no}</div>
+                <div className="font-mono font-black text-gray-900 text-base">{previewData?.quote?.quote_no}</div>
+                <div className="text-xs font-bold text-gray-500 mt-2">日期：{new Date().toLocaleDateString('zh-CN')}</div>
               </div>
               
-              <div className="text-sm font-bold text-blue-600 bg-blue-50 px-6 py-2 rounded-full mb-6">✨ 扫码查看专属报价</div>
-
-              <button onClick={() => { navigator.clipboard.writeText(shareModal.url); showToast('链接已复制'); }} className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800">
+              <button onClick={() => { navigator.clipboard.writeText(shareModal.url); showToast('链接已复制'); }} className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-800 shadow-md">
                 🔗 复制分享链接
               </button>
             </div>
