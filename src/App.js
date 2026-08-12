@@ -324,10 +324,7 @@ export default function App() {
     try {
       const now = new Date().toISOString();
       await supabase.from('quotes').update({ 
-        customer_signature: base64Image, 
-        is_signed: true, 
-        signed_at: now,
-        status: '已确认签字',
+        customer_signature: base64Image, is_signed: true, signed_at: now, status: '已确认签字',
         terms_locked: true // 【新增】：签字同时锁定条款
       }).eq('id', previewData.quote.id);
       
@@ -945,7 +942,7 @@ const handleRemoveUpgrade = (upgId) => {
         customer_phone: quoteInfo.customerPhone, 
         delivery_address: quoteInfo.deliveryAddress,
         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
-        total_amount: grandTotal, updated_at: new Date().toISOString() // 【新增】：每次保存刷新修改时间
+        total_amount: grandTotal, updated_at: new Date().toISOString(), // 【新增】：每次保存刷新修改时间
         terms_content: quoteInfo.terms_content, // 【新增】：固化当前条款快照
         terms_version: 'v1.0'
       };
