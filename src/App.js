@@ -7,6 +7,74 @@ const supabaseKey = 'sb_publishable_SGHvdmqpvo3Z6GekTtk4cA_PcvbDGpd';
 const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// 【新增】：纯原生手写签字 Canvas 组件
+const NativeSignaturePad = ({ onSave, onClear }) => {
+  const canvasRef = React.useRef(null);
+  const [isDrawing, setIsDrawing] = React.useState(false);
+
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000000';
+  }, []);
+
+  const getCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+  };
+
+  const startDrawing = (e) => {
+    e.preventDefault();
+    setIsDrawing(true);
+    const ctx = canvasRef.current.getContext('2d');
+    const { x, y } = getCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const ctx = canvasRef.current.getContext('2d');
+    const { x, y } = getCoordinates(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const endDrawing = () => setIsDrawing(false);
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (onClear) onClear();
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center">
+      <canvas
+        ref={canvasRef}
+        className="w-full h-48 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 touch-none cursor-crosshair"
+        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseOut={endDrawing}
+        onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing}
+      />
+      <div className="flex gap-4 mt-4 w-full">
+        <button onClick={clearCanvas} className="flex-1 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">清除重签</button>
+        <button onClick={() => onSave(canvasRef.current.toDataURL('image/png'))} className="flex-1 py-3 bg-black text-white font-bold rounded-xl shadow-lg hover:bg-gray-800">✅ 确认签字</button>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   // 1. 全局状态
   const [currentView, setCurrentView] = useState('home'); // home, admin-login, admin, sales, sales-history
@@ -192,6 +260,28 @@ export default function App() {
     } catch (err) {
       showToast('获取客户报价单失败，链接可能无效', 'error');
       setCurrentView('home');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 【新增】：客户签字提交逻辑
+  const handleConfirmSignature = async (base64Image) => {
+    setIsLoading(true);
+    try {
+      await supabase.from('quotes').update({ 
+        signature: base64Image, 
+        status: 'confirmed' 
+      }).eq('id', previewData.quote.id);
+      
+      // 更新当前视图状态，锁定页面
+      setPreviewData(prev => ({ 
+        ...prev, 
+        quote: { ...prev.quote, signature: base64Image, status: 'confirmed' } 
+      }));
+      showToast('✅ 报价单已成功签署！', 'success');
+    } catch (err) {
+      showToast('签字提交失败，请重试', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -1333,6 +1423,78 @@ const renderUpgradeModal = () => {
             <div className="h-10 w-px bg-gray-200"></div>
             <div className="text-right"><div className="text-xs text-gray-500">整单全案总计</div><div className="text-3xl font-black text-black">¥{grandTotal.toFixed(0)}</div></div>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+// ==========================================
+  // 【新增】：独立客户端分享页面 (纯只读 / 适配移动端 / 带签字板)
+  // ==========================================
+  const renderClientView = () => {
+    if (!previewData) return null;
+    const { quote, cabinets, upgrades } = previewData;
+
+    return (
+      <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-24">
+        {/* 顶部 Header */}
+        <div className="bg-white py-6 shadow-sm flex flex-col items-center sticky top-0 z-10">
+          <img src="/LOGO英版.png" alt="NOEY" className="h-8 mb-2 object-contain" />
+          <div className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">Quotation Review</div>
+        </div>
+
+        {/* 基础信息 */}
+        <div className="p-4 mt-4">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-2 text-sm">
+            <div className="flex justify-between border-b pb-2 mb-2"><span className="text-gray-400 font-bold">订单编号</span><span className="font-mono font-black">{quote.quote_no}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400 font-bold">客户名称</span><span className="font-bold">{quote.customer_name || '-'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400 font-bold">出单日期</span><span className="font-bold">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span></div>
+          </div>
+        </div>
+
+        {/* 方案明细 - 极简显示 */}
+        <div className="px-4 mt-4">
+          <h2 className="text-xs font-black text-gray-900 tracking-widest uppercase mb-3 pl-2 border-l-4 border-black">定制方案明细</h2>
+          <div className="space-y-4">
+            {cabinets.map((cab, idx) => {
+              const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
+              return (
+                <div key={cab.id} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                  <div className="font-black text-gray-900 mb-1">{idx + 1}. {cab.name}</div>
+                  <div className="text-[10px] text-gray-400 font-mono mb-3">W{cab.width} × H{cab.height} × D{cab.depth} mm</div>
+                  <div className="text-xs text-gray-600 mb-1"><span className="font-bold text-gray-400">柜体：</span>{cab.snap_cabinet_material_name || '-'}</div>
+                  <div className="text-xs text-gray-600"><span className="font-bold text-gray-400">门板：</span>{cab.snap_door_material_name || '-'}</div>
+                  {cabUpgs.length > 0 && (
+                     <div className="mt-3 pt-3 border-t border-gray-50 flex flex-wrap gap-1">
+                       {cabUpgs.map(u => (
+                         <span key={u.id} className="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded">{u.snap_upgrade_name}</span>
+                       ))}
+                     </div>
+                  )}
+                  <div className="mt-4 text-right font-black text-gray-900">¥{Number(cab.cabinet_total_price).toFixed(2)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 签字确认区 */}
+        <div className="p-4 mt-8 bg-white border-t-[3px] border-black pt-8 page-break-inside-avoid">
+          <h3 className="text-sm font-black text-black tracking-widest uppercase mb-6 text-center">客户签字 Signature</h3>
+          {quote.status === 'confirmed' && quote.signature ? (
+             <div className="w-full flex flex-col items-center">
+               <img src={quote.signature} alt="Client Signature" className="h-32 object-contain border-b-2 border-gray-200 px-8 pb-2" />
+               <div className="mt-4 text-xs font-bold text-green-600">✅ 报价单已于 {new Date().toLocaleDateString('zh-CN')} 签字确认锁定</div>
+             </div>
+          ) : (
+             <NativeSignaturePad onSave={handleConfirmSignature} />
+          )}
+        </div>
+
+        {/* 底部悬浮总价 */}
+        <div className="fixed bottom-0 left-0 right-0 bg-black text-white px-6 py-4 flex justify-between items-center z-20 pb-safe">
+          <div className="text-[10px] font-bold text-gray-400 uppercase">Total Amount</div>
+          <div className="text-xl font-black">¥ {Number(quote.total_amount || 0).toFixed(2)}</div>
         </div>
       </div>
     );
