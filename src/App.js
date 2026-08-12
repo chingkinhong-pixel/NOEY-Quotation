@@ -327,7 +327,7 @@ export default function App() {
         customer_signature: base64Image, 
         is_signed: true, 
         signed_at: now,
-        status: '已确认签字' 
+        status: '已确认签字',
         terms_locked: true // 【新增】：签字同时锁定条款
       }).eq('id', previewData.quote.id);
       
