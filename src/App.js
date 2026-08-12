@@ -1774,6 +1774,19 @@ const renderUpgradeModal = () => {
           </div>
         </div>
 
+          {/* 渲染进 PDF 和后台预览的签名锁定区 */}
+          {quote.is_signed && quote.customer_signature && (
+            <div className="px-10 md:px-16 print:px-8 py-10 print:py-6 bg-white w-full border-t border-gray-200 page-break-inside-avoid">
+              <h3 className="text-sm font-black text-black tracking-widest uppercase mb-6 print:mb-2">客户签字 SIGNATURE</h3>
+              <div className="flex flex-col items-start">
+                <img src={quote.customer_signature} alt="Client Signature" className="h-28 md:h-32 print:h-20 object-contain border-b border-gray-300 pb-2 mb-3" />
+                <div className="text-xs font-bold text-gray-500">
+                  ✅ 客户已于 {new Date(quote.signed_at).toLocaleString('zh-CN')} 确认此报价方案
+                </div>
+              </div>
+            </div>
+          )}
+
         {/* 底部版权信息 (仅在屏幕显示，打印及导出PDF时自动隐藏) */}
         <div className="mt-12 text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold print:hidden">
           <div className="mb-1 text-gray-500">NOEY Custom Furniture System</div>
