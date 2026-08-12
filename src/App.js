@@ -1568,12 +1568,21 @@ const renderUpgradeModal = () => {
           )}
         </div>
 
-        {/* 底部悬浮总价 */}
-        <div className="fixed bottom-0 left-0 right-0 bg-black text-white px-6 py-5 flex justify-between items-center z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] pb-safe">
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Amount / 全案总计</div>
-          <div className="text-2xl font-black">¥ {Number(quote.total_amount || 0).toFixed(2)}</div>
+        {/* 底部悬浮总价 (支持移动端折扣UI) */}
+        <div className="fixed bottom-0 left-0 right-0 bg-black text-white px-6 py-4 flex justify-between items-center z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] pb-safe border-t border-gray-900">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+              {quote.discount_final_price ? 'DISCOUNT / 最终成交价' : 'TOTAL AMOUNT / 全案总计'}
+            </span>
+            {quote.discount_final_price && (
+               <span className="text-[10px] text-gray-500 line-through mt-0.5 font-mono">Orig: ¥{Number(quote.total_amount || 0).toFixed(2)}</span>
+            )}
+          </div>
+          <div className="text-3xl font-black text-white">
+             <span className="text-lg mr-1 font-bold">¥</span>
+             {Number(quote.discount_final_price || quote.total_amount || 0).toFixed(2)}
+          </div>
         </div>
-      </div>
     );
   };
 // ==========================================
@@ -1863,14 +1872,29 @@ const renderUpgradeModal = () => {
             ))}
           </div>
 
-          {/* 全案总计 Footer (屏显黑白反转，打印时恢复白底黑字省墨) */}
-          <div className="bg-black text-white px-10 md:px-16 py-12 print:px-8 print:py-6 flex flex-col md:flex-row print:flex-row justify-between items-center print:border-t-[4px] print:border-black print:bg-white print:text-black">
-            <div className="mb-2 md:mb-0 print:mb-0 text-center md:text-left print:text-left">
-              <span className="font-bold text-sm print:text-[11px] tracking-widest uppercase block md:inline text-gray-300 print:text-black">Total Amount</span>
+         {/* 全案总计 Footer (屏显黑白反转，支持折扣划线降级，打印白底) */}
+          <div className="bg-black text-white px-10 md:px-16 py-10 print:px-8 print:py-6 flex flex-col md:flex-row print:flex-row justify-between items-center print:border-t-[4px] print:border-black print:bg-white print:text-black">
+            <div className="mb-4 md:mb-0 print:mb-0 text-center md:text-left print:text-left">
+              <span className="font-bold text-sm print:text-[11px] tracking-widest uppercase block text-gray-300 print:text-gray-500">
+                {quote.discount_final_price ? 'Discount / 最终结算价' : 'Total Amount / 全案总计'}
+              </span>
             </div>
-            <span className="text-4xl print:text-2xl font-black tracking-tighter">¥{Number(quote.total_amount || 0).toFixed(2)}</span>
+            <div className="flex flex-col items-center md:items-end print:items-end text-right">
+               {quote.discount_final_price ? (
+                 <>
+                   <div className="text-gray-400 print:text-gray-400 font-bold text-lg print:text-[11px] line-through decoration-gray-500 decoration-2 mb-1">
+                     Original: ¥{Number(quote.total_amount || 0).toFixed(2)}
+                   </div>
+                   <div className="text-5xl print:text-3xl font-black tracking-tighter text-white print:text-black flex items-baseline gap-3">
+                     <span className="text-lg print:text-[10px] font-bold text-gray-300 print:text-gray-500 tracking-widest uppercase">Final</span>
+                     ¥{Number(quote.discount_final_price).toFixed(2)}
+                   </div>
+                 </>
+               ) : (
+                 <span className="text-5xl print:text-3xl font-black tracking-tighter">¥{Number(quote.total_amount || 0).toFixed(2)}</span>
+               )}
+            </div>
           </div>
-        </div>
 
           {/* 【新增】：统一报价条款模块 */}
           <RenderTermsBlock content={quote.terms_content || DEFAULT_TERMS} />
