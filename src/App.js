@@ -1532,6 +1532,11 @@ const renderUpgradeModal = () => {
           </div>
         </div>
 
+        {/* 【新增】：手机端报价条款展示 */}
+        <div className="mt-4 bg-white">
+          <RenderTermsBlock content={quote.terms_content || DEFAULT_TERMS} />
+        </div>
+
         {/* 签字确认区 (只读锁定 / 书写画板) */}
         <div className="p-6 mt-10 bg-white border-t-[4px] border-black page-break-inside-avoid">
           <h3 className="text-sm font-black text-black tracking-[0.2em] uppercase mb-6 text-center">客户签字 Signature</h3>
@@ -1849,6 +1854,9 @@ const renderUpgradeModal = () => {
             <span className="text-4xl print:text-2xl font-black tracking-tighter">¥{Number(quote.total_amount || 0).toFixed(2)}</span>
           </div>
         </div>
+
+          {/* 【新增】：统一报价条款模块 */}
+          <RenderTermsBlock content={quote.terms_content || DEFAULT_TERMS} />
 
           {/* 渲染进 PDF 和后台预览的签名锁定区 */}
           {quote.is_signed && quote.customer_signature && (
@@ -2300,6 +2308,21 @@ const renderUpgradeModal = () => {
                      <select disabled value={rules.depth_calculation_mode} className="w-full border-2 p-2 rounded-lg bg-gray-100 text-gray-400 font-bold">
                        <option value="ratio">按深度比例计算 (Ratio)</option>
                      </select>
+                   </div>
+                 </div>
+
+                {/* 报价条款配置区 */}
+                 <div className="space-y-4 mt-6">
+                   <h3 className="text-sm uppercase tracking-widest text-gray-400 border-b pb-2">报价条款与合同模板</h3>
+                   <div>
+                     <label className="block text-sm text-gray-500 mb-1">通用报价条款说明 (修改后将自动应用于新生成的报价单)</label>
+                     <textarea 
+                       rows="12" 
+                       value={rules.terms_template || ''} 
+                       onChange={e=>setRules({...rules, terms_template:e.target.value})} 
+                       className="w-full border-2 p-3 rounded-lg text-xs leading-relaxed bg-gray-50 focus:bg-white" 
+                       placeholder="如果不填，系统将使用硬编码的默认标准条款..." 
+                     />
                    </div>
                  </div>
 
