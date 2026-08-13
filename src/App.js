@@ -206,6 +206,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // 【核心修复】：增加路由解析初始化锁
   
   // 2. 基础数据字典状态
   const [cabinets, setCabinets] = useState([]);
@@ -353,24 +354,24 @@ export default function App() {
   };
 
 // ==========================================
-  // 【修复】：原生 Hash 路由拦截引擎 (彻底解决 Render SPA 404 问题)
+  // 【修复】：原生 Hash 路由拦截引擎 (彻底解决闪屏与加载时序问题)
   // ==========================================
   useEffect(() => {
-    const handleHashRouting = () => {
-      const hash = window.location.hash;
-      // 拦截形如 /#/quote/1234 的路由
-      if (hash.startsWith('#/quote/')) {
-        const quoteId = hash.replace('#/quote/', '');
-        if (quoteId) handleLoadClientView(quoteId);
+    const hash = window.location.hash;
+
+    if (hash.startsWith('#/quote/')) {
+      const quoteId = hash.replace('#/quote/', '');
+      if (quoteId) {
+        // 🔥 关键：在加载数据前，先切页面状态，彻底阻断首页渲染路径
+        setCurrentView('quote-view'); 
+        
+        // 再执行数据加载
+        handleLoadClientView(quoteId);
       }
-    };
+    }
 
-    // 1. 初次挂载时执行一次
-    handleHashRouting();
-
-    // 2. 监听浏览器前进后退或手动输入
-    window.addEventListener('hashchange', handleHashRouting);
-    return () => window.removeEventListener('hashchange', handleHashRouting);
+    // 解析与初始状态分配完毕，解除渲染锁
+    setIsInitializing(false);
   }, []);
 
   const handleLoadClientView = async (quoteId) => {
