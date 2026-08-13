@@ -354,26 +354,38 @@ export default function App() {
   };
 
 // ==========================================
-  // 【修复】：原生 Hash 路由拦截引擎 (彻底解决闪屏与加载时序问题)
+  // 【修复】：原生路由拦截引擎 (兼容旧版二维码 + Hash路由防闪屏)
   // ==========================================
   useEffect(() => {
+    const path = window.location.pathname;
     const hash = window.location.hash;
 
+    // 1. 【新增】：向下兼容旧版二维码 (/quote/xxxx)
+    if (path.startsWith('/quote/')) {
+      const oldQuoteId = path.replace('/quote/', '').replace(/\/$/, '');
+      if (oldQuoteId) {
+        // 强制跳转为 hash 路由（不保留历史记录），利用 location.origin 确保根路径准确
+        window.location.replace(`${window.location.origin}/#/quote/${oldQuoteId}`);
+        return; // 直接 return，不解除 isInitializing 锁，等待浏览器完成 URL 替换与刷新
+      }
+    }
+
+    // 2. 【保留】：处理标准新版二维码 (#/quote/xxxx)
     if (hash.startsWith('#/quote/')) {
       const quoteId = hash.replace('#/quote/', '');
       if (quoteId) {
-        // 🔥 关键：在加载数据前，先切页面状态，彻底阻断首页渲染路径
+        // 🔥 关键：先切页面状态
         setCurrentView('quote-view'); 
         
-        // 再执行数据加载
+        // 再加载数据
         handleLoadClientView(quoteId);
       }
     }
 
-    // 解析与初始状态分配完毕，解除渲染锁
+    // 解析完毕，解除渲染锁
     setIsInitializing(false);
   }, []);
-
+  
   const handleLoadClientView = async (quoteId) => {
     setIsLoading(true);
     try {
