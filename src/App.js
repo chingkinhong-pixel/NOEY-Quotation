@@ -2513,24 +2513,21 @@ const renderUpgradeModal = () => {
     </div>
   );
 
+// ==========================================
+  // 【核心修复】：渲染前置硬拦截 (等待路由与状态解析完毕)
   // ==========================================
-  // 【核心修复2】：扫码直连拦截器（放在任何主页 / 工作台 UI 渲染之前）
-  // ==========================================
-  if (isDirectQuoteView && directQuoteId) {
-    // 强制直接渲染客户端独立视图组件，彻底阻断主系统首页（MainSystemUI）的渲染
+  if (isInitializing) {
     return (
-      <QuoteClientStandalone 
-        quoteId={directQuoteId} 
-        supabase={supabase} 
-        rules={rules} 
-        NativeSignaturePad={NativeSignaturePad} 
-        DEFAULT_TERMS={DEFAULT_TERMS} 
-      />
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-400 font-sans">
+        <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin mb-4"></div>
+        <div className="text-xs font-bold tracking-widest uppercase">Loading...</div>
+      </div>
     );
   }
-  
+
+  // 以下是原有的路由分发代码，保持不动
   if (currentView === 'quote-preview') return renderQuotePreview();
-  if (currentView === 'quote-view') return renderClientView(); // 【新增】客户端分享页面
+  if (currentView === 'quote-view') return renderClientView();
   if (currentView === 'sales-history') return renderSalesHistory();
   if (currentView === 'sales') return renderSalesWorkspace();
   if (currentView === 'admin-login') return renderAdminLogin();
