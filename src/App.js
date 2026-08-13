@@ -80,20 +80,23 @@ const RenderTermsBlock = ({ content }) => {
 };
 
 // ==========================================
-// 【组件】：纯原生手写签字 Canvas (防跨域与第三方报错)
+// 【组件】：纯原生手写签字 Canvas (引入防作弊、轨迹长度与时间校验)
 // ==========================================
 const NativeSignaturePad = ({ onSave, onClear }) => {
   const canvasRef = React.useRef(null);
   const [isDrawing, setIsDrawing] = React.useState(false);
+  const [pointsCount, setPointsCount] = React.useState(0);
+  const [firstStrokeTime, setFirstStrokeTime] = React.useState(null);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
-    canvas.height = rect.height;
+    canvas.height = 260; // 强制物理高度适配 css
     const ctx = canvas.getContext('2d');
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.strokeStyle = '#000000';
   }, []);
 
@@ -106,23 +109,84 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
     return { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
   };
 
-  const startDrawing = (e) => { e.preventDefault(); setIsDrawing(true); const ctx = canvasRef.current.getContext('2d'); const { x, y } = getCoordinates(e); ctx.beginPath(); ctx.moveTo(x, y); };
-  const draw = (e) => { e.preventDefault(); if (!isDrawing) return; const ctx = canvasRef.current.getContext('2d'); const { x, y } = getCoordinates(e); ctx.lineTo(x, y); ctx.stroke(); };
+  const startDrawing = (e) => {
+    e.preventDefault();
+    setIsDrawing(true);
+    if (!firstStrokeTime) setFirstStrokeTime(Date.now()); // 记录起笔时间
+    const ctx = canvasRef.current.getContext('2d');
+    const { x, y } = getCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setPointsCount(prev => prev + 1); // 记录轨迹点
+  };
+
+  const draw = (e) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const ctx = canvasRef.current.getContext('2d');
+    const { x, y } = getCoordinates(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    setPointsCount(prev => prev + 2); // 绘制中加倍累加轨迹
+  };
+
   const endDrawing = () => setIsDrawing(false);
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
+    const canvas = canvasRef.current; 
+    const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setPointsCount(0); // 清空防作弊数据
+    setFirstStrokeTime(null);
     if (onClear) onClear();
   };
 
+  // 【核心】：三层防作弊校验引擎
+  const handleConfirm = () => {
+    // 1. 空白或过少笔画校验
+    if (pointsCount < 50) {
+      alert('⚠️ 签名笔画过于简单，请使用正楷完整签署姓名！');
+      return;
+    }
+    // 2. 签署时间校验
+    const drawTime = (Date.now() - firstStrokeTime) / 1000;
+    if (drawTime < 1.5) {
+      alert('⚠️ 签名过程过快，请认真签署确认单。');
+      return;
+    }
+    
+    // 校验通过，提取 Base64
+    onSave(canvasRef.current.toDataURL('image/png'));
+  };
+
+  const isSubmitDisabled = pointsCount < 50; // 实时禁用状态控制
+
   return (
     <div className="w-full flex flex-col items-center">
-      <canvas ref={canvasRef} className="w-full h-56 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 touch-none cursor-crosshair mb-4"
-        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseOut={endDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing} />
+      <div className="w-full text-xs font-bold text-rose-600 mb-3 flex items-center justify-center bg-rose-50 py-2 rounded-lg border border-rose-100 shadow-sm">
+        ✍️ 请使用手指完整签署姓名，签名后不可修改
+      </div>
+      <canvas 
+        ref={canvasRef} 
+        className="w-full h-[260px] border-[3px] border-gray-300 rounded-xl bg-gray-100 touch-none cursor-crosshair mb-4 shadow-inner"
+        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseOut={endDrawing} 
+        onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing} 
+      />
       <div className="flex gap-4 w-full">
-        <button onClick={clearCanvas} className="w-1/3 py-4 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">重写</button>
-        <button onClick={() => onSave(canvasRef.current.toDataURL('image/png'))} className="flex-1 py-4 bg-black text-white font-bold rounded-xl shadow-lg hover:bg-gray-800 text-lg">✅ 确认并提交签字</button>
+        <button onClick={clearCanvas} className="w-1/3 py-4 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-colors">
+          清除重写
+        </button>
+        <button 
+          onClick={handleConfirm} 
+          disabled={isSubmitDisabled} 
+          className={`flex-1 py-4 font-bold rounded-xl shadow-lg text-lg transition-all ${
+            isSubmitDisabled 
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70' 
+              : 'bg-black text-white hover:bg-gray-800'
+          }`}
+        >
+          ✅ 确认并提交签字
+        </button>
       </div>
     </div>
   );
@@ -1685,9 +1749,10 @@ const renderUpgradeModal = () => {
             <span>←</span> 返回列表
           </button>
           <div className="flex gap-4">
-            {/* 加入这行分享按钮 */}
+           {/* 替换分享按钮的 onClick 内容 */}
             <button onClick={() => {
-              const url = `${window.location.origin}/quote-view/${previewData.quote.id}`;
+              // 【修复】：强制使用哈希路径，彻底避免服务器 404 拦截
+              const url = `${window.location.origin}/#/quote/${previewData.quote.id}`;
               setShareModal({ isOpen: true, url });
             }} className="bg-black text-white px-5 py-2 rounded text-sm font-bold hover:bg-gray-800 shadow-lg flex items-center gap-2">
               ✨ 客户分享
