@@ -360,9 +360,9 @@ export default function App() {
     const path = window.location.pathname;
     const hash = window.location.hash;
 
-    // 1. 【新增】：向下兼容旧版二维码 (/quote/xxxx)
-    if (path.startsWith('/quote/')) {
-      const oldQuoteId = path.replace('/quote/', '').replace(/\/$/, '');
+    // 1. 【新增】：向下兼容旧版二维码 (/quote-view/xxxx)
+    if (path.startsWith('/quote-view/')) {
+      const oldQuoteId = path.replace('/quote-view/', '').replace(/\/$/, '');
       if (oldQuoteId) {
         // 强制跳转为 hash 路由（不保留历史记录），利用 location.origin 确保根路径准确
         window.location.replace(`${window.location.origin}/#/quote/${oldQuoteId}`);
