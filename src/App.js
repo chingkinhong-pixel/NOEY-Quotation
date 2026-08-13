@@ -280,16 +280,25 @@ export default function App() {
     }
   };
 
-  // ==========================================
-  // 【新增】：原生路由拦截与客户页数据加载
+// ==========================================
+  // 【修复】：原生 Hash 路由拦截引擎 (彻底解决 Render SPA 404 问题)
   // ==========================================
   useEffect(() => {
-    const path = window.location.pathname;
-    // 拦截 /quote-view/:id 路由
-    if (path.startsWith('/quote-view/')) {
-      const quoteId = path.split('/quote-view/')[1]?.replace(/\/$/, '');
-      if (quoteId) handleLoadClientView(quoteId);
-    }
+    const handleHashRouting = () => {
+      const hash = window.location.hash;
+      // 拦截形如 /#/quote/1234 的路由
+      if (hash.startsWith('#/quote/')) {
+        const quoteId = hash.replace('#/quote/', '');
+        if (quoteId) handleLoadClientView(quoteId);
+      }
+    };
+
+    // 1. 初次挂载时执行一次
+    handleHashRouting();
+
+    // 2. 监听浏览器前进后退或手动输入
+    window.addEventListener('hashchange', handleHashRouting);
+    return () => window.removeEventListener('hashchange', handleHashRouting);
   }, []);
 
   const handleLoadClientView = async (quoteId) => {
