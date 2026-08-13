@@ -203,7 +203,6 @@ export default function App() {
   // 将 currentView 初始值根据路由同步设定：如果是扫码进入，初始即为 'quote-view'，绝对不给 'home' 渲染的机会
   const [currentView, setCurrentView] = useState(directQuoteId ? 'quote-view' : 'home');
   // 1. 全局状态
-  const [currentView, setCurrentView] = useState('home'); // home, admin-login, admin, sales, sales-history
   const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isLoading, setIsLoading] = useState(false);
