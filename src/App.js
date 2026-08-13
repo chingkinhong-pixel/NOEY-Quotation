@@ -2597,3 +2597,276 @@ const renderUpgradeModal = () => {
     </div>
   );
 }
+
+// ==========================================
+// 【组件】：脱离主系统的独立客户端直连渲染器（Zero-Flash）
+// ==========================================
+const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, DEFAULT_TERMS }) => {
+  const [previewData, setPreviewData] = React.useState(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [errorMsg, setErrorMsg] = React.useState('');
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const loadQuoteData = async () => {
+      try {
+        const { data: quoteData, error: quoteErr } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
+        if (quoteErr || !quoteData) throw new Error('报价单不存在或已被物理删除');
+
+        const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quoteData.id);
+        if (cabErr) throw cabErr;
+
+        let upgData = [];
+        if (cabData && cabData.length > 0) {
+          const { data: uData, error: upgErr } = await supabase.from('quote_upgrades').select('*').in('cabinet_id', cabData.map(c => c.id));
+          if (upgErr) throw upgErr;
+          upgData = uData || [];
+        }
+
+        if (isMounted) {
+          setPreviewData({ quote: quoteData, cabinets: cabData || [], upgrades: upgData });
+        }
+      } catch (err) {
+        if (isMounted) setErrorMsg(err.message || '获取报价信息失败');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadQuoteData();
+    return () => { isMounted = false; };
+  }, [quoteId, supabase]);
+
+  const handleConfirmSignature = async (base64Image) => {
+    setIsLoading(true);
+    try {
+      const now = new Date().toISOString();
+      await supabase.from('quotes').update({
+        customer_signature: base64Image,
+        is_signed: true,
+        signed_at: now,
+        terms_locked: true,
+        status: '已确认签字'
+      }).eq('id', previewData.quote.id);
+
+      setPreviewData(prev => ({
+        ...prev,
+        quote: { ...prev.quote, customer_signature: base64Image, is_signed: true, signed_at: now, terms_locked: true, status: '已确认签字' }
+      }));
+    } catch (err) {
+      alert('签字提交失败，请重试');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="text-xs font-bold text-gray-500 tracking-widest uppercase">NOEY QUOTATION · 载入中...</div>
+      </div>
+    );
+  }
+
+  if (errorMsg || !previewData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border border-gray-200">
+          <div className="text-4xl mb-4">⚠️</div>
+          <div className="text-lg font-black text-gray-900 mb-2">链接失效</div>
+          <div className="text-xs font-bold text-gray-500">{errorMsg || '无法调取当前报价数据'}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { quote, cabinets, upgrades } = previewData;
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans flex flex-col pb-28 selection:bg-black selection:text-white">
+      {/* 顶部 Header */}
+      <div className="bg-white py-6 shadow-sm flex flex-col items-center sticky top-0 z-10 border-b border-gray-200">
+        <img src="/LOGO英版.png" alt="NOEY" className="h-8 mb-2 object-contain" />
+        <div className="text-xs font-black text-gray-900 tracking-widest uppercase">Quotation Review</div>
+      </div>
+
+      {/* 基础信息 */}
+      <div className="p-4 mt-2">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-3 text-sm">
+          <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-1">
+            <span className="text-gray-500 font-bold">订单编号</span>
+            <span className="font-mono font-black text-base">{quote.quote_no}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-bold">客户名称</span>
+            <span className="font-black text-gray-900">{quote.customer_name || '-'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-bold">出单日期</span>
+            <span className="font-bold text-gray-800">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span>
+          </div>
+          <div className="flex justify-between items-start">
+            <span className="text-gray-500 font-bold whitespace-nowrap">交付地址</span>
+            <span className="font-bold text-gray-800 text-right">{quote.delivery_address || '-'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 明细方案 */}
+      <div className="px-4 mt-2">
+        <h2 className="text-sm font-black text-gray-900 tracking-widest uppercase mb-4 pl-3 border-l-4 border-black">定制方案明细</h2>
+        <div className="space-y-6">
+          {cabinets.map((cab, idx) => {
+            const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
+            const w = parseFloat(cab.width) || 0;
+            const h = parseFloat(cab.height) || 0;
+            const isArea = h > (rules?.height_threshold || 1000);
+            
+            const fallbackQty = Number(cab.snap_calc_area || cab.quantity || 0);
+            const displayQty = fallbackQty > 0 ? fallbackQty : (isArea ? Math.max((w * h) / 1000000, rules?.minimum_area || 1) : Math.max(w / 1000, (rules?.minimum_width || 1000) / 1000));
+            const unitLabel = isArea ? '㎡' : 'm';
+
+            const cabUnitPrice = Number(cab.snap_final_cabinet_price || 0);
+            const doorUnitPrice = Number(cab.snap_final_door_price || 0);
+            const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
+
+            const excessDepthFee = Number(cab.excess_depth_fee || 0);
+            const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
+            const openCabinetSalesPrice = cab.snap_base_cabinet_cost ? Number(cab.snap_base_cabinet_cost) : Math.max(0, Number(cab.cabinet_total_price || 0) - excessDepthFee - upgradesTotal);
+            
+            const comprehensiveTotalAmount = hasNoDoor ? openCabinetSalesPrice : ((cabUnitPrice + doorUnitPrice) * displayQty);
+            let comprehensiveUnitPrice = displayQty > 0 ? (comprehensiveTotalAmount / displayQty) : 0;
+
+            if (comprehensiveUnitPrice === 0 && Number(cab.cabinet_total_price) > 0 && displayQty > 0) {
+               comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
+            }
+
+            return (
+              <div key={cab.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
+                <div className="bg-gray-900 text-white p-4 flex justify-between items-center">
+                  <div className="font-black text-sm">{idx + 1}. {cab.name}</div>
+                  <div className="text-xs font-mono text-gray-300">W{cab.width}×H{cab.height}×D{cab.depth}</div>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
+                       <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🗄️ 柜体配置</div>
+                       <div className="space-y-2">
+                         <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_cabinet_material_name || '-'}</span></div>
+                         <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
+                         <div className="flex justify-between"><span className="text-gray-500">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
+                         {cab.cabinet_material_remark && <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
+                       </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
+                       <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🚪 门板配置</div>
+                       <div className="space-y-2">
+                         <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_door_material_name || '-'}</span></div>
+                         <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
+                         <div className="flex justify-between"><span className="text-gray-500">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_door_color || '-'}</span></div>
+                         <div className="flex justify-between"><span className="text-gray-500">表面工艺</span><span className="font-bold text-gray-900">{cab.snap_door_surface_finish || '-'}</span></div>
+                         {cab.door_material_remark && <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500">备注</span><span className="font-bold text-rose-600 text-right">{cab.door_material_remark}</span></div>}
+                       </div>
+                    </div>
+                  </div>
+
+                  {cabUpgs.length > 0 && (
+                    <div>
+                      <div className="font-black text-gray-900 text-xs mb-2">✨ 升级工艺与五金</div>
+                      <div className="border border-gray-200 rounded-xl overflow-hidden text-xs">
+                         {cabUpgs.map((upg, i) => {
+                           const isChild = !!upg.parent_record_id;
+                           return (
+                             <div key={upg.id} className={`p-3 flex flex-wrap justify-between items-center border-b border-gray-100 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} ${isChild ? 'pl-8 border-l-4 border-l-gray-300' : ''}`}>
+                               <div className="w-full mb-2">
+                                  <span className={isChild ? "font-bold text-gray-700" : "font-black text-gray-900"}>{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
+                                  {upg.remark && <div className="text-[10px] text-gray-500 mt-1">备注: {upg.remark}</div>}
+                               </div>
+                               <div className="flex justify-between w-full text-gray-600 font-mono">
+                                 <span>{upg.quantity} {upg.unit}</span>
+                                 <span>¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}</span>
+                                 <span className="font-black text-rose-600">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
+                               </div>
+                             </div>
+                           );
+                         })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 mt-3 border-t border-gray-100">
+                    <div className="flex justify-between items-center mb-3 px-1">
+                      <span className="text-[11px] text-gray-500 font-medium">计价{isArea ? '面积' : '长度'}：{displayQty.toFixed(2)} {unitLabel}</span>
+                      <span className="text-[11px] text-gray-800 font-medium">{hasNoDoor ? '单价' : '综合单价'}：¥{comprehensiveUnitPrice.toFixed(2)} /{unitLabel}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-end bg-gray-50 -mx-4 px-4 py-3 border-t border-gray-100">
+                      <span className="text-xs font-bold text-gray-500">单组小计 Subtotal</span>
+                      <span className="text-xl font-black text-gray-900">¥ {Number(cab.cabinet_total_price).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 条款模块 */}
+      <div className="mt-4 bg-white">
+        <div className="px-6 md:px-16 print:px-8 py-8 print:py-4 bg-white border-t border-gray-200 page-break-inside-avoid">
+          <div className="flex justify-center items-center mb-6">
+             <div className="h-px bg-gray-200 w-12"></div>
+             <h3 className="mx-4 text-sm font-black text-gray-800 tracking-widest uppercase">报价条款 Terms & Conditions</h3>
+             <div className="h-px bg-gray-200 w-12"></div>
+          </div>
+          <div className="text-[12px] text-gray-600 leading-relaxed max-w-4xl mx-auto space-y-1.5">
+            {(quote.terms_content || DEFAULT_TERMS).split('\n').map((line, idx) => {
+              const text = line.trim();
+              if (!text) return null;
+              const isTitle = /^[一二三四五六七八九十]、/.test(text);
+              return (
+                <div key={idx} className={`${isTitle ? 'font-black text-gray-900 text-[13px] mt-5 mb-2' : 'pl-2'}`}>
+                  {text}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 签字确认区 */}
+      <div className="p-6 mt-10 bg-white border-t-[4px] border-black page-break-inside-avoid">
+        <h3 className="text-sm font-black text-black tracking-[0.2em] uppercase mb-6 text-center">客户签字 Signature</h3>
+        {quote.is_signed && quote.customer_signature ? (
+           <div className="w-full flex flex-col items-center border-2 border-gray-100 p-6 rounded-2xl bg-gray-50">
+             <img src={quote.customer_signature} alt="Client Signature" className="h-32 object-contain border-b border-gray-300 px-4 pb-4 w-full" />
+             <div className="mt-4 text-xs font-bold text-gray-500">✅ 本报价单已由客户确认无误</div>
+             <div className="mt-1 text-xs font-mono text-gray-400">确认时间: {new Date(quote.signed_at).toLocaleString('zh-CN')}</div>
+           </div>
+        ) : (
+           <NativeSignaturePad onSave={handleConfirmSignature} />
+        )}
+      </div>
+
+      {/* 底部悬浮总价 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-black text-white px-6 py-4 flex justify-between items-center z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] pb-safe border-t border-gray-900">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+            {quote.discount_final_price ? 'DISCOUNT / 最终成交价' : 'TOTAL AMOUNT / 全案总计'}
+          </span>
+          {quote.discount_final_price && (
+             <span className="text-[10px] text-gray-500 line-through mt-0.5 font-mono">Orig: ¥{Number(quote.total_amount || 0).toFixed(2)}</span>
+          )}
+        </div>
+        <div className="text-3xl font-black text-white">
+           <span className="text-lg mr-1 font-bold">¥</span>
+           {Number(quote.discount_final_price || quote.total_amount || 0).toFixed(2)}
+        </div>
+      </div>
+    </div>
+  );
+};
