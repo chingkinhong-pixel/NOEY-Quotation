@@ -193,6 +193,15 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
 };
 
 export default function App() {
+  // ==========================================
+  // 【核心修复1】：在首次 Render 前同步提取 Hash 路由（彻底消除首页闪现）
+  // ==========================================
+  const currentHash = typeof window !== 'undefined' ? window.location.hash : '';
+  const isDirectQuoteView = currentHash.startsWith('#/quote/');
+  const directQuoteId = isDirectQuoteView ? currentHash.replace('#/quote/', '') : null;
+
+  // 将 currentView 初始值根据路由同步设定：如果是扫码进入，初始即为 'quote-view'，绝对不给 'home' 渲染的机会
+  const [currentView, setCurrentView] = useState(directQuoteId ? 'quote-view' : 'home');
   // 1. 全局状态
   const [currentView, setCurrentView] = useState('home'); // home, admin-login, admin, sales, sales-history
   const [currentUser, setCurrentUser] = useState(null);
@@ -2504,6 +2513,22 @@ const renderUpgradeModal = () => {
     </div>
   );
 
+  // ==========================================
+  // 【核心修复2】：扫码直连拦截器（放在任何主页 / 工作台 UI 渲染之前）
+  // ==========================================
+  if (isDirectQuoteView && directQuoteId) {
+    // 强制直接渲染客户端独立视图组件，彻底阻断主系统首页（MainSystemUI）的渲染
+    return (
+      <QuoteClientStandalone 
+        quoteId={directQuoteId} 
+        supabase={supabase} 
+        rules={rules} 
+        NativeSignaturePad={NativeSignaturePad} 
+        DEFAULT_TERMS={DEFAULT_TERMS} 
+      />
+    );
+  }
+  
   if (currentView === 'quote-preview') return renderQuotePreview();
   if (currentView === 'quote-view') return renderClientView(); // 【新增】客户端分享页面
   if (currentView === 'sales-history') return renderSalesHistory();
