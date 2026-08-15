@@ -1785,41 +1785,41 @@ const renderUpgradeModal = () => {
         {/* Header 阵列: 顶边距极小，左右高度严格对齐，信息高密度紧凑 */}
           <div className="px-8 md:px-12 pt-4 pb-2 print:px-8 print:pt-3 print:pb-1.5 flex justify-between items-stretch border-b-[3px] border-black">
             
-            {/* 左侧 Logo 区域: 缩减高度，采用 Flex 与右侧等高，紧贴上下边缘 */}
-            <div className="flex-shrink-0 flex items-center py-0.5">
-              <img src="/LOGO英版.png" alt="NOEY" className="h-[72px] print:h-[62px] object-contain object-left" />
+            {/* 左侧 Logo 区域: 进一步等比放大，消除上下留白，与右侧绝对等高 */}
+            <div className="flex-shrink-0 flex items-center">
+              <img src="/LOGO英版.png" alt="NOEY" className="h-[95px] print:h-[82px] object-contain object-left" />
             </div>
             
-            {/* 右侧 标题与信息区域: 极限压缩行距，字号微调，上下两端与 Logo 完美齐平 */}
-            <div className="flex flex-col justify-between items-start py-0.5">
-              <h1 className="text-[17px] print:text-[15px] font-black text-black tracking-[0.15em] uppercase leading-none mb-1.5 print:mb-1">
+            {/* 右侧 标题与信息区域: 标题右对齐，表格内部横向加宽，整体靠右 */}
+            <div className="flex flex-col justify-between items-end">
+              <h1 className="text-[18px] print:text-[16px] font-black text-black tracking-[0.2em] uppercase leading-none mb-2 print:mb-1.5">
                 QUOTATION
               </h1>
-              <table className="text-[11px] print:text-[9.5px] text-gray-800 border-collapse leading-tight">
+              <table className="text-[11.5px] print:text-[10px] text-gray-800 border-collapse leading-tight">
                 <tbody>
                   <tr>
-                    <td className="text-gray-500 font-medium pr-3 pb-[1.5px] print:pb-[1px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">单号</span> CODE</td>
-                    <td className="text-gray-500 pr-2 pb-[1.5px] print:pb-[1px]">:</td>
-                    <td className="font-bold pb-[1.5px] print:pb-[1px] text-left text-black">{quote.quote_no}</td>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-5 pb-[2px] print:pb-[1.5px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">单号</span> CODE</td>
+                    <td className="text-gray-500 px-3 print:px-2 pb-[2px] print:pb-[1.5px] text-center">:</td>
+                    <td className="font-bold pb-[2px] print:pb-[1.5px] text-left text-black">{quote.quote_no}</td>
                   </tr>
                   <tr>
-                    <td className="text-gray-500 font-medium pr-3 pb-[1.5px] print:pb-[1px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">日期</span> DATE</td>
-                    <td className="text-gray-500 pr-2 pb-[1.5px] print:pb-[1px]">:</td>
-                    <td className="font-bold pb-[1.5px] print:pb-[1px] text-left text-black">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</td>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-5 pb-[2px] print:pb-[1.5px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">日期</span> DATE</td>
+                    <td className="text-gray-500 px-3 print:px-2 pb-[2px] print:pb-[1.5px] text-center">:</td>
+                    <td className="font-bold pb-[2px] print:pb-[1.5px] text-left text-black">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</td>
                   </tr>
                   <tr>
-                    <td className="text-gray-500 font-medium pr-3 pb-[1.5px] print:pb-[1px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">客户</span> CUST</td>
-                    <td className="text-gray-500 pr-2 pb-[1.5px] print:pb-[1px]">:</td>
-                    <td className="font-bold pb-[1.5px] print:pb-[1px] text-left text-black">{quote.customer_name || '-'}</td>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-5 pb-[2px] print:pb-[1.5px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">客户</span> CUST</td>
+                    <td className="text-gray-500 px-3 print:px-2 pb-[2px] print:pb-[1.5px] text-center">:</td>
+                    <td className="font-bold pb-[2px] print:pb-[1.5px] text-left text-black">{quote.customer_name || '-'}</td>
                   </tr>
                   <tr>
-                    <td className="text-gray-500 font-medium pr-3 pb-[1.5px] print:pb-[1px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">电话</span> TEL</td>
-                    <td className="text-gray-500 pr-2 pb-[1.5px] print:pb-[1px]">:</td>
-                    <td className="font-bold pb-[1.5px] print:pb-[1px] text-left text-black">{quote.customer_phone || '-'}</td>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-5 pb-[2px] print:pb-[1.5px] whitespace-nowrap text-left"><span className="tracking-[0.2em]">电话</span> TEL</td>
+                    <td className="text-gray-500 px-3 print:px-2 pb-[2px] print:pb-[1.5px] text-center">:</td>
+                    <td className="font-bold pb-[2px] print:pb-[1.5px] text-left text-black">{quote.customer_phone || '-'}</td>
                   </tr>
                   <tr>
-                    <td className="text-gray-500 font-medium pr-3 pb-0 whitespace-nowrap text-left"><span className="tracking-[0.2em]">地址</span> ADD</td>
-                    <td className="text-gray-500 pr-2 pb-0">:</td>
+                    <td className="text-gray-500 font-medium pr-6 print:pr-5 pb-0 whitespace-nowrap text-left"><span className="tracking-[0.2em]">地址</span> ADD</td>
+                    <td className="text-gray-500 px-3 print:px-2 pb-0 text-center">:</td>
                     <td className="font-bold pb-0 text-left text-black">{quote.delivery_address || '-'}</td>
                   </tr>
                 </tbody>
