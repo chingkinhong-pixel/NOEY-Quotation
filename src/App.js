@@ -798,7 +798,21 @@ export default function App() {
             snap_back_panel_spec: dbCab.snap_back_panel_spec || '9mm标准', cabinet_unit_adjustment: dbCab.cabinet_unit_adjustment || '',
             snap_door_brand: dbCab.snap_door_brand || '', snap_door_color: dbCab.snap_door_color || '',
             door_unit_adjustment: dbCab.door_unit_adjustment || '', door_material_remark: dbCab.door_material_remark || '',
-            snap_door_surface_finish: dbCab.snap_door_surface_finish || '', upgrades: cabUpgrades
+            snap_door_surface_finish: dbCab.snap_door_surface_finish || '', upgrades: cabUpgrades,
+            // 【新增】：回填 countertop 数据，提供绝对的安全兜底防报错
+            countertop: dbCab.countertop || {
+              enabled: false,
+              material: '',
+              type: '', // 兼容旧版 state 绑定
+              brand: '',
+              color: '',
+              thickness: '',
+              calculationType: '',
+              quantity: 0,
+              unit: 'm',
+              unitPrice: 0,
+              unit_price: 0, // 兼容旧版 state 绑定
+              subtotal: 0
           };
         });
         setQuoteCabinets(reconstructedCabinets);
@@ -1143,6 +1157,7 @@ const handleRemoveUpgrade = (upgId) => {
           snap_standard_depth: rules.standard_depth || 600,
           snap_depth_ratio: calcs.depthRatio,
           snap_base_cabinet_cost: calcs.baseCabinetCost,
+          countertop: cab.countertop || null// 【新增】：将 countertop 数据作为 JSONB 完整存入数据库
           // 【V4.0 补充核心展示快照】：
           snap_cabinet_material_name: cabDict ? cabDict.name : '',
           snap_door_material_name: doorDict ? doorDict.name : '', // 修正：读取后台门板的具体名称
