@@ -1143,7 +1143,7 @@ const handleRemoveUpgrade = (upgId) => {
           snap_standard_depth: rules.standard_depth || 600,
           snap_depth_ratio: calcs.depthRatio,
           snap_base_cabinet_cost: calcs.baseCabinetCost,
-          countertop: cab.countertop || null// 【新增】：将 countertop 数据作为 JSONB 完整存入数据库
+          countertop: cab.countertop || null,// 【新增】：将 countertop 数据作为 JSONB 完整存入数据库
           // 【V4.0 补充核心展示快照】：
           snap_cabinet_material_name: cabDict ? cabDict.name : '',
           snap_door_material_name: doorDict ? doorDict.name : '', // 修正：读取后台门板的具体名称
