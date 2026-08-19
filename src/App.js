@@ -813,6 +813,7 @@ export default function App() {
               unitPrice: 0,
               unit_price: 0, // 兼容旧版 state 绑定
               subtotal: 0
+             }
           };
         });
         setQuoteCabinets(reconstructedCabinets);
