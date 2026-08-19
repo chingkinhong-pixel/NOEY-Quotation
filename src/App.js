@@ -1790,7 +1790,7 @@ const renderUpgradeModal = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* 柜体配置 */}
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
-                         <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🗄️ 柜体配置</div>
+                         <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">柜体配置</div>
                          <div className="space-y-2">
                            <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_cabinet_material_name || '-'}</span></div>
                            <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
@@ -1801,7 +1801,7 @@ const renderUpgradeModal = () => {
 
                       {/* 门板配置 */}
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
-                         <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🚪 门板配置</div>
+                         <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">门板配置</div>
                          <div className="space-y-2">
                            <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_door_material_name || '-'}</span></div>
                            <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
@@ -1816,7 +1816,7 @@ const renderUpgradeModal = () => {
                     {cab.countertop && cab.countertop.enabled && (
                       <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
                         <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
-                          🪨 台面配置 Countertop
+                          台面配置 Countertop
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1.5 leading-snug bg-gray-50 p-3 rounded-lg border border-gray-100">
                           <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold text-gray-800">{cab.countertop.material || cab.countertop.type || '未选择'}</span></span>
@@ -1837,7 +1837,7 @@ const renderUpgradeModal = () => {
                     {/* 工艺配置 (严谨缩进与全量展示) */}
                     {cabUpgs.length > 0 && (
                       <div>
-                        <div className="font-black text-gray-900 text-xs mb-2">✨ 升级工艺与五金</div>
+                        <div className="font-black text-gray-900 text-xs mb-2"> 升级工艺与五金</div>
                         <div className="border border-gray-200 rounded-xl overflow-hidden text-xs">
                            {cabUpgs.map((upg, i) => {
                              const isChild = !!upg.parent_record_id;
