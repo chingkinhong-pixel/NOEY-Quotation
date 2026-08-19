@@ -286,6 +286,17 @@ export default function App() {
     quoteNo: '', customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中', terms_content: '',
     discountFinalPrice: '' // 【新增】工作台最终结算价缓存
   });
+  // 【Phase 1 新增】：台面模块仅前端展示状态
+  const [countertop, setCountertop] = useState({
+    enabled: false, type: '', brand: '', color: '', thickness: '',
+    unit: 'm', quantity: 0, unit_price: 0, subtotal: 0
+  });
+  
+  // 台面后台基础库状态
+  const [countertopItems, setCountertopItems] = useState([]);
+  const [countertopForm, setCountertopForm] = useState({
+    name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', description: ''
+  });
   const [quoteCabinets, setQuoteCabinets] = useState([]);
   const [activeCabinetId, setActiveCabinetId] = useState(null);
   const [upgradeModal, setUpgradeModal] = useState({
