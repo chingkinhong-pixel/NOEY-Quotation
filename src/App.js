@@ -591,7 +591,22 @@ export default function App() {
     setQuoteCabinets([{ 
       id: initCabId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: []
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
+      // 【新增】：确保新建柜体自带完整的 countertop 默认结构
+      countertop: {
+        enabled: false,
+        material: '',
+        type: '', 
+        brand: '',
+        color: '',
+        thickness: '',
+        calculationType: '',
+        quantity: 0,
+        unit: 'm',
+        unitPrice: 0,
+        unit_price: 0, 
+        subtotal: 0
+      }
     }]);
     setActiveCabinetId(initCabId);
     setSalesOrigin('home'); 
@@ -843,7 +858,22 @@ export default function App() {
     setQuoteCabinets([...quoteCabinets, { 
       id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: []
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
+      // 【新增】：确保新建柜体自带完整的 countertop 默认结构
+      countertop: {
+        enabled: false,
+        material: '',
+        type: '', 
+        brand: '',
+        color: '',
+        thickness: '',
+        calculationType: '',
+        quantity: 0,
+        unit: 'm',
+        unitPrice: 0,
+        unit_price: 0, 
+        subtotal: 0
+      }
     }]);
     setActiveCabinetId(newId);
   };
