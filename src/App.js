@@ -1111,7 +1111,12 @@ const handleRemoveUpgrade = (upgId) => {
 
     try {
       const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
-      const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0) + countertopTotal;
+      // 【修复】：从柜体数组中归集所有台面总价，告别失效的全局独立 state
+      const grandTotal = quoteCabinets.reduce((sum, cab) => {
+        const cabBase = calculateCabinetDetails(cab).baseTotal;
+        const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
+        return sum + cabBase + cabCountertop;
+      }, 0);
 
       const quotePayload = {
         quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
@@ -1171,6 +1176,8 @@ const handleRemoveUpgrade = (upgId) => {
       }
 
       for (const cab of quoteCabinets) {
+        // 【修复 4】：持久化写入监控验证
+        console.log('保存前countertop:', cab.countertop);
         const calcs = calculateCabinetDetails(cab);
         // 【V4.0 新增】：安全抓取字典快照，用于高精度展示
         const cabDict = cabinets.find(m => m.id === cab.cabinet_mat_id);
@@ -1406,7 +1413,12 @@ const renderUpgradeModal = () => {
     if (!activeCabinet) return null;
     const currentCalcs = calculateCabinetDetails(activeCabinet);
     const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
-    const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0) + countertopTotal;
+    // 【修复】：工作台总价实时推导同步
+    const grandTotal = quoteCabinets.reduce((sum, cab) => {
+      const cabBase = calculateCabinetDetails(cab).baseTotal;
+      const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
+      return sum + cabBase + cabCountertop;
+    }, 0);
 
     return (
       <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
@@ -1549,58 +1561,79 @@ const renderUpgradeModal = () => {
                 </div>
               </div>
 
-              {/* 【新增】：台面配置 (Countertop) */}
+              {/* 【新增/修复】：台面配置 (Countertop) 状态并轨至 quoteCabinets */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 mt-6">
                 <div className="flex justify-between items-center mb-4 border-b pb-4">
                   <h3 className="font-black text-gray-800">🪨 台面配置 (Countertop)</h3>
                   <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={countertop.enabled} onChange={e => setCountertop({...countertop, enabled: e.target.checked})} className="w-5 h-5 accent-black cursor-pointer" />
+                    <input 
+                      type="checkbox" 
+                      checked={activeCabinet.countertop?.enabled || false} 
+                      onChange={e => {
+                        setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? {
+                          ...c, countertop: { ...(c.countertop || DEFAULT_COUNTERTOP), enabled: e.target.checked }
+                        } : c));
+                      }} 
+                      className="w-5 h-5 accent-black cursor-pointer" 
+                    />
                     <span className="text-sm font-bold text-gray-700">启用台面</span>
                   </div>
                 </div>
-                {countertop.enabled && (
-                   <div className="space-y-4 pt-2">
-                      <div className="grid grid-cols-4 gap-4">
-                         <div>
-                           <label className="text-xs font-bold text-gray-500">台面类型</label>
-                           <select value={countertop.material || countertop.type} onChange={e => setCountertop({...countertop, material: e.target.value, type: e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
-                              <option value="">--选择类型--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
-                           </select>
-                         </div>
-                         <div><label className="text-xs font-bold text-gray-500">品牌</label><input value={countertop.brand} onChange={e=>setCountertop({...countertop, brand:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                         <div><label className="text-xs font-bold text-gray-500">颜色</label><input value={countertop.color} onChange={e=>setCountertop({...countertop, color:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                         <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={countertop.thickness} onChange={e=>setCountertop({...countertop, thickness:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                      </div>
-                      <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                         <div>
-                           <label className="text-xs font-bold text-gray-500">计价单位</label>
-                           <select value={countertop.unit} onChange={e => setCountertop({...countertop, unit: e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
-                              <option value="m">m (延米)</option><option value="㎡">㎡</option>
-                           </select>
-                         </div>
-                         <div>
-                           <label className="text-xs font-bold text-gray-500">数量</label>
-                           <input type="number" value={countertop.quantity} onChange={e => {
-                              const qty = parseFloat(e.target.value) || 0;
-                              setCountertop({...countertop, quantity: e.target.value, subtotal: qty * (countertop.unitPrice || countertop.unit_price || 0)});
-                           }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
-                         </div>
-                         <div>
-                           <label className="text-xs font-bold text-gray-500">单价 (仅展示)</label>
-                           <input type="number" value={countertop.unitPrice || countertop.unit_price} onChange={e => {
-                              const price = parseFloat(e.target.value) || 0;
-                              setCountertop({...countertop, unitPrice: e.target.value, unit_price: e.target.value, subtotal: countertop.quantity * price});
-                           }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
-                         </div>
-                         <div>
-                           <label className="text-xs font-bold text-gray-500">小计 (不计入总价)</label>
-                           <div className="w-full bg-white border-2 border-transparent p-2 rounded-lg font-black text-gray-900 mt-1">
-                             ¥ {countertop.subtotal.toFixed(2)}
+                
+                {(activeCabinet.countertop?.enabled) && (() => {
+                   const activeCT = activeCabinet.countertop || DEFAULT_COUNTERTOP;
+                   const updateCT = (updates) => {
+                     setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? {
+                       ...c, countertop: { ...c.countertop, ...updates }
+                     } : c));
+                   };
+
+                   return (
+                     <div className="space-y-4 pt-2">
+                        <div className="grid grid-cols-4 gap-4">
+                           <div>
+                             <label className="text-xs font-bold text-gray-500">台面类型</label>
+                             <select value={activeCT.material || activeCT.type} onChange={e => updateCT({ material: e.target.value, type: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                                <option value="">--选择类型--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
+                             </select>
                            </div>
-                         </div>
-                      </div>
-                   </div>
-                )}
+                           <div><label className="text-xs font-bold text-gray-500">品牌</label><input value={activeCT.brand} onChange={e => updateCT({ brand: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                           <div><label className="text-xs font-bold text-gray-500">颜色</label><input value={activeCT.color} onChange={e => updateCT({ color: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                           <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={activeCT.thickness} onChange={e => updateCT({ thickness: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                        </div>
+                        <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                           <div>
+                             <label className="text-xs font-bold text-gray-500">计价单位</label>
+                             <select value={activeCT.unit} onChange={e => updateCT({ unit: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                                <option value="m">m (延米)</option><option value="㎡">㎡</option>
+                             </select>
+                           </div>
+                           <div>
+                             <label className="text-xs font-bold text-gray-500">数量</label>
+                             <input type="number" value={activeCT.quantity} onChange={e => {
+                                const qty = parseFloat(e.target.value) || 0;
+                                const price = parseFloat(activeCT.unitPrice || activeCT.unit_price) || 0;
+                                updateCT({ quantity: e.target.value, subtotal: qty * price });
+                             }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
+                           </div>
+                           <div>
+                             <label className="text-xs font-bold text-gray-500">单价 (仅展示)</label>
+                             <input type="number" value={activeCT.unitPrice || activeCT.unit_price} onChange={e => {
+                                const price = parseFloat(e.target.value) || 0;
+                                const qty = parseFloat(activeCT.quantity) || 0;
+                                updateCT({ unitPrice: e.target.value, unit_price: e.target.value, subtotal: qty * price });
+                             }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
+                           </div>
+                           <div>
+                             <label className="text-xs font-bold text-gray-500">小计 (同步总价)</label>
+                             <div className="w-full bg-white border-2 border-transparent p-2 rounded-lg font-black text-gray-900 mt-1">
+                               ¥ {Number(activeCT.subtotal || 0).toFixed(2)}
+                             </div>
+                           </div>
+                        </div>
+                     </div>
+                   );
+                })()}
               </div>
   
               {/* 升级工艺引擎 */}
