@@ -1816,7 +1816,7 @@ const renderUpgradeModal = () => {
                     {cab.countertop && cab.countertop.enabled && (
                       <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
                         <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
-                          台面配置 Countertop
+                          台面配置
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1.5 leading-snug bg-gray-50 p-3 rounded-lg border border-gray-100">
                           <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold text-gray-800">{cab.countertop.material || cab.countertop.type || '未选择'}</span></span>
@@ -2120,7 +2120,7 @@ const renderUpgradeModal = () => {
                     {cab.countertop && cab.countertop.enabled && (
                       <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
                         <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
-                          🪨 台面配置 COUNTERTOP
+                          台面配置 COUNTERTOP
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1.5 leading-snug bg-gray-50 p-3 rounded-lg border border-gray-100">
                           <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold text-gray-800">{cab.countertop.material || cab.countertop.type || '未选择'}</span></span>
@@ -2764,7 +2764,7 @@ const renderUpgradeModal = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.2</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.3.1</p>
         </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
@@ -2973,7 +2973,7 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                 <div className="p-4 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
-                       <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🗄️ 柜体配置</div>
+                       <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">柜体配置</div>
                        <div className="space-y-2">
                          <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_cabinet_material_name || '-'}</span></div>
                          <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
@@ -2983,7 +2983,7 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                     </div>
 
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
-                       <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">🚪 门板配置</div>
+                       <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-3">门板配置</div>
                        <div className="space-y-2">
                          <div className="flex justify-between"><span className="text-gray-500">材料类型</span><span className="font-bold text-gray-900">{cab.snap_door_material_name || '-'}</span></div>
                          <div className="flex justify-between"><span className="text-gray-500">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
@@ -2998,7 +2998,7 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                     {cab.countertop && cab.countertop.enabled && (
                       <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
                         <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
-                          🪨 台面配置 COUNTERTOP
+                          台面配置
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1.5 leading-snug bg-gray-50 p-3 rounded-lg border border-gray-100">
                           <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold text-gray-800">{cab.countertop.material || cab.countertop.type || '未选择'}</span></span>
@@ -3018,7 +3018,7 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                           
                   {cabUpgs.length > 0 && (
                     <div>
-                      <div className="font-black text-gray-900 text-xs mb-2">✨ 升级工艺与五金</div>
+                      <div className="font-black text-gray-900 text-xs mb-2">升级工艺与五金</div>
                       <div className="border border-gray-200 rounded-xl overflow-hidden text-xs">
                          {cabUpgs.map((upg, i) => {
                            const isChild = !!upg.parent_record_id;
