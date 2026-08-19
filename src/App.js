@@ -332,13 +332,15 @@ export default function App() {
         supabase.from('materials_door').select('*').order('name'),
         supabase.from('upgrade_items').select('*').order('sort_order').order('name'),
         supabase.from('pricing_rules').select('*').limit(1),
-        supabase.from('upgrade_sub_items').select('*').order('created_at') // 拉取二级工艺
+        supabase.from('upgrade_sub_items').select('*').order('created_at'), // 拉取二级工艺
+        supabase.from('countertop_items').select('*').order('created_at') // 【新增】
       ]);
       if (resCab.data) setCabinets(resCab.data);
       if (resDoor.data) setDoors(resDoor.data);
       if (resUpg.data) setUpgrades(resUpg.data);
       if (resRule.data && resRule.data.length > 0) setRules(resRule.data[0]);
       if (resSubUpg.data) setSubUpgrades(resSubUpg.data);
+      if (resCountertop.data) setCountertopItems(resCountertop.data); // 【新增】
     } catch (err) {
       showToast('数据字典加载失败', 'error');
     } finally {
@@ -493,6 +495,7 @@ export default function App() {
       if (table === 'materials_cabinet') { checkTable = 'quote_cabinets'; checkColumn = 'cabinet_mat_id'; }
       else if (table === 'materials_door') { checkTable = 'quote_cabinets'; checkColumn = 'door_mat_id'; }
       else if (table === 'upgrade_items') { checkTable = 'quote_upgrades'; checkColumn = 'upgrade_item_id'; }
+      else if (table === 'countertop_items') { checkTable = ''; checkColumn = ''; }
 
       if (checkTable && checkColumn) {
         const { data: refData, error: refError } = await supabase.from(checkTable).select('id').eq(checkColumn, id).limit(1);
@@ -558,6 +561,17 @@ export default function App() {
     e.preventDefault();
     try {
       if (rules.id) { await supabase.from('pricing_rules').update(rules).eq('id', rules.id); showToast('规则更新成功！'); fetchDictionaries(); }
+    } catch (err) { showToast('保存失败', 'error'); }
+  };
+
+  const handleSaveCountertop = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { ...countertopForm, unit_price: parseFloat(countertopForm.unit_price) || 0 };
+      await supabase.from('countertop_items').insert([payload]);
+      showToast('新增台面成功');
+      setCountertopForm({ name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', description: '' });
+      fetchDictionaries();
     } catch (err) { showToast('保存失败', 'error'); }
   };
 
