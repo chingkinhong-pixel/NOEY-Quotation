@@ -828,20 +828,7 @@ export default function App() {
               subtotal: rawCountertop.subtotal || 0
             };
           } else {
-            normalizedCountertop = {
-              enabled: false,
-              material: '',
-              type: '',
-              brand: '',
-              color: '',
-              thickness: '',
-              calculationType: '',
-              quantity: 0,
-              unit: 'm',
-              unitPrice: 0,
-              unit_price: 0,
-              subtotal: 0
-            };
+            normalizedCountertop = { ...DEFAULT_COUNTERTOP };
           }
 
           console.log('DB countertop:', dbCab.countertop);
@@ -871,7 +858,9 @@ export default function App() {
         setQuoteCabinets([{ 
           id: fallbackId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
           cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: []
+          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
+          // 【补上这里】：确保极端兜底新建的柜子也有台面默认属性
+          countertop: { ...DEFAULT_COUNTERTOP }
         }]);
         setActiveCabinetId(fallbackId);
       }
