@@ -327,7 +327,7 @@ export default function App() {
   const fetchDictionaries = async () => {
     setIsLoading(true);
     try {
-    const [resCab, resDoor, resUpg, resRule, resSubUpg] = await Promise.all([
+    const [resCab, resDoor, resUpg, resRule, resSubUpg, resCountertop] = await Promise.all([
         supabase.from('materials_cabinet').select('*').order('name'),
         supabase.from('materials_door').select('*').order('name'),
         supabase.from('upgrade_items').select('*').order('sort_order').order('name'),
