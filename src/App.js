@@ -1213,7 +1213,11 @@ const handleRemoveUpgrade = (upgId) => {
           snap_standard_depth: rules.standard_depth || 600,
           snap_depth_ratio: calcs.depthRatio,
           snap_base_cabinet_cost: calcs.baseCabinetCost,
-          countertop: cab.countertop || null,// 【新增】：将 countertop 数据作为 JSONB 完整存入数据库
+          // 【修复】：确保保存时不丢失 enabled 状态
+          countertop: cab.countertop ? {
+            ...cab.countertop,
+            enabled: cab.countertop.enabled ?? true
+          } : null,
           // 【V4.0 补充核心展示快照】：
           snap_cabinet_material_name: cabDict ? cabDict.name : '',
           snap_door_material_name: doorDict ? doorDict.name : '', // 修正：读取后台门板的具体名称
@@ -1575,7 +1579,7 @@ const renderUpgradeModal = () => {
                       <div className="grid grid-cols-4 gap-4">
                          <div>
                            <label className="text-xs font-bold text-gray-500">台面类型</label>
-                           <select value={countertop.type} onChange={e => setCountertop({...countertop, type: e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                           <select value={countertop.material || countertop.type} onChange={e => setCountertop({...countertop, material: e.target.value, type: e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
                               <option value="">--选择类型--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
                            </select>
                          </div>
@@ -1594,14 +1598,14 @@ const renderUpgradeModal = () => {
                            <label className="text-xs font-bold text-gray-500">数量</label>
                            <input type="number" value={countertop.quantity} onChange={e => {
                               const qty = parseFloat(e.target.value) || 0;
-                              setCountertop({...countertop, quantity: e.target.value, subtotal: qty * countertop.unit_price});
+                              setCountertop({...countertop, quantity: e.target.value, subtotal: qty * (countertop.unitPrice || countertop.unit_price || 0)});
                            }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
                          </div>
                          <div>
                            <label className="text-xs font-bold text-gray-500">单价 (仅展示)</label>
-                           <input type="number" value={countertop.unit_price} onChange={e => {
+                           <input type="number" value={countertop.unitPrice || countertop.unit_price} onChange={e => {
                               const price = parseFloat(e.target.value) || 0;
-                              setCountertop({...countertop, unit_price: e.target.value, subtotal: countertop.quantity * price});
+                              setCountertop({...countertop, unitPrice: e.target.value, unit_price: e.target.value, subtotal: countertop.quantity * price});
                            }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
                          </div>
                          <div>
