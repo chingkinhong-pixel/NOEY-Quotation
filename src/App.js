@@ -51,6 +51,24 @@ const DEFAULT_TERMS = `一、合同与确认
 6.5 提供终身有偿维护服务。`;
 
 // ==========================================
+// 【常量】：台面配置默认安全结构
+// ==========================================
+const DEFAULT_COUNTERTOP = {
+  enabled: false,
+  material: '',
+  type: '',
+  brand: '',
+  color: '',
+  thickness: '',
+  calculationType: '',
+  quantity: 0,
+  unit: 'm',
+  unitPrice: 0,
+  unit_price: 0,
+  subtotal: 0
+};
+
+// ==========================================
 // 【组件】：统一规范的条款渲染引擎 (支持 PDF 与移动端)
 // ==========================================
 const RenderTermsBlock = ({ content }) => {
@@ -592,21 +610,8 @@ export default function App() {
       id: initCabId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
       door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
-      // 【新增】：确保新建柜体自带完整的 countertop 默认结构
-      countertop: {
-        enabled: false,
-        material: '',
-        type: '', 
-        brand: '',
-        color: '',
-        thickness: '',
-        calculationType: '',
-        quantity: 0,
-        unit: 'm',
-        unitPrice: 0,
-        unit_price: 0, 
-        subtotal: 0
-      }
+      // 【修复 3】：防止 fallback 覆盖
+      countertop: { ...DEFAULT_COUNTERTOP }
     }]);
     setActiveCabinetId(initCabId);
     setSalesOrigin('home'); 
@@ -852,8 +857,11 @@ export default function App() {
             snap_door_brand: dbCab.snap_door_brand || '', snap_door_color: dbCab.snap_door_color || '',
             door_unit_adjustment: dbCab.door_unit_adjustment || '', door_material_remark: dbCab.door_material_remark || '',
             snap_door_surface_finish: dbCab.snap_door_surface_finish || '', upgrades: cabUpgrades,
-            // 【替换】：使用标准化后的台面数据
-            countertop: normalizedCountertop
+           // 【修复 1】：安全回填防覆盖
+            countertop: {
+              ...DEFAULT_COUNTERTOP,
+              ...(dbCab.countertop || {})
+            }
           };
         });
         setQuoteCabinets(reconstructedCabinets);
@@ -884,21 +892,8 @@ export default function App() {
       id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
       door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
-      // 【新增】：确保新建柜体自带完整的 countertop 默认结构
-      countertop: {
-        enabled: false,
-        material: '',
-        type: '', 
-        brand: '',
-        color: '',
-        thickness: '',
-        calculationType: '',
-        quantity: 0,
-        unit: 'm',
-        unitPrice: 0,
-        unit_price: 0, 
-        subtotal: 0
-      }
+     // 【修复 3】：防止 fallback 覆盖
+      countertop: { ...DEFAULT_COUNTERTOP }
     }]);
     setActiveCabinetId(newId);
   };
