@@ -799,6 +799,21 @@ export default function App() {
             snap_door_brand: dbCab.snap_door_brand || '', snap_door_color: dbCab.snap_door_color || '',
             door_unit_adjustment: dbCab.door_unit_adjustment || '', door_material_remark: dbCab.door_material_remark || '',
             snap_door_surface_finish: dbCab.snap_door_surface_finish || '', upgrades: cabUpgrades
+            // 【新增】：回填 countertop 数据，提供绝对的安全兜底防报错
+            countertop: dbCab.countertop || {
+              enabled: false,
+              material: '',
+              type: '', // 兼容旧版 state 绑定
+              brand: '',
+              color: '',
+              thickness: '',
+              calculationType: '',
+              quantity: 0,
+              unit: 'm',
+              unitPrice: 0,
+              unit_price: 0, // 兼容旧版 state 绑定
+              subtotal: 0
+            }
           };
         });
         setQuoteCabinets(reconstructedCabinets);
