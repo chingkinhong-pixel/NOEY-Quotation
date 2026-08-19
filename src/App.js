@@ -1488,6 +1488,60 @@ const renderUpgradeModal = () => {
                 </div>
               </div>
 
+              {/* 【新增】：台面配置 (Countertop) */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 mt-6">
+                <div className="flex justify-between items-center mb-4 border-b pb-4">
+                  <h3 className="font-black text-gray-800">🪨 台面配置 (Countertop)</h3>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={countertop.enabled} onChange={e => setCountertop({...countertop, enabled: e.target.checked})} className="w-5 h-5 accent-black cursor-pointer" />
+                    <span className="text-sm font-bold text-gray-700">启用台面</span>
+                  </div>
+                </div>
+                {countertop.enabled && (
+                   <div className="space-y-4 pt-2">
+                      <div className="grid grid-cols-4 gap-4">
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">台面类型</label>
+                           <select value={countertop.type} onChange={e => setCountertop({...countertop, type: e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                              <option value="">--选择类型--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
+                           </select>
+                         </div>
+                         <div><label className="text-xs font-bold text-gray-500">品牌</label><input value={countertop.brand} onChange={e=>setCountertop({...countertop, brand:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                         <div><label className="text-xs font-bold text-gray-500">颜色</label><input value={countertop.color} onChange={e=>setCountertop({...countertop, color:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                         <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={countertop.thickness} onChange={e=>setCountertop({...countertop, thickness:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">计价单位</label>
+                           <select value={countertop.unit} onChange={e => setCountertop({...countertop, unit: e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                              <option value="m">m (延米)</option><option value="㎡">㎡</option>
+                           </select>
+                         </div>
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">数量</label>
+                           <input type="number" value={countertop.quantity} onChange={e => {
+                              const qty = parseFloat(e.target.value) || 0;
+                              setCountertop({...countertop, quantity: e.target.value, subtotal: qty * countertop.unit_price});
+                           }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
+                         </div>
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">单价 (仅展示)</label>
+                           <input type="number" value={countertop.unit_price} onChange={e => {
+                              const price = parseFloat(e.target.value) || 0;
+                              setCountertop({...countertop, unit_price: e.target.value, subtotal: countertop.quantity * price});
+                           }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
+                         </div>
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">小计 (不计入总价)</label>
+                           <div className="w-full bg-white border-2 border-transparent p-2 rounded-lg font-black text-gray-900 mt-1">
+                             ¥ {countertop.subtotal.toFixed(2)}
+                           </div>
+                         </div>
+                      </div>
+                   </div>
+                )}
+              </div>
+  
               {/* 升级工艺引擎 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10">
                 <div className="flex justify-between items-center mb-4 border-b pb-4">
@@ -1946,6 +2000,29 @@ const renderUpgradeModal = () => {
                           </div>
                         </div>
 
+                        {/* 【新增】：台面预览配置 (仅前端显示，独立于柜门) */}
+                        {countertop.enabled && countertop.type && (
+                          <div className="p-4 print:p-3 border-b border-gray-200 bg-gray-50/30">
+                            <div className="font-black text-gray-800 mb-2 print:mb-1.5 border-b border-gray-200 pb-1 uppercase tracking-widest text-[10px] print:text-[9px]">台面配置 COUNTERTOP</div>
+                            <div className="text-[12px] print:text-[10px] text-gray-800 flex flex-wrap gap-x-4 gap-y-1.5 leading-snug">
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">类型:</span> <span className="font-bold">{countertop.type}</span></span>
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">品牌:</span> <span className="font-bold">{countertop.brand || '-'}</span></span>
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">颜色:</span> <span className="font-bold">{countertop.color || '-'}</span></span>
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">厚度:</span> <span className="font-bold">{countertop.thickness || '-'}</span></span>
+                            </div>
+                            <div className="mt-3 text-[11px] print:text-[10px] flex justify-between items-end border-t border-gray-100 pt-2">
+                               <div className="flex gap-4 text-gray-600">
+                                 <span><span className="font-medium text-gray-400">数量:</span> <span className="font-bold text-gray-800">{countertop.quantity} {countertop.unit}</span></span>
+                                 <span><span className="font-medium text-gray-400">单价:</span> <span className="font-bold text-gray-800">¥{Number(countertop.unit_price).toFixed(2)} /{countertop.unit}</span></span>
+                               </div>
+                               <div>
+                                 <span className="font-medium text-gray-400 mr-2">小计:</span>
+                                 <span className="font-black text-sm print:text-xs text-gray-900">¥{Number(countertop.subtotal).toFixed(2)}</span>
+                               </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* 4. 升级工艺区 (紧凑表格 + 严谨父子层级) */}
                         {cabUpgrades.length > 0 && (
                           <div className="px-4 py-3 print:px-3 print:py-2">
@@ -2180,9 +2257,10 @@ const renderUpgradeModal = () => {
         <div className="w-64 bg-gray-900 text-white flex flex-col z-20">
           <div className="p-6 border-b border-gray-800"><h1 className="text-2xl font-black">NOEY<span className="font-light text-gray-400"> System Hub</span></h1></div>
           <div className="flex-1 py-4">
-            <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>✨ V2.7 升级工艺</button>
+            <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>✨ V1.3 升级工艺</button>
             <button onClick={() => setAdminView('cabinet')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='cabinet'?'border-blue-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🗄️ 柜体基础库</button>
             <button onClick={() => setAdminView('door')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='door'?'border-indigo-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🚪 门板基础库</button>
+            <button onClick={() => setAdminView('countertop')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='countertop'?'border-emerald-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🪨 台面基础库</button>
             <button onClick={() => setAdminView('rules')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='rules'?'border-rose-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>⚙️ 计价参数规则</button>
           </div>
           <div className="p-4 border-t border-gray-800"><button onClick={() => {setCurrentUser(null); setCurrentView('home');}} className="w-full bg-gray-800 py-2 rounded font-bold text-sm text-gray-400 hover:text-white hover:bg-rose-600">退出返回</button></div>
@@ -2431,6 +2509,36 @@ const renderUpgradeModal = () => {
               </div>
             </div>
           )}
+
+          {adminView === 'countertop' && (
+            <div className="max-w-5xl space-y-6">
+              <h2 className="text-2xl font-black">台面基础库 (Phase 1)</h2>
+              <form onSubmit={handleSaveCountertop} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="grid grid-cols-5 gap-4">
+                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">台面名称</label><input required value={countertopForm.name} onChange={e=>setCountertopForm({...countertopForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div><label className="text-xs font-bold text-gray-500">材质</label><select value={countertopForm.material_type} onChange={e=>setCountertopForm({...countertopForm, material_type:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option></select></div>
+                  <div><label className="text-xs font-bold text-gray-500">计价单位</label><select value={countertopForm.unit} onChange={e=>setCountertopForm({...countertopForm, unit:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option value="m">m (延米)</option><option value="㎡">㎡</option></select></div>
+                  <div><label className="text-xs font-bold text-gray-500">基准单价</label><input type="number" required value={countertopForm.unit_price} onChange={e=>setCountertopForm({...countertopForm, unit_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
+                </div>
+                <div className="flex gap-4 mt-4 items-end">
+                  <div className="flex-1"><label className="text-xs font-bold text-gray-500">品牌 (可选)</label><input value={countertopForm.brand} onChange={e=>setCountertopForm({...countertopForm, brand:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div className="flex-1"><label className="text-xs font-bold text-gray-500">备注</label><input value={countertopForm.description} onChange={e=>setCountertopForm({...countertopForm, description:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold h-[42px]">新增台面</button>
+                </div>
+              </form>
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">材质</th><th className="p-3">单位</th><th className="p-3">单价</th><th className="p-3">品牌/备注</th><th className="p-3">操作</th></tr></thead>
+                  <tbody>
+                    {countertopItems.map(item => (
+                      <tr key={item.id} className="border-b hover:bg-gray-50"><td className="p-3 font-bold">{item.name}</td><td className="p-3">{item.material_type}</td><td className="p-3">{item.unit}</td><td className="p-3 font-black text-rose-600">¥{item.unit_price}</td><td className="p-3 text-gray-500">{item.brand} {item.description}</td><td className="p-3"><button onClick={() => triggerDelete('countertop_items', item.id, item.name)} className="text-rose-600 font-bold">删除</button></td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Rules Admin View */}
           {adminView === 'rules' && (
              <div className="max-w-2xl space-y-6">
