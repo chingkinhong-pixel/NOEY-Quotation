@@ -1056,7 +1056,8 @@ const handleRemoveUpgrade = (upgId) => {
     setIsLoading(true);
 
     try {
-      const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0);
+      const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
+      const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0) + countertopTotal;
 
       const quotePayload = {
         quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
@@ -1345,7 +1346,8 @@ const renderUpgradeModal = () => {
   const renderSalesWorkspace = () => {
     if (!activeCabinet) return null;
     const currentCalcs = calculateCabinetDetails(activeCabinet);
-    const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0);
+    const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
+    const grandTotal = quoteCabinets.reduce((sum, cab) => sum + calculateCabinetDetails(cab).baseTotal, 0) + countertopTotal;
 
     return (
       <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
