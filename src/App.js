@@ -57,16 +57,16 @@ const DEFAULT_COUNTERTOP = {
   enabled: false,
   material: '',
   type: '',
+  model: '',     // 【新增】型号，与子类型彻底分离
   brand: '',
-  color: '',
   thickness: '',
   calculationType: '',
   quantity: 0,
   unit: 'm',
   unitPrice: 0,
   unit_price: 0,
-  adjustment: 0, // 【新增】人工调价
-  remark: '',    // 【新增】材料备注
+  adjustment: 0, 
+  remark: '',    
   subtotal: 0
 };
 
@@ -822,23 +822,24 @@ export default function App() {
           let normalizedCountertop;
           if (rawCountertop && typeof rawCountertop === 'object') {
             normalizedCountertop = {
-              enabled: rawCountertop.enabled ?? true,   // 默认有数据就启用
+              enabled: rawCountertop.enabled ?? true,
               material: rawCountertop.material || rawCountertop.type || '',
               type: rawCountertop.type || rawCountertop.material || '',
+              model: rawCountertop.model || rawCountertop.color || '', // 兼容可能写在 color 里的旧数据
               brand: rawCountertop.brand || '',
-              color: rawCountertop.color || '',
               thickness: rawCountertop.thickness || '',
               calculationType: rawCountertop.calculationType || '',
               quantity: rawCountertop.quantity || 0,
               unit: rawCountertop.unit || 'm',
               unitPrice: rawCountertop.unitPrice ?? rawCountertop.unit_price ?? 0,
               unit_price: rawCountertop.unit_price ?? rawCountertop.unitPrice ?? 0,
+              adjustment: rawCountertop.adjustment || 0,
+              remark: rawCountertop.remark || '',
               subtotal: rawCountertop.subtotal || 0
             };
           } else {
             normalizedCountertop = { ...DEFAULT_COUNTERTOP };
           }
-
           console.log('DB countertop:', dbCab.countertop);
           console.log('Normalized countertop:', normalizedCountertop);
 
@@ -1600,9 +1601,9 @@ const renderUpgradeModal = () => {
                      <div className="space-y-4 pt-2">
                         <div className="grid grid-cols-5 gap-4">
                            <div>
-                             <label className="text-xs font-bold text-gray-500">材质</label>
+                             <label className="text-xs font-bold text-gray-500">材料</label>
                              <select value={activeCT.material} onChange={e => updateCT({ material: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
-                                <option value="">--选择材质--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
+                                <option value="">--选择材料--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
                              </select>
                            </div>
                            <div>
@@ -1616,8 +1617,8 @@ const renderUpgradeModal = () => {
                                    const price = parseFloat(selected.unit_price) || 0;
                                    const adj = parseFloat(activeCT.adjustment) || 0;
                                    updateCT({ 
-                                     material: selected.material_type, 
-                                     type: selected.name, 
+                                     material: selected.material_type, // 石英石
+                                     type: selected.name,              // 单色
                                      brand: selected.brand || '', 
                                      thickness: selected.thickness || '',
                                      unit: selected.unit || 'm',
@@ -1635,9 +1636,9 @@ const renderUpgradeModal = () => {
                                 ))}
                              </select>
                            </div>
-                           <div><label className="text-xs font-bold text-gray-500">型号</label><input value={activeCT.type} onChange={e => updateCT({ type: e.target.value })} placeholder="型号/类型" className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                           <div><label className="text-xs font-bold text-gray-500">品牌</label><input value={activeCT.brand} onChange={e => updateCT({ brand: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                           <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={activeCT.thickness} onChange={e => updateCT({ thickness: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                           <div><label className="text-xs font-bold text-gray-500">型号</label><input value={activeCT.model || ''} onChange={e => updateCT({ model: e.target.value })} placeholder="输入型号" className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                           <div><label className="text-xs font-bold text-gray-500">品牌</label><input value={activeCT.brand || ''} onChange={e => updateCT({ brand: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                           <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={activeCT.thickness || ''} onChange={e => updateCT({ thickness: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                         </div>
                         <div className="grid grid-cols-5 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                            <div>
