@@ -1865,27 +1865,38 @@ const renderUpgradeModal = () => {
                       </div>
                     </div>
 
-                    {/* 【新增】：台面配置展示 (客户端) */}
-                    {cab.countertop && cab.countertop.enabled && (
-                      <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
-                        <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
-                          台面配置
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 leading-snug bg-gray-50 p-3 rounded-lg border border-gray-100">
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold text-gray-800">{cab.countertop.material || cab.countertop.type || '未选择'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">品牌：</span><span className="font-bold text-gray-800">{cab.countertop.brand || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">颜色：</span><span className="font-bold text-gray-800">{cab.countertop.color || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">厚度：</span><span className="font-bold text-gray-800">{cab.countertop.thickness || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">计价方式：</span><span className="font-bold text-gray-800">{cab.countertop.calculationType || cab.countertop.unit || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">数量：</span><span className="font-bold text-gray-800">{cab.countertop.quantity || 0} {cab.countertop.unit || ''}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">单价：</span><span className="font-bold text-gray-800">¥{cab.countertop.unitPrice || cab.countertop.unit_price || 0} /{cab.countertop.unit || ''}</span></span>
-                        </div>
-                        <div className="mt-2 text-right font-medium flex justify-end items-center gap-2">
-                          <span className="text-gray-400 font-medium">小计:</span>
-                          <span className="font-black text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
-                        </div>
-                      </div>
-                    )}
+                    {/* 【重构】：台面配置展示 (合同阅读结构) */}
+                        {cab.countertop && cab.countertop.enabled && (
+                          <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
+                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
+                              🪨 台面配置
+                            </div>
+                            <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
+                              <div><span className="text-gray-500">类型：</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || '-'}</span></div>
+                              <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
+                              <div><span className="text-gray-500">厚度：</span><span className="font-bold text-gray-900">{cab.countertop.thickness || '-'}</span></div>
+                              
+                              {cab.countertop.remark && (
+                                <div className="pt-0.5"><span className="text-gray-500">材料备注：</span><span className="font-bold text-rose-600">{cab.countertop.remark}</span></div>
+                              )}
+                              
+                              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pt-2 mt-2 border-t border-gray-200">
+                                <div><span className="text-gray-500">计价数量：</span><span className="font-bold text-gray-900">{cab.countertop.quantity} {cab.countertop.unit}</span></div>
+                                <div>
+                                  <span className="text-gray-500">单价：</span>
+                                  <span className="font-bold text-gray-900">
+                                    ¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}
+                                    {Number(cab.countertop.adjustment) !== 0 ? ` (调价: ${Number(cab.countertop.adjustment) > 0 ? '+' : ''}${cab.countertop.adjustment})` : ''}
+                                  </span>
+                                </div>
+                                <div className="ml-auto">
+                                  <span className="text-gray-500 font-medium mr-2">小计:</span>
+                                  <span className="font-black text-rose-600 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                     {/* 工艺配置 (严谨缩进与全量展示) */}
                     {cabUpgs.length > 0 && (
@@ -2169,27 +2180,38 @@ const renderUpgradeModal = () => {
                           </div>
                         </div>
 
-                       {/* 【修复/新增】：台面配置展示 (完整闭合结构) */}
-                    {cab.countertop && cab.countertop.enabled && (
-                      <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
-                        <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
-                          台面配置 COUNTERTOP
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 leading-snug bg-gray-50 p-3 rounded-lg border border-gray-100">
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold text-gray-800">{cab.countertop.material || cab.countertop.type || '未选择'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">品牌：</span><span className="font-bold text-gray-800">{cab.countertop.brand || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">颜色：</span><span className="font-bold text-gray-800">{cab.countertop.color || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">厚度：</span><span className="font-bold text-gray-800">{cab.countertop.thickness || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">计价方式：</span><span className="font-bold text-gray-800">{cab.countertop.calculationType || cab.countertop.unit || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">数量：</span><span className="font-bold text-gray-800">{cab.countertop.quantity || 0} {cab.countertop.unit || ''}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">单价：</span><span className="font-bold text-gray-800">¥{cab.countertop.unitPrice || cab.countertop.unit_price || 0} /{cab.countertop.unit || ''}</span></span>
-                        </div>
-                        <div className="mt-2 text-right font-medium flex justify-end items-center gap-2">
-                          <span className="text-gray-400 font-medium">小计:</span>
-                          <span className="font-black text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
-                        </div>
-                      </div>
-                    )}
+                       {/* 【重构】：台面配置展示 (合同阅读结构) */}
+                        {cab.countertop && cab.countertop.enabled && (
+                          <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
+                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
+                              🪨 台面配置
+                            </div>
+                            <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
+                              <div><span className="text-gray-500">类型：</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || '-'}</span></div>
+                              <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
+                              <div><span className="text-gray-500">厚度：</span><span className="font-bold text-gray-900">{cab.countertop.thickness || '-'}</span></div>
+                              
+                              {cab.countertop.remark && (
+                                <div className="pt-0.5"><span className="text-gray-500">材料备注：</span><span className="font-bold text-rose-600">{cab.countertop.remark}</span></div>
+                              )}
+                              
+                              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pt-2 mt-2 border-t border-gray-200">
+                                <div><span className="text-gray-500">计价数量：</span><span className="font-bold text-gray-900">{cab.countertop.quantity} {cab.countertop.unit}</span></div>
+                                <div>
+                                  <span className="text-gray-500">单价：</span>
+                                  <span className="font-bold text-gray-900">
+                                    ¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}
+                                    {Number(cab.countertop.adjustment) !== 0 ? ` (调价: ${Number(cab.countertop.adjustment) > 0 ? '+' : ''}${cab.countertop.adjustment})` : ''}
+                                  </span>
+                                </div>
+                                <div className="ml-auto">
+                                  <span className="text-gray-500 font-medium mr-2">小计:</span>
+                                  <span className="font-black text-rose-600 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* 4. 升级工艺区 (紧凑表格 + 严谨父子层级) */}
                         {cabUpgrades.length > 0 && (
@@ -3064,27 +3086,38 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                     </div>
                   </div>
 
-                  {/* 【修复/新增】：台面配置展示 (完整闭合结构) */}
-                    {cab.countertop && cab.countertop.enabled && (
-                      <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
-                        <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
-                          台面配置
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 leading-snug bg-gray-50 p-3 rounded-lg border border-gray-100">
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold text-gray-800">{cab.countertop.material || cab.countertop.type || '未选择'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">品牌：</span><span className="font-bold text-gray-800">{cab.countertop.brand || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">颜色：</span><span className="font-bold text-gray-800">{cab.countertop.color || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">厚度：</span><span className="font-bold text-gray-800">{cab.countertop.thickness || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">计价方式：</span><span className="font-bold text-gray-800">{cab.countertop.calculationType || cab.countertop.unit || '-'}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">数量：</span><span className="font-bold text-gray-800">{cab.countertop.quantity || 0} {cab.countertop.unit || ''}</span></span>
-                          <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">单价：</span><span className="font-bold text-gray-800">¥{cab.countertop.unitPrice || cab.countertop.unit_price || 0} /{cab.countertop.unit || ''}</span></span>
-                        </div>
-                        <div className="mt-2 text-right font-medium flex justify-end items-center gap-2">
-                          <span className="text-gray-400 font-medium">小计:</span>
-                          <span className="font-black text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
-                        </div>
-                      </div>
-                    )}
+                  {/* 【重构】：台面配置展示 (合同阅读结构) */}
+                        {cab.countertop && cab.countertop.enabled && (
+                          <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
+                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
+                              🪨 台面配置
+                            </div>
+                            <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
+                              <div><span className="text-gray-500">类型：</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || '-'}</span></div>
+                              <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
+                              <div><span className="text-gray-500">厚度：</span><span className="font-bold text-gray-900">{cab.countertop.thickness || '-'}</span></div>
+                              
+                              {cab.countertop.remark && (
+                                <div className="pt-0.5"><span className="text-gray-500">材料备注：</span><span className="font-bold text-rose-600">{cab.countertop.remark}</span></div>
+                              )}
+                              
+                              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pt-2 mt-2 border-t border-gray-200">
+                                <div><span className="text-gray-500">计价数量：</span><span className="font-bold text-gray-900">{cab.countertop.quantity} {cab.countertop.unit}</span></div>
+                                <div>
+                                  <span className="text-gray-500">单价：</span>
+                                  <span className="font-bold text-gray-900">
+                                    ¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}
+                                    {Number(cab.countertop.adjustment) !== 0 ? ` (调价: ${Number(cab.countertop.adjustment) > 0 ? '+' : ''}${cab.countertop.adjustment})` : ''}
+                                  </span>
+                                </div>
+                                <div className="ml-auto">
+                                  <span className="text-gray-500 font-medium mr-2">小计:</span>
+                                  <span className="font-black text-rose-600 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                           
                   {cabUpgs.length > 0 && (
                     <div>
