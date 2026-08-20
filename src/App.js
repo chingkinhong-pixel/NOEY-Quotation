@@ -1564,7 +1564,7 @@ const renderUpgradeModal = () => {
               {/* 【新增/修复】：台面配置 (Countertop) 状态并轨至 quoteCabinets */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 mt-6">
                 <div className="flex justify-between items-center mb-4 border-b pb-4">
-                  <h3 className="font-black text-gray-800">🪨 台面配置 (Countertop)</h3>
+                  <h3 className="font-black text-gray-800">🪨 台面配置</h3>
                   <div className="flex items-center gap-2">
                     <input 
                       type="checkbox" 
@@ -1590,17 +1590,59 @@ const renderUpgradeModal = () => {
 
                    return (
                      <div className="space-y-4 pt-2">
-                        <div className="grid grid-cols-4 gap-4">
-                           <div>
-                             <label className="text-xs font-bold text-gray-500">台面类型</label>
-                             <select value={activeCT.material || activeCT.type} onChange={e => updateCT({ material: e.target.value, type: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
-                                <option value="">--选择类型--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
-                             </select>
-                           </div>
-                           <div><label className="text-xs font-bold text-gray-500">品牌</label><input value={activeCT.brand} onChange={e => updateCT({ brand: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                           <div><label className="text-xs font-bold text-gray-500">颜色</label><input value={activeCT.color} onChange={e => updateCT({ color: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                           <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={activeCT.thickness} onChange={e => updateCT({ thickness: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                        </div>
+                        {/* 【新增/替换】：5列网格，接入基础库二级联动与自动计算 */}
+                      <div className="grid grid-cols-5 gap-4">
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">台面类型</label>
+                           <select value={activeCT.type} onChange={e => updateCT({ type: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                              <option value="">--选择类型--</option><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option>
+                           </select>
+                         </div>
+                         
+                         {/* 核心联动区域 */}
+                         <div>
+                           <label className="text-xs font-bold text-blue-600">子类型(系统库)</label>
+                           <select 
+                             value={countertopItems.find(m => m.name === activeCT.material)?.id || ''} 
+                             onChange={e => {
+                               const selected = countertopItems.find(m => String(m.id) === String(e.target.value));
+                               if (selected) {
+                                 const qty = parseFloat(activeCT.quantity) || 0;
+                                 const price = parseFloat(selected.unit_price) || 0;
+                                 updateCT({ 
+                                   material: selected.name, 
+                                   brand: selected.brand || '', 
+                                   unit: selected.unit || 'm',
+                                   unitPrice: price, 
+                                   unit_price: price, 
+                                   subtotal: qty * price 
+                                 });
+                               }
+                             }} 
+                             className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg font-bold mt-1"
+                           >
+                              <option value="">--自填或选择--</option>
+                              {countertopItems.filter(m => m.material_type === activeCT.type).map(m => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                              ))}
+                           </select>
+                         </div>
+                         
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">品牌</label>
+                           <input value={activeCT.brand} onChange={e => updateCT({ brand: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" />
+                         </div>
+                         
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">型号/颜色(可手填)</label>
+                           <input value={activeCT.material} onChange={e => updateCT({ material: e.target.value })} placeholder="未选库可自填" className="w-full border-2 p-2 rounded-lg font-bold mt-1" />
+                         </div>
+                         
+                         <div>
+                           <label className="text-xs font-bold text-gray-500">厚度</label>
+                           <input value={activeCT.thickness} onChange={e => updateCT({ thickness: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" />
+                         </div>
+                      </div>
                         <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                            <div>
                              <label className="text-xs font-bold text-gray-500">计价单位</label>
