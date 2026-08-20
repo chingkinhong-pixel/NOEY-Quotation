@@ -2321,10 +2321,21 @@ const renderUpgradeModal = () => {
                   <div>
                     <div className="flex justify-between items-end mb-5">
                       <div className="text-xs font-bold text-gray-400">金额总计</div>
-                      <div className="text-2xl font-black text-rose-600">¥{quote.total_amount ? parseFloat(quote.total_amount).toFixed(0) : '0'}</div>
+                      <div className="flex flex-col items-end">
+                        {/* 如果存在人工折扣价，则显示划线的原全案总价 */}
+                        {quote.discount_final_price && (
+                          <span className="line-through text-gray-400 text-xs font-bold mb-0.5">
+                            ¥{parseFloat(quote.total_amount || 0).toFixed(0)}
+                          </span>
+                        )}
+                        {/* 优先显示最终结算价，否则显示原总计 */}
+                        <div className="text-2xl font-black text-rose-600">
+                          ¥{quote.discount_final_price ? parseFloat(quote.discount_final_price).toFixed(0) : (quote.total_amount ? parseFloat(quote.total_amount).toFixed(0) : '0')}
+                        </div>
+                      </div>
                     </div>
                     
-              <div className="flex gap-2">
+                    <div className="flex gap-2">
   <button 
     onClick={() => handleLoadQuoteForEditing(quote)}
     className="flex-1 bg-black text-white py-2.5 rounded-xl font-bold text-xs hover:bg-gray-800 transition-colors"
