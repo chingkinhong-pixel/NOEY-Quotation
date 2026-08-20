@@ -65,6 +65,8 @@ const DEFAULT_COUNTERTOP = {
   unit: 'm',
   unitPrice: 0,
   unit_price: 0,
+  adjustment: 0, // 【新增】人工调价
+  remark: '',    // 【新增】材料备注
   subtotal: 0
 };
 
@@ -313,7 +315,7 @@ export default function App() {
   // 台面后台基础库状态
   const [countertopItems, setCountertopItems] = useState([]);
   const [countertopForm, setCountertopForm] = useState({
-    name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', description: ''
+    name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', thickness: '', description: ''
   });
   const [quoteCabinets, setQuoteCabinets] = useState([]);
   const [activeCabinetId, setActiveCabinetId] = useState(null);
@@ -586,13 +588,19 @@ export default function App() {
     e.preventDefault();
     try {
       const payload = { ...countertopForm, unit_price: parseFloat(countertopForm.unit_price) || 0 };
-      await supabase.from('countertop_items').insert([payload]);
-      showToast('新增台面成功');
-      setCountertopForm({ name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', description: '' });
+      if (editId) { 
+        await supabase.from('countertop_items').update(payload).eq('id', editId); 
+        showToast('修改台面成功'); 
+      } else { 
+        await supabase.from('countertop_items').insert([payload]); 
+        showToast('新增台面成功'); 
+      }
+      setCountertopForm({ name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', thickness: '', description: '' });
+      setEditId(null);
       fetchDictionaries();
     } catch (err) { showToast('保存失败', 'error'); }
   };
-
+  
   const handleToggleUpgradeStatus = async (item) => {
     try {
       await supabase.from('upgrade_items').update({ status: !item.status }).eq('id', item.id);
@@ -2680,26 +2688,32 @@ const renderUpgradeModal = () => {
 
           {adminView === 'countertop' && (
             <div className="max-w-5xl space-y-6">
-              <h2 className="text-2xl font-black">台面基础库 (Phase 1)</h2>
+              <h2 className="text-2xl font-black">台面基础库</h2>
               <form onSubmit={handleSaveCountertop} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <div className="grid grid-cols-5 gap-4">
-                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">台面名称</label><input required value={countertopForm.name} onChange={e=>setCountertopForm({...countertopForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
+                  <div className="col-span-2"><label className="text-xs font-bold text-gray-500">类型(名称)</label><input required value={countertopForm.name} onChange={e=>setCountertopForm({...countertopForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                   <div><label className="text-xs font-bold text-gray-500">材质</label><select value={countertopForm.material_type} onChange={e=>setCountertopForm({...countertopForm, material_type:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option>石英石</option><option>岩板</option><option>人造石</option><option>大理石</option></select></div>
+                  <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={countertopForm.thickness || ''} onChange={e=>setCountertopForm({...countertopForm, thickness:e.target.value})} placeholder="如: 15mm" className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                   <div><label className="text-xs font-bold text-gray-500">计价单位</label><select value={countertopForm.unit} onChange={e=>setCountertopForm({...countertopForm, unit:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option value="m">m (延米)</option><option value="㎡">㎡</option></select></div>
-                  <div><label className="text-xs font-bold text-gray-500">基准单价</label><input type="number" required value={countertopForm.unit_price} onChange={e=>setCountertopForm({...countertopForm, unit_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
                 </div>
                 <div className="flex gap-4 mt-4 items-end">
+                  <div className="w-32"><label className="text-xs font-bold text-gray-500">基准单价</label><input type="number" required value={countertopForm.unit_price} onChange={e=>setCountertopForm({...countertopForm, unit_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
                   <div className="flex-1"><label className="text-xs font-bold text-gray-500">品牌 (可选)</label><input value={countertopForm.brand} onChange={e=>setCountertopForm({...countertopForm, brand:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                   <div className="flex-1"><label className="text-xs font-bold text-gray-500">备注</label><input value={countertopForm.description} onChange={e=>setCountertopForm({...countertopForm, description:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                  <button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold h-[42px]">新增台面</button>
+                  {editId && <button type="button" onClick={() => {setEditId(null); setCountertopForm({ name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', thickness: '', description: '' });}} className="bg-gray-100 text-gray-600 px-6 py-2 rounded-lg font-bold h-[42px]">取消</button>}
+                  <button type="submit" className="bg-black text-white px-8 py-2 rounded-lg font-bold h-[42px]">{editId ? '保存修改' : '新增台面'}</button>
                 </div>
               </form>
-              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">材质</th><th className="p-3">单位</th><th className="p-3">单价</th><th className="p-3">品牌/备注</th><th className="p-3">操作</th></tr></thead>
+                  <thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">材质</th><th className="p-3">单位</th><th className="p-3">单价</th><th className="p-3">品牌/厚度</th><th className="p-3">操作</th></tr></thead>
                   <tbody>
                     {countertopItems.map(item => (
-                      <tr key={item.id} className="border-b hover:bg-gray-50"><td className="p-3 font-bold">{item.name}</td><td className="p-3">{item.material_type}</td><td className="p-3">{item.unit}</td><td className="p-3 font-black text-rose-600">¥{item.unit_price}</td><td className="p-3 text-gray-500">{item.brand} {item.description}</td><td className="p-3"><button onClick={() => triggerDelete('countertop_items', item.id, item.name)} className="text-rose-600 font-bold">删除</button></td></tr>
+                      <tr key={item.id} className="border-b hover:bg-gray-50"><td className="p-3 font-bold">{item.name}</td><td className="p-3">{item.material_type}</td><td className="p-3">{item.unit}</td><td className="p-3 font-black text-rose-600">¥{item.unit_price}</td><td className="p-3 text-gray-500">{item.brand} {item.thickness}</td>
+                      <td className="p-3">
+                         <button onClick={() => {setEditId(item.id); setCountertopForm(item);}} className="text-blue-600 font-bold mr-3">编辑</button>
+                         <button onClick={() => triggerDelete('countertop_items', item.id, item.name)} className="text-rose-600 font-bold">删除</button>
+                      </td></tr>
                     ))}
                   </tbody>
                 </table>
