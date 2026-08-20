@@ -1870,10 +1870,11 @@ const renderUpgradeModal = () => {
                         {cab.countertop && cab.countertop.enabled && (
                           <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
                             <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
-                              🪨 台面配置
+                              台面配置
                             </div>
                             <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
-                              <div><span className="text-gray-500">类型：</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || '-'}</span></div>
+                              <div><span className="text-gray-500">材料：</span><span className="font-bold text-gray-900">{cab.countertop.type || ''} {cab.countertop.material || '-'}</span></div>
+                              <div><span className="text-gray-500">型号：</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
                               <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
                               <div><span className="text-gray-500">厚度：</span><span className="font-bold text-gray-900">{cab.countertop.thickness || '-'}</span></div>
                               
@@ -2185,10 +2186,11 @@ const renderUpgradeModal = () => {
                         {cab.countertop && cab.countertop.enabled && (
                           <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
                             <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
-                              🪨 台面配置
+                              台面配置 COUNTERTOP
                             </div>
                             <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
-                              <div><span className="text-gray-500">类型：</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || '-'}</span></div>
+                              <div><span className="text-gray-500">材料：</span><span className="font-bold text-gray-900">{cab.countertop.type || ''} {cab.countertop.material || '-'}</span></div>
+                              <div><span className="text-gray-500">型号：</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
                               <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
                               <div><span className="text-gray-500">厚度：</span><span className="font-bold text-gray-900">{cab.countertop.thickness || '-'}</span></div>
                               
@@ -3091,10 +3093,11 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                         {cab.countertop && cab.countertop.enabled && (
                           <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
                             <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
-                              🪨 台面配置
+                              台面配置
                             </div>
                             <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
-                              <div><span className="text-gray-500">类型：</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || '-'}</span></div>
+                              <div><span className="text-gray-500">材料：</span><span className="font-bold text-gray-900">{cab.countertop.type || ''} {cab.countertop.material || '-'}</span></div>
+                              <div><span className="text-gray-500">型号：</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
                               <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
                               <div><span className="text-gray-500">厚度：</span><span className="font-bold text-gray-900">{cab.countertop.thickness || '-'}</span></div>
                               
