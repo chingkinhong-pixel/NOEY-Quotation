@@ -57,8 +57,8 @@ const DEFAULT_COUNTERTOP = {
   enabled: false,
   material: '',
   type: '',
-  model: '',     // 【新增】型号，与子类型彻底分离
-  brand: '',
+  model: '',     
+  brand: '',   
   thickness: '',
   calculationType: '',
   quantity: 0,
@@ -66,7 +66,8 @@ const DEFAULT_COUNTERTOP = {
   unitPrice: 0,
   unit_price: 0,
   adjustment: 0, 
-  remark: '',    
+  remark: '',
+  specialItems: [], // 【新增】特殊工艺费数组
   subtotal: 0
 };
 
@@ -820,12 +821,12 @@ export default function App() {
          // 【修复】：countertop 数据标准化与兜底
           const rawCountertop = dbCab.countertop;
           let normalizedCountertop;
-          if (rawCountertop && typeof rawCountertop === 'object') {
+         if (rawCountertop && typeof rawCountertop === 'object') {
             normalizedCountertop = {
               enabled: rawCountertop.enabled ?? true,
               material: rawCountertop.material || rawCountertop.type || '',
               type: rawCountertop.type || rawCountertop.material || '',
-              model: rawCountertop.model || rawCountertop.color || '', // 兼容可能写在 color 里的旧数据
+              model: rawCountertop.model || '', 
               brand: rawCountertop.brand || '',
               thickness: rawCountertop.thickness || '',
               calculationType: rawCountertop.calculationType || '',
@@ -835,6 +836,7 @@ export default function App() {
               unit_price: rawCountertop.unit_price ?? rawCountertop.unitPrice ?? 0,
               adjustment: rawCountertop.adjustment || 0,
               remark: rawCountertop.remark || '',
+              specialItems: rawCountertop.specialItems || [], // 【新增】
               subtotal: rawCountertop.subtotal || 0
             };
           } else {
@@ -1591,14 +1593,25 @@ const renderUpgradeModal = () => {
                 
                 {(activeCabinet.countertop?.enabled) && (() => {
                    const activeCT = activeCabinet.countertop || DEFAULT_COUNTERTOP;
+                   
+                   // 【核心重构】：拦截所有更新，集中计算台面总计，绝对防止覆盖与错漏
                    const updateCT = (updates) => {
-                     setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? {
-                       ...c, countertop: { ...c.countertop, ...updates }
-                     } : c));
+                     setQuoteCabinets(prev => prev.map(c => {
+                       if (c.id !== activeCabinetId) return c;
+                       const newCT = { ...c.countertop, ...updates };
+                       
+                       // 自动计价引擎：基准费 + 人工调价 + 所有特殊工艺费
+                       const basePrice = (parseFloat(newCT.quantity) || 0) * (parseFloat(newCT.unitPrice || newCT.unit_price) || 0) + (parseFloat(newCT.adjustment) || 0);
+                       const specialPrice = (newCT.specialItems || []).reduce((sum, sp) => sum + ((parseFloat(sp.quantity) || 0) * (parseFloat(sp.unitPrice) || 0)), 0);
+                       
+                       newCT.subtotal = basePrice + specialPrice;
+                       return { ...c, countertop: newCT };
+                     }));
                    };
 
                    return (
                      <div className="space-y-4 pt-2">
+                        {/* 基础网格保持不变 */}
                         <div className="grid grid-cols-5 gap-4">
                            <div>
                              <label className="text-xs font-bold text-gray-500">材料</label>
@@ -1613,77 +1626,77 @@ const renderUpgradeModal = () => {
                                onChange={e => {
                                  const selected = countertopItems.find(m => String(m.id) === String(e.target.value));
                                  if (selected) {
-                                   const qty = parseFloat(activeCT.quantity) || 0;
-                                   const price = parseFloat(selected.unit_price) || 0;
-                                   const adj = parseFloat(activeCT.adjustment) || 0;
                                    updateCT({ 
-                                     material: selected.material_type, // 石英石
-                                     type: selected.name,              // 单色
-                                     brand: selected.brand || '', 
-                                     thickness: selected.thickness || '',
-                                     unit: selected.unit || 'm',
-                                     unitPrice: price, 
-                                     unit_price: price, 
-                                     subtotal: (qty * price) + adj
+                                     material: selected.material_type, type: selected.name, 
+                                     brand: selected.brand || '', thickness: selected.thickness || '',
+                                     unit: selected.unit || 'm', unitPrice: parseFloat(selected.unit_price) || 0, unit_price: parseFloat(selected.unit_price) || 0
                                    });
                                  }
                                }} 
                                className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg font-bold mt-1"
                              >
                                 <option value="">--自填或选择--</option>
-                                {countertopItems.filter(m => m.material_type === activeCT.material).map(m => (
-                                  <option key={m.id} value={m.id}>{m.name}</option>
-                                ))}
+                                {countertopItems.filter(m => m.material_type === activeCT.material).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                              </select>
                            </div>
                            <div><label className="text-xs font-bold text-gray-500">型号</label><input value={activeCT.model || ''} onChange={e => updateCT({ model: e.target.value })} placeholder="输入型号" className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                            <div><label className="text-xs font-bold text-gray-500">品牌</label><input value={activeCT.brand || ''} onChange={e => updateCT({ brand: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                            <div><label className="text-xs font-bold text-gray-500">厚度</label><input value={activeCT.thickness || ''} onChange={e => updateCT({ thickness: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
                         </div>
+
+                        {/* 计价网格简化了OnChange，交给 updateCT 自动核算 */}
                         <div className="grid grid-cols-5 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                           <div><label className="text-xs font-bold text-gray-500">计价单位</label><select value={activeCT.unit} onChange={e => updateCT({ unit: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option value="m">m (延米)</option><option value="㎡">㎡</option></select></div>
+                           <div><label className="text-xs font-bold text-gray-500">数量</label><input type="number" value={activeCT.quantity} onChange={e => updateCT({ quantity: e.target.value })} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
+                           <div><label className="text-xs font-bold text-gray-500">单价</label><input type="number" value={activeCT.unitPrice || activeCT.unit_price} onChange={e => updateCT({ unitPrice: e.target.value, unit_price: e.target.value })} className="w-full border-2 p-2 rounded-lg font-black mt-1" /></div>
+                           <div><label className="text-xs font-bold text-blue-600">人工调价 (±)</label><input type="number" value={activeCT.adjustment} onChange={e => updateCT({ adjustment: e.target.value })} placeholder="如: -100" className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg font-black mt-1" /></div>
                            <div>
-                             <label className="text-xs font-bold text-gray-500">计价单位</label>
-                             <select value={activeCT.unit} onChange={e => updateCT({ unit: e.target.value })} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
-                                <option value="m">m (延米)</option><option value="㎡">㎡</option>
-                             </select>
-                           </div>
-                           <div>
-                             <label className="text-xs font-bold text-gray-500">数量</label>
-                             <input type="number" value={activeCT.quantity} onChange={e => {
-                                const qty = parseFloat(e.target.value) || 0;
-                                const price = parseFloat(activeCT.unitPrice || activeCT.unit_price) || 0;
-                                const adj = parseFloat(activeCT.adjustment) || 0;
-                                updateCT({ quantity: e.target.value, subtotal: (qty * price) + adj });
-                             }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
-                           </div>
-                           <div>
-                             <label className="text-xs font-bold text-gray-500">单价</label>
-                             <input type="number" value={activeCT.unitPrice || activeCT.unit_price} onChange={e => {
-                                const price = parseFloat(e.target.value) || 0;
-                                const qty = parseFloat(activeCT.quantity) || 0;
-                                const adj = parseFloat(activeCT.adjustment) || 0;
-                                updateCT({ unitPrice: e.target.value, unit_price: e.target.value, subtotal: (qty * price) + adj });
-                             }} className="w-full border-2 p-2 rounded-lg font-black mt-1" />
-                           </div>
-                           <div>
-                             <label className="text-xs font-bold text-blue-600">人工调价 (±)</label>
-                             <input type="number" value={activeCT.adjustment} onChange={e => {
-                                const adj = parseFloat(e.target.value) || 0;
-                                const qty = parseFloat(activeCT.quantity) || 0;
-                                const price = parseFloat(activeCT.unitPrice || activeCT.unit_price) || 0;
-                                updateCT({ adjustment: e.target.value, subtotal: (qty * price) + adj });
-                             }} placeholder="如: -100" className="w-full border-2 border-blue-200 bg-blue-50 p-2 rounded-lg font-black mt-1" />
-                           </div>
-                           <div>
-                             <label className="text-xs font-bold text-gray-500">小计 (同步总价)</label>
-                             <div className="w-full bg-white border-2 border-transparent p-2 rounded-lg font-black text-rose-600 mt-1">
-                               ¥ {Number(activeCT.subtotal || 0).toFixed(2)}
-                             </div>
+                             <label className="text-xs font-bold text-gray-500">台面合计 (含工艺)</label>
+                             <div className="w-full bg-white border-2 border-transparent p-2 rounded-lg font-black text-rose-600 mt-1">¥ {Number(activeCT.subtotal || 0).toFixed(2)}</div>
                            </div>
                         </div>
+
                         <div>
                            <label className="text-xs font-bold text-gray-500">材料备注 (可选)</label>
                            <textarea value={activeCT.remark} onChange={e => updateCT({ remark: e.target.value })} placeholder="台面材料特殊备注..." className="w-full border-2 p-2 rounded-lg font-bold mt-1 text-sm resize-none bg-gray-50 focus:bg-white" rows="2" />
+                        </div>
+
+                        {/* 【新增】：特殊工艺费 UI (紧凑列表) */}
+                        <div className="border-t border-gray-200 pt-4 mt-2">
+                          <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xs font-black text-gray-800">✨ 特殊工艺费</h4>
+                            <button onClick={() => {
+                               const newItem = { id: Date.now(), name: '', unit: '个', quantity: 1, unitPrice: 0, remark: '' };
+                               updateCT({ specialItems: [...(activeCT.specialItems || []), newItem] });
+                            }} className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors">+ 添加特殊工艺</button>
+                          </div>
+                          <div className="space-y-2">
+                            {(activeCT.specialItems || []).map((item, idx) => (
+                              <div key={item.id || idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                <input placeholder="工艺名称 (如:开孔)" value={item.name} onChange={e => {
+                                   const newItems = [...activeCT.specialItems]; newItems[idx].name = e.target.value; updateCT({ specialItems: newItems });
+                                }} className="w-1/4 border border-gray-200 p-1.5 rounded text-xs font-bold bg-white" />
+                                <input placeholder="数量" type="number" value={item.quantity} onChange={e => {
+                                   const newItems = [...activeCT.specialItems]; newItems[idx].quantity = e.target.value; updateCT({ specialItems: newItems });
+                                }} className="w-16 border border-gray-200 p-1.5 rounded text-xs font-black text-center bg-white" />
+                                <input placeholder="单位" value={item.unit} onChange={e => {
+                                   const newItems = [...activeCT.specialItems]; newItems[idx].unit = e.target.value; updateCT({ specialItems: newItems });
+                                }} className="w-12 border border-gray-200 p-1.5 rounded text-xs text-center bg-white" />
+                                <input placeholder="单价" type="number" value={item.unitPrice} onChange={e => {
+                                   const newItems = [...activeCT.specialItems]; newItems[idx].unitPrice = e.target.value; updateCT({ specialItems: newItems });
+                                }} className="w-20 border border-gray-200 p-1.5 rounded text-xs font-black text-rose-600 bg-white" />
+                                <input placeholder="备注(可选)" value={item.remark} onChange={e => {
+                                   const newItems = [...activeCT.specialItems]; newItems[idx].remark = e.target.value; updateCT({ specialItems: newItems });
+                                }} className="flex-1 border border-gray-200 p-1.5 rounded text-xs bg-white" />
+                                <div className="w-16 text-right font-black text-xs text-rose-600">
+                                   ¥{((parseFloat(item.quantity)||0) * (parseFloat(item.unitPrice)||0)).toFixed(0)}
+                                </div>
+                                <button onClick={() => {
+                                   const newItems = activeCT.specialItems.filter((_, i) => i !== idx); updateCT({ specialItems: newItems });
+                                }} className="text-gray-400 hover:text-rose-600 px-1 font-bold">✕</button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                      </div>
                    );
@@ -1866,13 +1879,13 @@ const renderUpgradeModal = () => {
                       </div>
                     </div>
 
-                    {/* 【重构】：台面配置展示 (合同阅读结构) */}
+                    {/* 【重构】：台面配置展示 (手机端专用清晰结构) */}
                         {cab.countertop && cab.countertop.enabled && (
                           <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
-                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
+                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
                               台面配置
                             </div>
-                            <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 text-[12px] leading-tight space-y-1.5">
                               <div><span className="text-gray-500">材料：</span><span className="font-bold text-gray-900">{cab.countertop.type || ''} {cab.countertop.material || '-'}</span></div>
                               <div><span className="text-gray-500">型号：</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
                               <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
@@ -1881,25 +1894,45 @@ const renderUpgradeModal = () => {
                               {cab.countertop.remark && (
                                 <div className="pt-0.5"><span className="text-gray-500">材料备注：</span><span className="font-bold text-rose-600">{cab.countertop.remark}</span></div>
                               )}
+
+                              {cab.countertop.specialItems && cab.countertop.specialItems.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200 space-y-1.5">
+                                   <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">特殊工艺费</div>
+                                   {cab.countertop.specialItems.map((sp, idx) => (
+                                      <div key={idx} className="flex justify-between items-center text-xs">
+                                         <div>
+                                            <span className="font-bold text-gray-800">{sp.name}</span>
+                                            <span className="text-gray-400 mx-1">×</span>
+                                            <span>{sp.quantity} {sp.unit}</span>
+                                            <span className="text-gray-400 mx-1">×</span>
+                                            <span className="text-gray-500">¥{sp.unitPrice}</span>
+                                            {sp.remark && <span className="text-gray-400 ml-1">({sp.remark})</span>}
+                                         </div>
+                                         <div className="font-bold text-gray-900">
+                                            ¥{(parseFloat(sp.quantity || 0) * parseFloat(sp.unitPrice || 0)).toFixed(2)}
+                                         </div>
+                                      </div>
+                                   ))}
+                                </div>
+                              )}
                               
                               <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pt-2 mt-2 border-t border-gray-200">
                                 <div><span className="text-gray-500">计价数量：</span><span className="font-bold text-gray-900">{cab.countertop.quantity} {cab.countertop.unit}</span></div>
                                 <div>
-                                  <span className="text-gray-500">单价：</span>
+                                  <span className="text-gray-500">基准单价：</span>
                                   <span className="font-bold text-gray-900">
                                     ¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}
                                     {Number(cab.countertop.adjustment) !== 0 ? ` (调价: ${Number(cab.countertop.adjustment) > 0 ? '+' : ''}${cab.countertop.adjustment})` : ''}
                                   </span>
                                 </div>
                                 <div className="ml-auto">
-                                  <span className="text-gray-500 font-medium mr-2">小计:</span>
-                                  <span className="font-black text-rose-600 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
+                                  <span className="text-gray-500 font-medium mr-2">台面合计:</span>
+                                  <span className="font-black text-rose-600 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
                                 </div>
                               </div>
                             </div>
                           </div>
                         )}
-
                     {/* 工艺配置 (严谨缩进与全量展示) */}
                     {cabUpgs.length > 0 && (
                       <div>
@@ -2182,35 +2215,58 @@ const renderUpgradeModal = () => {
                           </div>
                         </div>
 
-                       {/* 【重构】：台面配置展示 (合同阅读结构) */}
+                       {/* 【重构】：台面配置展示 (高度压缩、无卡片流排版) */}
                         {cab.countertop && cab.countertop.enabled && (
-                          <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
-                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
-                              台面配置 COUNTERTOP
+                          <div className="px-4 py-3 print:px-3 print:py-2 border-b border-gray-200">
+                            <div className="font-black text-gray-800 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">台面配置 COUNTERTOP</div>
+                            
+                            {/* 基础参数 (紧凑同行) */}
+                            <div className="text-[12px] print:text-[10px] text-gray-800 flex flex-wrap gap-x-4 gap-y-1 leading-tight mb-1">
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">材料：</span><span className="font-bold">{cab.countertop.type || ''} {cab.countertop.material || '-'}</span></span>
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">型号：</span><span className="font-bold">{cab.countertop.model || '-'}</span></span>
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">品牌：</span><span className="font-bold">{cab.countertop.brand || '-'}</span></span>
+                              <span className="whitespace-nowrap"><span className="text-gray-500 font-medium">厚度：</span><span className="font-bold">{cab.countertop.thickness || '-'}</span></span>
                             </div>
-                            <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
-                              <div><span className="text-gray-500">材料：</span><span className="font-bold text-gray-900">{cab.countertop.type || ''} {cab.countertop.material || '-'}</span></div>
-                              <div><span className="text-gray-500">型号：</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
-                              <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
-                              <div><span className="text-gray-500">厚度：</span><span className="font-bold text-gray-900">{cab.countertop.thickness || '-'}</span></div>
-                              
-                              {cab.countertop.remark && (
-                                <div className="pt-0.5"><span className="text-gray-500">材料备注：</span><span className="font-bold text-rose-600">{cab.countertop.remark}</span></div>
-                              )}
-                              
-                              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pt-2 mt-2 border-t border-gray-200">
-                                <div><span className="text-gray-500">计价数量：</span><span className="font-bold text-gray-900">{cab.countertop.quantity} {cab.countertop.unit}</span></div>
-                                <div>
-                                  <span className="text-gray-500">单价：</span>
-                                  <span className="font-bold text-gray-900">
-                                    ¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}
-                                    {Number(cab.countertop.adjustment) !== 0 ? ` (调价: ${Number(cab.countertop.adjustment) > 0 ? '+' : ''}${cab.countertop.adjustment})` : ''}
-                                  </span>
-                                </div>
-                                <div className="ml-auto">
-                                  <span className="text-gray-500 font-medium mr-2">小计:</span>
-                                  <span className="font-black text-rose-600 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
-                                </div>
+                            
+                            {cab.countertop.remark && (
+                              <div className="text-[11px] print:text-[9px] text-gray-600 pl-2 border-l-2 border-gray-300 mb-1.5">
+                                <span className="font-bold">备注：</span>{cab.countertop.remark}
+                              </div>
+                            )}
+
+                            {/* 特殊工艺费 (单行紧密流) */}
+                            {cab.countertop.specialItems && cab.countertop.specialItems.length > 0 && (
+                               <div className="space-y-0.5 mb-1.5 mt-1.5">
+                                 {cab.countertop.specialItems.map((sp, idx) => (
+                                    <div key={idx} className="text-[11px] print:text-[9px] text-gray-700 flex justify-between">
+                                      <div>
+                                        <span className="font-bold text-gray-800">{sp.name}</span>
+                                        <span className="text-gray-400 mx-1">×</span>
+                                        <span className="font-medium">{sp.quantity} {sp.unit}</span>
+                                        <span className="text-gray-400 mx-1">×</span>
+                                        <span className="font-medium text-gray-500">¥{sp.unitPrice}</span>
+                                        <span className="text-gray-900 mx-1">=</span>
+                                        <span className="font-bold">¥{(parseFloat(sp.quantity||0) * parseFloat(sp.unitPrice||0)).toFixed(2)}</span>
+                                        {sp.remark && <span className="text-gray-400 ml-1">({sp.remark})</span>}
+                                      </div>
+                                    </div>
+                                 ))}
+                               </div>
+                            )}
+                            
+                            {/* 计价底栏 */}
+                            <div className="text-[11px] print:text-[9px] flex justify-between items-center mt-1 border-t border-gray-100 pt-1.5">
+                              <div className="flex gap-4 text-gray-600">
+                                <span><span className="font-medium text-gray-400">数量:</span> <span className="font-bold text-gray-800">{cab.countertop.quantity} {cab.countertop.unit}</span></span>
+                                <span>
+                                  <span className="font-medium text-gray-400">单价:</span> 
+                                  <span className="font-bold text-gray-800">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}</span>
+                                  {Number(cab.countertop.adjustment) !== 0 ? <span className="text-rose-500 ml-1">(调价: {Number(cab.countertop.adjustment) > 0 ? '+' : ''}{cab.countertop.adjustment})</span> : ''}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500 font-medium mr-2">台面合计:</span>
+                                <span className="font-black text-gray-900 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
                               </div>
                             </div>
                           </div>
@@ -2859,7 +2915,7 @@ const renderUpgradeModal = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.3.1</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.3.2</p>
         </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
@@ -3089,13 +3145,13 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                     </div>
                   </div>
 
-                  {/* 【重构】：台面配置展示 (合同阅读结构) */}
+                  {/* 【重构】：台面配置展示 (手机端专用清晰结构) */}
                         {cab.countertop && cab.countertop.enabled && (
                           <div className="mt-2 text-xs text-gray-700 border-t border-gray-100 pt-3">
-                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">
-                              台面配置
+                            <div className="font-bold text-gray-900 mb-1.5 uppercase tracking-widest text-[10px]">
+                               台面配置
                             </div>
-                            <div className="bg-gray-50 p-4 print:p-3 rounded-lg border border-gray-100 text-[12px] print:text-[10px] leading-tight space-y-1.5">
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 text-[12px] leading-tight space-y-1.5">
                               <div><span className="text-gray-500">材料：</span><span className="font-bold text-gray-900">{cab.countertop.type || ''} {cab.countertop.material || '-'}</span></div>
                               <div><span className="text-gray-500">型号：</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
                               <div><span className="text-gray-500">品牌：</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
@@ -3104,19 +3160,40 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                               {cab.countertop.remark && (
                                 <div className="pt-0.5"><span className="text-gray-500">材料备注：</span><span className="font-bold text-rose-600">{cab.countertop.remark}</span></div>
                               )}
+
+                              {cab.countertop.specialItems && cab.countertop.specialItems.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200 space-y-1.5">
+                                   <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">特殊工艺费</div>
+                                   {cab.countertop.specialItems.map((sp, idx) => (
+                                      <div key={idx} className="flex justify-between items-center text-xs">
+                                         <div>
+                                            <span className="font-bold text-gray-800">{sp.name}</span>
+                                            <span className="text-gray-400 mx-1">×</span>
+                                            <span>{sp.quantity} {sp.unit}</span>
+                                            <span className="text-gray-400 mx-1">×</span>
+                                            <span className="text-gray-500">¥{sp.unitPrice}</span>
+                                            {sp.remark && <span className="text-gray-400 ml-1">({sp.remark})</span>}
+                                         </div>
+                                         <div className="font-bold text-gray-900">
+                                            ¥{(parseFloat(sp.quantity || 0) * parseFloat(sp.unitPrice || 0)).toFixed(2)}
+                                         </div>
+                                      </div>
+                                   ))}
+                                </div>
+                              )}
                               
                               <div className="flex flex-wrap items-center gap-x-6 gap-y-1 pt-2 mt-2 border-t border-gray-200">
                                 <div><span className="text-gray-500">计价数量：</span><span className="font-bold text-gray-900">{cab.countertop.quantity} {cab.countertop.unit}</span></div>
                                 <div>
-                                  <span className="text-gray-500">单价：</span>
+                                  <span className="text-gray-500">基准单价：</span>
                                   <span className="font-bold text-gray-900">
                                     ¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}
                                     {Number(cab.countertop.adjustment) !== 0 ? ` (调价: ${Number(cab.countertop.adjustment) > 0 ? '+' : ''}${cab.countertop.adjustment})` : ''}
                                   </span>
                                 </div>
                                 <div className="ml-auto">
-                                  <span className="text-gray-500 font-medium mr-2">小计:</span>
-                                  <span className="font-black text-rose-600 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
+                                  <span className="text-gray-500 font-medium mr-2">台面合计:</span>
+                                  <span className="font-black text-rose-600 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span>
                                 </div>
                               </div>
                             </div>
