@@ -1824,7 +1824,7 @@ const renderUpgradeModal = () => {
               const doorUnitPrice = Number(cab.snap_final_door_price || 0);
               const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
 
-              // 【核心修复】：单柜总价与各分支小计
+              // 【核心修复】：清理重复声明，并补全缺失的 dispCabType / dispDoorType 变量
               const excessDepthFee = Number(cab.excess_depth_fee || 0);
               const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
               const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
@@ -1838,25 +1838,14 @@ const renderUpgradeModal = () => {
                  comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
               }
 
-              // 【台面特殊工艺并入备注】
+              const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
+              const dispDoorType = cab.snap_door_material_name || (cab.snap_door_brand && !cab.snap_door_brand.includes('系统') ? cab.snap_door_brand : '定制门板');
+
+              // 【台面特殊工艺处理为备注】
               let specialItemsText = (cab.countertop?.specialItems || []).map(sp => `${sp.name}×${sp.quantity}×¥${sp.unitPrice}`).join('，');
               let combinedRemark = cab.countertop?.remark || '';
               if (specialItemsText) {
                   combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
-              }
-
-              // 【核心：单柜总价推算 (仅展示)】
-              const excessDepthFee = Number(cab.excess_depth_fee || 0);
-              const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
-              const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
-              const cabinetAndDoorSubtotal = Number(cab.cabinet_total_price || 0) - upgradesTotal;
-
-              const openCabinetSalesPrice = cab.snap_base_cabinet_cost ? Number(cab.snap_base_cabinet_cost) : Math.max(0, Number(cab.cabinet_total_price || 0) - excessDepthFee - upgradesTotal);
-              const comprehensiveTotalAmount = hasNoDoor ? openCabinetSalesPrice : ((cabUnitPrice + doorUnitPrice) * displayQty);
-              let comprehensiveUnitPrice = displayQty > 0 ? (comprehensiveTotalAmount / displayQty) : 0;
-
-              if (comprehensiveUnitPrice === 0 && Number(cab.cabinet_total_price) > 0 && displayQty > 0) {
-                 comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
               }
 
               return (
@@ -2142,11 +2131,6 @@ const renderUpgradeModal = () => {
                 <div className="space-y-6 print:space-y-4">
                   {spaceCabinets.map(cab => {
                     const cabUpgrades = upgrades.filter(u => u.cabinet_id === cab.id);
-                    const excessDepthFee = Number(cab.excess_depth_fee || 0);
-                    const cabUnitPrice = Number(cab.snap_final_cabinet_price || 0);
-                    const doorUnitPrice = Number(cab.snap_final_door_price || 0);
-                    const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
-                    
                     const w = parseFloat(cab.width) || 0;
                     const h = parseFloat(cab.height) || 0;
                     const isArea = h > (rules?.height_threshold || 1000);
@@ -2155,7 +2139,12 @@ const renderUpgradeModal = () => {
                     const displayQty = fallbackQty > 0 ? fallbackQty : (isArea ? Math.max((w * h) / 1000000, rules?.minimum_area || 1) : Math.max(w / 1000, (rules?.minimum_width || 1000) / 1000));
                     const unitLabel = isArea ? '㎡' : 'm';
 
-                    // 【核心修复】：单柜总价与所有分支小计推算
+                    const cabUnitPrice = Number(cab.snap_final_cabinet_price || 0);
+                    const doorUnitPrice = Number(cab.snap_final_door_price || 0);
+                    const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
+
+                    // 【核心修复】：清理冗余和重复声明的常量
+                    const excessDepthFee = Number(cab.excess_depth_fee || 0);
                     const upgradesTotal = cabUpgrades.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
                     const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
                     const cabinetAndDoorSubtotal = Number(cab.cabinet_total_price || 0) - upgradesTotal;
@@ -2171,17 +2160,12 @@ const renderUpgradeModal = () => {
                     const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
                     const dispDoorType = cab.snap_door_material_name || (cab.snap_door_brand && !cab.snap_door_brand.includes('系统') ? cab.snap_door_brand : '定制门板');
 
-                    // 【台面特殊工艺并入备注】
+                    // 【台面特殊工艺处理为备注】
                     let specialItemsText = (cab.countertop?.specialItems || []).map(sp => `${sp.name}×${sp.quantity}×¥${sp.unitPrice}`).join('，');
                     let combinedRemark = cab.countertop?.remark || '';
                     if (specialItemsText) {
                         combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
                     }
-
-                    // 【核心：单柜总价推算 (仅展示)】
-                    const upgradesTotal = cabUpgrades.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
-                    const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
-                    const cabinetAndDoorSubtotal = Number(cab.cabinet_total_price || 0) - upgradesTotal;
 
                     return (
                       <div key={cab.id} className="page-break-inside-avoid border border-gray-300 print:border-gray-400 bg-white shadow-sm">
@@ -3088,7 +3072,7 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
               const doorUnitPrice = Number(cab.snap_final_door_price || 0);
               const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
 
-              // 【核心修复】：单柜总价与各分支小计
+              // 【核心修复】：清理重复声明，并补全缺失的 dispCabType / dispDoorType 变量
               const excessDepthFee = Number(cab.excess_depth_fee || 0);
               const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
               const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
@@ -3102,25 +3086,14 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                  comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
               }
 
-              // 【台面特殊工艺并入备注】
+              const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
+              const dispDoorType = cab.snap_door_material_name || (cab.snap_door_brand && !cab.snap_door_brand.includes('系统') ? cab.snap_door_brand : '定制门板');
+
+              // 【台面特殊工艺处理为备注】
               let specialItemsText = (cab.countertop?.specialItems || []).map(sp => `${sp.name}×${sp.quantity}×¥${sp.unitPrice}`).join('，');
               let combinedRemark = cab.countertop?.remark || '';
               if (specialItemsText) {
                   combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
-              }
-
-              // 【核心：单柜总价推算 (仅展示)】
-              const excessDepthFee = Number(cab.excess_depth_fee || 0);
-              const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
-              const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
-              const cabinetAndDoorSubtotal = Number(cab.cabinet_total_price || 0) - upgradesTotal;
-
-              const openCabinetSalesPrice = cab.snap_base_cabinet_cost ? Number(cab.snap_base_cabinet_cost) : Math.max(0, Number(cab.cabinet_total_price || 0) - excessDepthFee - upgradesTotal);
-              const comprehensiveTotalAmount = hasNoDoor ? openCabinetSalesPrice : ((cabUnitPrice + doorUnitPrice) * displayQty);
-              let comprehensiveUnitPrice = displayQty > 0 ? (comprehensiveTotalAmount / displayQty) : 0;
-
-              if (comprehensiveUnitPrice === 0 && Number(cab.cabinet_total_price) > 0 && displayQty > 0) {
-                 comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
               }
 
               return (
