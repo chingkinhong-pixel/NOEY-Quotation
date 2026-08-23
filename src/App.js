@@ -624,7 +624,7 @@ export default function App() {
     setQuoteCabinets([{ 
       id: initCabId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [], material_type: 'panel',
       // 【修复 3】：防止 fallback 覆盖
       countertop: { ...DEFAULT_COUNTERTOP }
     }]);
@@ -861,6 +861,7 @@ export default function App() {
             snap_door_brand: dbCab.snap_door_brand || '', snap_door_color: dbCab.snap_door_color || '',
             door_unit_adjustment: dbCab.door_unit_adjustment || '', door_material_remark: dbCab.door_material_remark || '',
             snap_door_surface_finish: dbCab.snap_door_surface_finish || '', upgrades: cabUpgrades,
+            material_type: cabinets.find(m => m.id === dbCab.cabinet_mat_id)?.material_type || 'panel',
            // 【修复 1】：安全回填防覆盖
             countertop: {
               ...DEFAULT_COUNTERTOP,
@@ -875,7 +876,7 @@ export default function App() {
         setQuoteCabinets([{ 
           id: fallbackId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
           cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
+          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [], material_type: 'panel',
           // 【补上这里】：确保极端兜底新建的柜子也有台面默认属性
           countertop: { ...DEFAULT_COUNTERTOP }
         }]);
@@ -897,7 +898,7 @@ export default function App() {
     setQuoteCabinets([...quoteCabinets, { 
       id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
       cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [],
+      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [], material_type: 'panel',
      // 【修复 3】：防止 fallback 覆盖
       countertop: { ...DEFAULT_COUNTERTOP }
     }]);
@@ -1514,7 +1515,19 @@ const renderUpgradeModal = () => {
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div className="col-span-2">
                     <label className="text-xs font-bold text-gray-500">系统材料底价</label>
-                    <select value={activeCabinet.cabinet_mat_id} onChange={e=>updateActiveCabinet('cabinet_mat_id', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1">
+                    <select 
+                      value={activeCabinet.cabinet_mat_id} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        const matDict = cabinets.find(m => String(m.id) === String(val));
+                        setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? { 
+                          ...c, 
+                          cabinet_mat_id: val, 
+                          material_type: matDict ? (matDict.material_type || 'panel') : 'panel' 
+                        } : c));
+                      }} 
+                      className="w-full border-2 p-2 rounded-lg font-bold mt-1"
+                    >
                       <option value="">-- 选择系统材料 --</option>
                       {cabinets.map(c => <option key={c.id} value={c.id}>{c.name} (¥{c.base_price})</option>)}
                     </select>
