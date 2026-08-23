@@ -252,7 +252,7 @@ export default function App() {
   const [editId, setEditId] = useState(null); 
   const [adminLoginForm, setAdminLoginForm] = useState({ username: '', password: '' });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, table: '', id: null, name: '' });
-  const [cabinetForm, setCabinetForm] = useState({ name: '', base_price: '', shallow_price: '', no_door_factor: '' });
+  const [cabinetForm, setCabinetForm] = useState({ name: '', material_type: 'panel', base_price: '', shallow_price: '', no_door_factor: '' });
   const [doorForm, setDoorForm] = useState({ name: '', door_type: '双饰面', surface_finish: '', base_price: '' });
   const [upgradeForm, setUpgradeForm] = useState({
     name: '', upgrade_category: '门板升级', calculation_type: '按面积㎡', 
@@ -539,10 +539,16 @@ export default function App() {
   const handleSaveCabinet = async (e) => {
     e.preventDefault();
     try {
-      const payload = { name: cabinetForm.name, base_price: parseFloat(cabinetForm.base_price), shallow_price: parseFloat(cabinetForm.shallow_price), no_door_factor: parseFloat(cabinetForm.no_door_factor) };
+      const payload = { 
+        name: cabinetForm.name, 
+        material_type: cabinetForm.material_type || 'panel', // 补充新字段
+        base_price: parseFloat(cabinetForm.base_price), 
+        shallow_price: parseFloat(cabinetForm.shallow_price), 
+        no_door_factor: parseFloat(cabinetForm.no_door_factor) 
+      };
       if (editId) { await supabase.from('materials_cabinet').update(payload).eq('id', editId); showToast('修改成功'); } 
       else { await supabase.from('materials_cabinet').insert([payload]); showToast('新增成功'); }
-      setCabinetForm({ name: '', base_price: '', shallow_price: '', no_door_factor: '' }); setEditId(null); fetchDictionaries();
+      setCabinetForm({ name: '', material_type: 'panel', base_price: '', shallow_price: '', no_door_factor: '' }); setEditId(null); fetchDictionaries();
     } catch (err) { showToast('保存失败', 'error'); }
   };
 
@@ -2672,6 +2678,13 @@ const renderUpgradeModal = () => {
               <h2 className="text-2xl font-black">柜体基础材料</h2>
               <form onSubmit={handleSaveCabinet} className="bg-white p-6 rounded-xl shadow-sm flex gap-4 items-end">
                 <div className="flex-1"><label className="text-xs font-bold text-gray-500">材料名</label><input required value={cabinetForm.name} onChange={e=>setCabinetForm({...cabinetForm, name:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold" /></div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500">材料类型</label>
+                  <select value={cabinetForm.material_type || 'panel'} onChange={e=>setCabinetForm({...cabinetForm, material_type:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold">
+                    <option value="panel">板式</option>
+                    <option value="stone">石材</option>
+                  </select>
+                </div>
                 <div><label className="text-xs font-bold text-gray-500">基准价</label><input type="number" required value={cabinetForm.base_price} onChange={e=>setCabinetForm({...cabinetForm, base_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-black w-24" /></div>
                 <div><label className="text-xs font-bold text-gray-500">浅柜价</label><input type="number" required value={cabinetForm.shallow_price} onChange={e=>setCabinetForm({...cabinetForm, shallow_price:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold w-24" /></div>
                 <div><label className="text-xs font-bold text-gray-500">无门系数</label><input type="number" step="0.01" required value={cabinetForm.no_door_factor} onChange={e=>setCabinetForm({...cabinetForm, no_door_factor:e.target.value})} className="w-full border-2 p-2 rounded-lg font-bold w-24" /></div>
@@ -2679,13 +2692,15 @@ const renderUpgradeModal = () => {
               </form>
               <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <table className="w-full text-left text-sm font-bold"><thead className="bg-gray-50 text-xs text-gray-500 border-b">
-                    <tr><th className="p-3 w-16">序号</th><th className="p-3">材料名称</th><th className="p-3">基准价</th><th className="p-3">浅柜价</th><th className="p-3">操作</th></tr>
+                    <tr><th className="p-3 w-16">序号</th><th className="p-3">材料名称</th><th className="p-3">类型</th><th className="p-3">基准价</th><th className="p-3">浅柜价</th><th className="p-3">操作</th></tr>
                   </thead>
                   <tbody>
                     {cabinets.map((c, index) => (
                       <tr key={c.id} className="border-b hover:bg-gray-50">
                         <td className="p-3 font-mono text-gray-400">{String(index + 1).padStart(2, '0')}</td>
-                        <td className="p-3 text-gray-800">{c.name}</td><td className="p-3 text-rose-600">¥{c.base_price}</td><td className="p-3">¥{c.shallow_price}</td>
+                        <td className="p-3 text-gray-800">{c.name}</td>
+                        <td className="p-3 text-gray-500">{c.material_type === 'stone' ? '石材' : '板式'}</td>
+                        <td className="p-3 text-rose-600">¥{c.base_price}</td><td className="p-3">¥{c.shallow_price}</td>
                         <td className="p-3"><button onClick={() => {setEditId(c.id); setCabinetForm(c);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_cabinet', c.id, c.name)} className="text-rose-600">删除</button></td>
                       </tr>
                     ))}
