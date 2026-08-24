@@ -1429,6 +1429,10 @@ const renderUpgradeModal = () => {
 
   const renderSalesWorkspace = () => {
     if (!activeCabinet) return null;
+    // 【第一步 & 第二步：获取 material 的 type】
+    // 通过基础库比对，精准识别当前选中的柜体类型（stone 或 panel）
+    const selectedCabinetMaterial = cabinets.find(m => m.id === activeCabinet.cabinet_mat_id);
+    const cabinetStructureType = selectedCabinetMaterial?.material_type || activeCabinet.material_type || 'panel';
     const currentCalcs = calculateCabinetDetails(activeCabinet);
     const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
     // 【修复】：工作台总价实时推导同步
@@ -1503,7 +1507,13 @@ const renderUpgradeModal = () => {
               {/* 柜体选配 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-end mb-4 border-b pb-4">
-                  <h3 className="font-black">🗄️ 柜体选配</h3>
+                  <h3 className="font-black flex items-center">
+                    🗄️ 柜体选配
+                    {/* 【第六步：标识当前结构】 */}
+                    <span style={{ fontSize: 11, color: '#999', marginLeft: 10, fontWeight: 'normal' }} className="bg-gray-100 px-2 py-0.5 rounded">
+                      {cabinetStructureType === 'stone' ? '🪨 石材柜' : '🪵 板式柜'}
+                    </span>
+                  </h3>
                   <div className="text-right text-xs font-bold text-gray-500 flex items-center gap-4">
                     <span>柜体基础: ¥{currentCalcs.baseCabinetCost?.toFixed(0) || 0}</span>
                     {currentCalcs.excessDepthFee > 0 && (
@@ -1515,15 +1525,19 @@ const renderUpgradeModal = () => {
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div className="col-span-2">
                     <label className="text-xs font-bold text-gray-500">系统材料底价</label>
+                    {/* 【第四步：石材柜强制启用台面】 */}
                     <select 
                       value={activeCabinet.cabinet_mat_id} 
                       onChange={e => {
                         const val = e.target.value;
                         const matDict = cabinets.find(m => String(m.id) === String(val));
+                        const isStone = matDict?.material_type === 'stone';
                         setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? { 
                           ...c, 
-                          cabinet_mat_id: val, 
-                          material_type: matDict ? (matDict.material_type || 'panel') : 'panel' 
+                          cabinet_mat_id: val,
+                          material_type: isStone ? 'stone' : 'panel',
+                          // 如果选了石材，静默强制启用该柜体的台面模块
+                          countertop: isStone ? { ...(c.countertop || DEFAULT_COUNTERTOP), enabled: true } : c.countertop
                         } : c));
                       }} 
                       className="w-full border-2 p-2 rounded-lg font-bold mt-1"
@@ -1596,21 +1610,26 @@ const renderUpgradeModal = () => {
                 <div className="flex justify-between items-center mb-4 border-b pb-4">
                   <h3 className="font-black text-gray-800">🪨 台面配置</h3>
                   <div className="flex items-center gap-2">
+                    {/* 【第五步：禁止石材柜关闭台面】 */}
                     <input 
                       type="checkbox" 
-                      checked={activeCabinet.countertop?.enabled || false} 
+                      checked={cabinetStructureType === 'stone' ? true : (activeCabinet.countertop?.enabled || false)} 
+                      disabled={cabinetStructureType === 'stone'}
                       onChange={e => {
                         setQuoteCabinets(prev => prev.map(c => c.id === activeCabinetId ? {
                           ...c, countertop: { ...(c.countertop || DEFAULT_COUNTERTOP), enabled: e.target.checked }
                         } : c));
                       }} 
-                      className="w-5 h-5 accent-black cursor-pointer" 
+                      className="w-5 h-5 accent-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
                     />
-                    <span className="text-sm font-bold text-gray-700">启用台面</span>
+                    <span className="text-sm font-bold text-gray-700">
+                       启用台面 {cabinetStructureType === 'stone' && <span className="text-rose-500 text-xs ml-1">(石材柜必填)</span>}
+                    </span>
                   </div>
                 </div>
                 
-                {(activeCabinet.countertop?.enabled) && (() => {
+                {/* 【第三步：控制 UI 显示逻辑，石材柜强制展开】 */}
+                {(cabinetStructureType === 'stone' || activeCabinet.countertop?.enabled) && (() => {
                    const activeCT = activeCabinet.countertop || DEFAULT_COUNTERTOP;
                    
                    // 【核心重构】：拦截所有更新，集中计算台面总计，绝对防止覆盖与错漏
