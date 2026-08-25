@@ -1943,12 +1943,14 @@ const renderUpgradeModal = () => {
                         {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
                       </div>
                       
-                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-b border-gray-200 text-[10px] md:text-xs items-center">
-                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
-                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                        {/* 【问题2修复：石材柜拼接单位】 */}
-                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
-                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{mergedTotal.toFixed(2)}</span></div>
+                      {/* 【核心修复】：手机端石材柜独立尺寸 + 3列网格对齐 */}
+                      <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{mergedTotal.toFixed(2)}</span></div>
                       </div>
                     </div>
                   ) : (
@@ -1978,15 +1980,17 @@ const renderUpgradeModal = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-b border-gray-200 text-[10px] md:text-xs items-center">
-                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
-                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                        {/* 【问题2修复：板式柜拼接单位】 */}
-                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
-                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
+                      {/* 【核心修复】：手机端板式柜 独立尺寸 + 3列网格 */}
+                      <div className="px-3 py-1.5 bg-gray-50 border-t border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                       </div>
 
-                      {/* 【问题1修复：石材柜完全隐藏台面 UI】 */}
+                      {/* 【核心修复】：彻底隐藏石材柜台面，且台面使用 3列网格 */}
                       {!isStone && cab.countertop && cab.countertop.enabled && (
                         <div className="p-0 border-b border-gray-200">
                           <div className="p-3">
@@ -1999,12 +2003,10 @@ const renderUpgradeModal = () => {
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
-                             <div></div>
-                             <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                             {/* 【问题2修复：台面拼接单位】 */}
-                             <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                             <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                          <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 text-xs items-center">
+                             <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
+                             <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
+                             <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
                           </div>
                         </div>
                       )}
@@ -2014,19 +2016,22 @@ const renderUpgradeModal = () => {
                           <div className="p-3 border-b border-gray-100">
                             <div className="font-bold text-gray-900 pb-1 mb-1 text-xs">升级工艺与五金</div>
                           </div>
-                          <div className="space-y-0 text-[10px] md:text-xs">
+                          <div className="space-y-0 text-xs">
                              {cabUpgs.map((upg, i) => {
                                const isChild = !!upg.parent_record_id;
                                return (
-                                 <div key={upg.id} className={`grid grid-cols-4 gap-1 items-center w-full px-2 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50' : ''}`}>
+                                 <div key={upg.id} className={`grid grid-cols-3 gap-2 items-center w-full px-3 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50' : ''}`}>
                                    <div className={`break-words ${isChild ? 'pl-2 border-l-2 border-gray-200' : ''}`}>
                                       <span className="font-bold text-gray-900">{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
                                       {upg.remark && <span className="text-rose-600 font-normal block text-[9px]">({upg.remark})</span>}
                                    </div>
-                                   <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span></div>
-                                   {/* 【问题2修复：工艺拼接单位】 */}
-                                   <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span></div>
-                                   <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span></div>
+                                   <div className="leading-tight">
+                                     <div><span className="text-gray-500 font-normal">数量：</span><span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span></div>
+                                     <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span></div>
+                                   </div>
+                                   <div className="text-right">
+                                     <span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
+                                   </div>
                                  </div>
                                );
                              })}
@@ -2257,7 +2262,7 @@ const renderUpgradeModal = () => {
 
                         {isStone ? (
                           <div className="p-0 border-b border-gray-100">
-                            <div className="p-3 print:p-2">
+                            <div className="p-3 print:p-2 border-b border-gray-100">
                               <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">【石材柜】 STONE CABINET</div>
                               <div className="flex flex-wrap gap-x-6 gap-y-1 text-[12px] print:text-[10px]">
                                 <span className="whitespace-nowrap"><span className="text-gray-500 font-normal">材料类型：</span><span className="font-bold text-gray-900">{dispCabType}</span></span>
@@ -2267,17 +2272,19 @@ const renderUpgradeModal = () => {
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-4 gap-2 md:gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-t border-b border-gray-200 text-[12px] print:text-[10px] items-center">
-                              <div><span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900">W{cab.width}×H{cab.height}×D{cab.depth}</span></div>
+                            {/* 【核心修复】：第一行独立尺寸，第二行 3 列网格 */}
+                            <div className="px-4 py-1.5 print:px-3 print:py-1 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px]">
+                              <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px] items-center">
                               <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                              {/* 【问题2修复：石材柜单价拼接单位】 */}
                               <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
                               <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900 text-sm print:text-xs">¥{mergedTotal.toFixed(2)}</span></div>
                             </div>
                           </div>
                         ) : (
                           <>
-                            <div className="p-3 print:p-2 flex flex-col md:flex-row print:flex-row gap-6 print:gap-4 leading-snug">
+                            <div className="p-3 print:p-2 flex flex-col md:flex-row print:flex-row gap-6 print:gap-4 leading-snug border-b border-gray-100">
                               <div className="flex-1 space-y-1.5 text-[12px] print:text-[10px]">
                                 <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">柜体配置 CABINET</div>
                                 <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
@@ -2303,18 +2310,20 @@ const renderUpgradeModal = () => {
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-4 gap-2 md:gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-t border-b border-gray-200 text-[12px] print:text-[10px] items-center">
-                              <div><span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900">W{cab.width}×H{cab.height}×D{cab.depth}</span></div>
+                            {/* 【核心修复】：板式柜 尺寸独立 + 3 列网格 */}
+                            <div className="px-4 py-1.5 print:px-3 print:py-1 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px]">
+                              <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px] items-center">
                               <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                              {/* 【问题2修复：板式柜单价拼接单位】 */}
                               <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
                               <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900 text-sm print:text-xs">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                             </div>
 
-                            {/* 【问题1修复：石材柜完全隐藏台面模块 UI】 */}
+                            {/* 【核心修复】：彻底隐藏石材柜的台面模块，且台面严格 3 列网格 */}
                             {!isStone && cab.countertop && cab.countertop.enabled && (
                               <div className="p-0 border-b border-gray-200">
-                                <div className="p-3 print:p-2">
+                                <div className="p-3 print:p-2 border-b border-gray-100">
                                   <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">台面配置 COUNTERTOP</div>
                                   <div className="flex flex-col md:flex-row print:flex-row gap-6 print:gap-4 leading-snug">
                                     <div className="flex-1 space-y-1.5 text-[12px] print:text-[10px]">
@@ -2328,33 +2337,33 @@ const renderUpgradeModal = () => {
                                   </div>
                                 </div>
                                 
-                                <div className="grid grid-cols-4 gap-2 md:gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-t border-gray-200 text-[12px] print:text-[10px] items-center">
-                                  <div></div> {/* 空列占位 */}
+                                <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 text-[12px] print:text-[10px] items-center">
                                   <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                                  {/* 【问题2修复：台面单价拼接单位】 */}
                                   <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
                                   <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
                                 </div>
                               </div>
                             )}
 
+                            {/* 【核心修复】：工艺 3 列网格对齐 */}
                             {cabUpgrades.length > 0 && (
                               <div className="p-0 border-b border-gray-200">
-                                <div className="p-3 print:p-2 border-b border-gray-200">
+                                <div className="p-3 print:p-2 border-b border-gray-100">
                                   <div className="font-bold text-gray-900 pb-1 mb-1 uppercase tracking-widest text-[10px] print:text-[9px]">升级工艺与五金 UPGRADES</div>
                                 </div>
                                 <div className="space-y-0 text-[12px] print:text-[10px]">
                                   {cabUpgrades.map(upg => {
                                     const isChild = !!upg.parent_record_id;
                                     return (
-                                      <div key={upg.id} className={`grid grid-cols-4 gap-2 md:gap-4 items-center w-full px-4 py-1.5 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50' : ''}`}>
+                                      <div key={upg.id} className={`grid grid-cols-3 gap-4 items-center w-full px-4 py-1.5 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50' : ''}`}>
                                         <div className={isChild ? 'pl-4 border-l-2 border-gray-200' : ''}>
                                           <span className="font-bold text-gray-900">{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
                                           {upg.remark && <span className="text-rose-600 font-normal ml-1">({upg.remark})</span>}
                                         </div>
-                                        <div><span className="text-gray-500 font-normal">数量：</span><span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span></div>
-                                        {/* 【问题2修复：工艺单价拼接单位】 */}
-                                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span></div>
+                                        <div>
+                                          <span className="text-gray-500 font-normal">数量：</span><span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span>
+                                          <span className="text-gray-500 font-normal ml-3">单价：</span><span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span>
+                                        </div>
                                         <div className="text-right"><span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span></div>
                                       </div>
                                     );
@@ -3215,12 +3224,14 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                         {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
                       </div>
                       
-                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-b border-gray-200 text-[10px] md:text-xs items-center">
-                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
-                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                        {/* 【问题2修复：石材柜拼接单位】 */}
-                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
-                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{mergedTotal.toFixed(2)}</span></div>
+                      {/* 【核心修复】：手机端石材柜独立尺寸 + 3列网格对齐 */}
+                      <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{mergedTotal.toFixed(2)}</span></div>
                       </div>
                     </div>
                   ) : (
@@ -3250,15 +3261,17 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-b border-gray-200 text-[10px] md:text-xs items-center">
-                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
-                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                        {/* 【问题2修复：板式柜拼接单位】 */}
-                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
-                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
+                      {/* 【核心修复】：手机端板式柜 独立尺寸 + 3列网格 */}
+                      <div className="px-3 py-1.5 bg-gray-50 border-t border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                       </div>
 
-                      {/* 【问题1修复：石材柜完全隐藏台面 UI】 */}
+                      {/* 【核心修复】：彻底隐藏石材柜台面，且台面使用 3列网格 */}
                       {!isStone && cab.countertop && cab.countertop.enabled && (
                         <div className="p-0 border-b border-gray-200">
                           <div className="p-3">
@@ -3271,12 +3284,10 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
-                             <div></div>
-                             <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                             {/* 【问题2修复：台面拼接单位】 */}
-                             <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                             <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                          <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 text-xs items-center">
+                             <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
+                             <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
+                             <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
                           </div>
                         </div>
                       )}
@@ -3286,19 +3297,22 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                           <div className="p-3 border-b border-gray-100">
                             <div className="font-bold text-gray-900 pb-1 mb-1 text-xs">升级工艺与五金</div>
                           </div>
-                          <div className="space-y-0 text-[10px] md:text-xs">
+                          <div className="space-y-0 text-xs">
                              {cabUpgs.map((upg, i) => {
                                const isChild = !!upg.parent_record_id;
                                return (
-                                 <div key={upg.id} className={`grid grid-cols-4 gap-1 items-center w-full px-2 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50' : ''}`}>
+                                 <div key={upg.id} className={`grid grid-cols-3 gap-2 items-center w-full px-3 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50' : ''}`}>
                                    <div className={`break-words ${isChild ? 'pl-2 border-l-2 border-gray-200' : ''}`}>
                                       <span className="font-bold text-gray-900">{isChild ? '↳ ' : ''}{upg.snap_upgrade_name}</span>
                                       {upg.remark && <span className="text-rose-600 font-normal block text-[9px]">({upg.remark})</span>}
                                    </div>
-                                   <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span></div>
-                                   {/* 【问题2修复：工艺拼接单位】 */}
-                                   <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span></div>
-                                   <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block">小计</span><span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span></div>
+                                   <div className="leading-tight">
+                                     <div><span className="text-gray-500 font-normal">数量：</span><span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span></div>
+                                     <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span></div>
+                                   </div>
+                                   <div className="text-right">
+                                     <span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
+                                   </div>
                                  </div>
                                );
                              })}
