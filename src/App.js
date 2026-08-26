@@ -1896,7 +1896,6 @@ const renderUpgradeModal = () => {
               const doorUnitPrice = Number(cab.snap_final_door_price || 0);
               const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
 
-              // 【核心修复】：清理重复声明，并补全缺失的 dispCabType / dispDoorType 变量
               const excessDepthFee = Number(cab.excess_depth_fee || 0);
               const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
               const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
@@ -1913,14 +1912,13 @@ const renderUpgradeModal = () => {
               const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
               const dispDoorType = cab.snap_door_material_name || (cab.snap_door_brand && !cab.snap_door_brand.includes('系统') ? cab.snap_door_brand : '定制门板');
 
-              // 【台面特殊工艺处理为备注】
               let specialItemsText = (cab.countertop?.specialItems || []).map(sp => `${sp.name}×${sp.quantity}×¥${sp.unitPrice}`).join('，');
               let combinedRemark = cab.countertop?.remark || '';
               if (specialItemsText) {
                   combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
               }
 
-              // 【问题1修复】：石材柜总价真合并
+              // 【问题1修复】：石材柜合并逻辑计算
               const isStone = cab.material_type === 'stone';
               const mergedTotal = unitTotal; 
               const mergedUnitPrice = displayQty > 0 ? (mergedTotal / displayQty) : 0;
@@ -1933,107 +1931,118 @@ const renderUpgradeModal = () => {
                     <div className="text-sm font-bold text-white">¥ {unitTotal.toFixed(2)}</div>
                   </div>
 
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 leading-snug">
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
-                       <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">柜体配置</div>
-                       <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
-                       <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
-                       <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
-                       {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
-                       <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">门板配置</div>
-                       {hasNoDoor ? (
-                         <div className="text-gray-500 font-normal">开放式柜体 (无门板)</div>
-                       ) : (
-                         <>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispDoorType}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_door_color || '-'}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">表面工艺</span><span className="font-bold text-gray-900">{cab.snap_door_surface_finish || '-'}</span></div>
-                           {cab.door_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.door_material_remark}</span></div>}
-                         </>
-                       )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-b border-gray-200 text-[10px] md:text-xs items-center">
-                    <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
-                    <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                    {/* 【问题1修复：合并单价判定】 */}
-                    <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{(isStone ? mergedUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
-                    {/* 【问题2修复：移除字体大小类，保留 font-bold text-gray-900】 */}
-                    <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{(isStone ? mergedTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
-                  </div>
-
-                  {/* 【问题1修复：完全隐藏台面 UI】 */}
-                  {!isStone && cab.countertop && cab.countertop.enabled && (
-                    <div className="p-0 border-b border-gray-200">
-                      <div className="p-3">
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
-                           <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">台面配置</div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || ''}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定型号</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
-                           {combinedRemark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{combinedRemark}</span></div>}
-                        </div>
+                  {isStone ? (
+                    <div className="p-0 border-b border-gray-100">
+                      <div className="bg-gray-50 p-3 text-xs space-y-1.5 border-b border-gray-100">
+                        <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">【石材柜】定制</div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
+                        {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
                       </div>
                       
-                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
-                         <div></div>
-                         <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                         <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                         {/* 【问题2修复：调整小计字体】 */}
-                         <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-b border-gray-200 text-[10px] md:text-xs items-center">
+                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{mergedTotal.toFixed(2)}</span></div>
                       </div>
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 leading-snug">
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
+                           <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">柜体配置</div>
+                           <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
+                           {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
+                        </div>
 
-                  {cabUpgrades.length > 0 && (
-                    <div className="p-0 border-b border-gray-200">
-                      <div className="p-3 border-b border-gray-100">
-                        <div className="font-bold text-gray-900 pb-1 mb-1 text-xs">升级工艺与五金</div>
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
+                           <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">门板配置</div>
+                           {hasNoDoor ? (
+                             <div className="text-gray-500 font-normal">开放式柜体 (无门板)</div>
+                           ) : (
+                             <>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispDoorType}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_door_color || '-'}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">表面工艺</span><span className="font-bold text-gray-900">{cab.snap_door_surface_finish || '-'}</span></div>
+                               {cab.door_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.door_material_remark}</span></div>}
+                             </>
+                           )}
+                        </div>
                       </div>
-                      <div className="space-y-0 text-[10px] md:text-xs">
-                         {cabUpgrades.map((upg, i) => {
-                           const isChild = !!upg.parent_record_id;
-                           return (
-                             {/* 【问题3修复：升级工艺排版结构】 */}
-                             <div key={upg.id} className={`px-3 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50 pl-5 border-l-2 border-gray-200' : ''}`}>
-                                {/* 第一行：名称 */}
-                                <div className="font-bold text-gray-900 break-words">
-                                  {isChild ? '↳ ' : ''}{upg.snap_upgrade_name}
-                                  {upg.remark && <span className="text-rose-600 font-normal ml-1 text-[10px]">({upg.remark})</span>}
-                                </div>
-                                {/* 第二行：三列 */}
-                                <div className="grid grid-cols-3 gap-2 mt-1 items-center">
-                                  <div>
-                                    <span className="text-gray-500 font-normal text-[9px] block">数量</span>
-                                    <span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500 font-normal text-[9px] block">单价</span>
-                                    <span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span>
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span>
-                                    {/* 【问题2修复：调整小计字体】 */}
-                                    <span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
-                                  </div>
-                                </div>
-                             </div>
-                           );
-                         })}
+
+                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-b border-gray-200 text-[10px] md:text-xs items-center">
+                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                       </div>
-                    </div>
-                  )}
-                  
-                  {excessDepthFee > 0 && (
-                    <div className="bg-rose-50 px-4 py-2 border-t border-rose-100 flex justify-between text-xs">
-                      <span className="text-gray-500 font-normal">超出标准深度附加费</span>
-                      <span className="font-bold text-gray-900">+ ¥{excessDepthFee.toFixed(2)}</span>
-                    </div>
+
+                      {!isStone && cab.countertop && cab.countertop.enabled && (
+                        <div className="p-0 border-b border-gray-200">
+                          <div className="p-3">
+                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
+                               <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">台面配置</div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || ''}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">指定型号</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
+                               {combinedRemark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{combinedRemark}</span></div>}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
+                             <div></div>
+                             <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
+                             <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
+                             <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {cabUpgs.length > 0 && (
+                        <div className="p-0 border-b border-gray-200">
+                          <div className="p-3 border-b border-gray-100">
+                            <div className="font-bold text-gray-900 pb-1 mb-1 text-xs">升级工艺与五金</div>
+                          </div>
+                          <div className="space-y-0 text-[10px] md:text-xs">
+                             {cabUpgs.map((upg, i) => {
+                               const isChild = !!upg.parent_record_id;
+                               return (
+                                 <div key={upg.id} className={`px-3 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50 pl-5 border-l-2 border-gray-200' : ''}`}>
+                                    <div className="font-bold text-gray-900 break-words">
+                                      {isChild ? '↳ ' : ''}{upg.snap_upgrade_name}
+                                      {upg.remark && <span className="text-rose-600 font-normal ml-1 text-[10px]">({upg.remark})</span>}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 mt-1 items-center">
+                                      <div>
+                                        <span className="text-gray-500 font-normal text-[9px] block">数量</span>
+                                        <span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500 font-normal text-[9px] block">单价</span>
+                                        <span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span>
+                                      </div>
+                                      <div className="text-right">
+                                        <span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span>
+                                        <span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
+                                      </div>
+                                    </div>
+                                 </div>
+                               );
+                             })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {excessDepthFee > 0 && (
+                        <div className="bg-rose-50 px-4 py-2 border-t border-rose-100 flex justify-between text-xs">
+                          <span className="text-gray-500 font-normal">超出标准深度附加费</span>
+                          <span className="font-bold text-gray-900">+ ¥{excessDepthFee.toFixed(2)}</span>
+                        </div>
                       )}
                     </>
                   )}
@@ -3172,7 +3181,6 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
               const doorUnitPrice = Number(cab.snap_final_door_price || 0);
               const hasNoDoor = !cab.door_mat_id || doorUnitPrice === 0 || (cab.snap_door_brand || '').includes('无门板');
 
-              // 【核心修复】：清理重复声明，并补全缺失的 dispCabType / dispDoorType 变量
               const excessDepthFee = Number(cab.excess_depth_fee || 0);
               const upgradesTotal = cabUpgs.reduce((sum, upg) => sum + Number(upg.snap_upgrade_price || 0), 0);
               const unitTotal = Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
@@ -3189,14 +3197,13 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
               const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
               const dispDoorType = cab.snap_door_material_name || (cab.snap_door_brand && !cab.snap_door_brand.includes('系统') ? cab.snap_door_brand : '定制门板');
 
-              // 【台面特殊工艺处理为备注】
               let specialItemsText = (cab.countertop?.specialItems || []).map(sp => `${sp.name}×${sp.quantity}×¥${sp.unitPrice}`).join('，');
               let combinedRemark = cab.countertop?.remark || '';
               if (specialItemsText) {
                   combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
               }
 
-              // 【问题1修复】：石材柜总价真合并
+              // 【问题1修复】：石材柜合并逻辑计算
               const isStone = cab.material_type === 'stone';
               const mergedTotal = unitTotal; 
               const mergedUnitPrice = displayQty > 0 ? (mergedTotal / displayQty) : 0;
@@ -3209,107 +3216,118 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                     <div className="text-sm font-bold text-white">¥ {unitTotal.toFixed(2)}</div>
                   </div>
 
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 leading-snug">
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
-                       <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">柜体配置</div>
-                       <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
-                       <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
-                       <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
-                       {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
-                       <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">门板配置</div>
-                       {hasNoDoor ? (
-                         <div className="text-gray-500 font-normal">开放式柜体 (无门板)</div>
-                       ) : (
-                         <>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispDoorType}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_door_color || '-'}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">表面工艺</span><span className="font-bold text-gray-900">{cab.snap_door_surface_finish || '-'}</span></div>
-                           {cab.door_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.door_material_remark}</span></div>}
-                         </>
-                       )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-b border-gray-200 text-[10px] md:text-xs items-center">
-                    <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
-                    <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                    {/* 【问题1修复：合并单价判定】 */}
-                    <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{(isStone ? mergedUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
-                    {/* 【问题2修复：移除字体大小类，保留 font-bold text-gray-900】 */}
-                    <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{(isStone ? mergedTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
-                  </div>
-
-                  {/* 【问题1修复：完全隐藏台面 UI】 */}
-                  {!isStone && cab.countertop && cab.countertop.enabled && (
-                    <div className="p-0 border-b border-gray-200">
-                      <div className="p-3">
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
-                           <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">台面配置</div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || ''}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定型号</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
-                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
-                           {combinedRemark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{combinedRemark}</span></div>}
-                        </div>
+                  {isStone ? (
+                    <div className="p-0 border-b border-gray-100">
+                      <div className="bg-gray-50 p-3 text-xs space-y-1.5 border-b border-gray-100">
+                        <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">【石材柜】定制</div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
+                        {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
                       </div>
                       
-                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
-                         <div></div>
-                         <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                         <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                         {/* 【问题2修复：调整小计字体】 */}
-                         <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-b border-gray-200 text-[10px] md:text-xs items-center">
+                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{mergedTotal.toFixed(2)}</span></div>
                       </div>
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3 leading-snug">
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
+                           <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">柜体配置</div>
+                           <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispCabType}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_cabinet_brand || '-'}</span></div>
+                           <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_cabinet_color || '-'}</span></div>
+                           {cab.cabinet_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.cabinet_material_remark}</span></div>}
+                        </div>
 
-                  {cabUpgrades.length > 0 && (
-                    <div className="p-0 border-b border-gray-200">
-                      <div className="p-3 border-b border-gray-100">
-                        <div className="font-bold text-gray-900 pb-1 mb-1 text-xs">升级工艺与五金</div>
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
+                           <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">门板配置</div>
+                           {hasNoDoor ? (
+                             <div className="text-gray-500 font-normal">开放式柜体 (无门板)</div>
+                           ) : (
+                             <>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{dispDoorType}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.snap_door_brand || '-'}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">颜色款式</span><span className="font-bold text-gray-900">{cab.snap_door_color || '-'}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">表面工艺</span><span className="font-bold text-gray-900">{cab.snap_door_surface_finish || '-'}</span></div>
+                               {cab.door_material_remark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{cab.door_material_remark}</span></div>}
+                             </>
+                           )}
+                        </div>
                       </div>
-                      <div className="space-y-0 text-[10px] md:text-xs">
-                         {cabUpgrades.map((upg, i) => {
-                           const isChild = !!upg.parent_record_id;
-                           return (
-                             {/* 【问题3修复：升级工艺排版结构】 */}
-                             <div key={upg.id} className={`px-3 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50 pl-5 border-l-2 border-gray-200' : ''}`}>
-                                {/* 第一行：名称 */}
-                                <div className="font-bold text-gray-900 break-words">
-                                  {isChild ? '↳ ' : ''}{upg.snap_upgrade_name}
-                                  {upg.remark && <span className="text-rose-600 font-normal ml-1 text-[10px]">({upg.remark})</span>}
-                                </div>
-                                {/* 第二行：三列 */}
-                                <div className="grid grid-cols-3 gap-2 mt-1 items-center">
-                                  <div>
-                                    <span className="text-gray-500 font-normal text-[9px] block">数量</span>
-                                    <span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500 font-normal text-[9px] block">单价</span>
-                                    <span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span>
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span>
-                                    {/* 【问题2修复：调整小计字体】 */}
-                                    <span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
-                                  </div>
-                                </div>
-                             </div>
-                           );
-                         })}
+
+                      <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-b border-gray-200 text-[10px] md:text-xs items-center">
+                        <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                       </div>
-                    </div>
-                  )}
-                  
-                  {excessDepthFee > 0 && (
-                    <div className="bg-rose-50 px-4 py-2 border-t border-rose-100 flex justify-between text-xs">
-                      <span className="text-gray-500 font-normal">超出标准深度附加费</span>
-                      <span className="font-bold text-gray-900">+ ¥{excessDepthFee.toFixed(2)}</span>
-                    </div>
+
+                      {!isStone && cab.countertop && cab.countertop.enabled && (
+                        <div className="p-0 border-b border-gray-200">
+                          <div className="p-3">
+                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
+                               <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5">台面配置</div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">材料类型</span><span className="font-bold text-gray-900">{cab.countertop.material || '-'} {cab.countertop.type || ''}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">指定型号</span><span className="font-bold text-gray-900">{cab.countertop.model || '-'}</span></div>
+                               <div className="flex justify-between"><span className="text-gray-500 font-normal">指定品牌</span><span className="font-bold text-gray-900">{cab.countertop.brand || '-'}</span></div>
+                               {combinedRemark && <div className="mt-1 pt-1.5 border-t border-gray-100 flex justify-between items-start"><span className="text-gray-500 font-normal">备注</span><span className="font-bold text-rose-600 text-right">{combinedRemark}</span></div>}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
+                             <div></div>
+                             <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
+                             <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
+                             <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {cabUpgs.length > 0 && (
+                        <div className="p-0 border-b border-gray-200">
+                          <div className="p-3 border-b border-gray-100">
+                            <div className="font-bold text-gray-900 pb-1 mb-1 text-xs">升级工艺与五金</div>
+                          </div>
+                          <div className="space-y-0 text-[10px] md:text-xs">
+                             {cabUpgs.map((upg, i) => {
+                               const isChild = !!upg.parent_record_id;
+                               return (
+                                 <div key={upg.id} className={`px-3 py-2 border-b border-gray-50 last:border-0 ${isChild ? 'bg-gray-50/50 pl-5 border-l-2 border-gray-200' : ''}`}>
+                                    <div className="font-bold text-gray-900 break-words">
+                                      {isChild ? '↳ ' : ''}{upg.snap_upgrade_name}
+                                      {upg.remark && <span className="text-rose-600 font-normal ml-1 text-[10px]">({upg.remark})</span>}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 mt-1 items-center">
+                                      <div>
+                                        <span className="text-gray-500 font-normal text-[9px] block">数量</span>
+                                        <span className="font-bold text-gray-900">{upg.quantity}{upg.unit}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500 font-normal text-[9px] block">单价</span>
+                                        <span className="font-bold text-gray-900">¥{Number(upg.snap_final_unit_price || upg.snap_unit_price || 0).toFixed(2)}/{upg.unit}</span>
+                                      </div>
+                                      <div className="text-right">
+                                        <span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span>
+                                        <span className="font-bold text-gray-900">¥{Number(upg.snap_upgrade_price || 0).toFixed(2)}</span>
+                                      </div>
+                                    </div>
+                                 </div>
+                               );
+                             })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {excessDepthFee > 0 && (
+                        <div className="bg-rose-50 px-4 py-2 border-t border-rose-100 flex justify-between text-xs">
+                          <span className="text-gray-500 font-normal">超出标准深度附加费</span>
+                          <span className="font-bold text-gray-900">+ ¥{excessDepthFee.toFixed(2)}</span>
+                        </div>
                       )}
                     </>
                   )}
