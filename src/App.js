@@ -1982,17 +1982,21 @@ const renderUpgradeModal = () => {
                     </div>
                   </div>
 
-                  {/* 手机端柜体价格行 (应用合并逻辑) */}
-                  <div className="px-3 py-1.5 bg-gray-50 border-t border-b border-gray-200 text-xs">
-                    <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
-                    <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                    <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{(isStone ? stoneUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
-                    <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{(isStone ? stoneTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
-                  </div>
+                  {/* 1. 板式柜计算行 (非石材时，保留在柜门配置正下方) */}
+                  {!isStone && (
+                    <>
+                      <div className="px-3 py-1.5 bg-gray-50 border-t border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
+                      </div>
+                    </>
+                  )}
 
-                  {/* 台面配置 (配置无条件渲染，计算行由 isStone 隐藏) */}
+                  {/* 2. 台面配置 (配置无条件渲染，计算行由 isStone 隐藏) */}
                   {cab.countertop && cab.countertop.enabled && (
                     <div className="p-0 border-b border-gray-200">
                       <div className="p-3">
@@ -2009,10 +2013,24 @@ const renderUpgradeModal = () => {
                         <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 text-xs items-center">
                            <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
                            <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                           <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                           <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {/* 3. 石材柜计算行 (物理移动到了台面模块的下方作为最终收口) */}
+                  {isStone && (
+                    <>
+                      <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{stoneUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900">¥{stoneTotal.toFixed(2)}</span></div>
+                      </div>
+                    </>
                   )}
 
                   {cabUpgs.length > 0 && (
@@ -2322,17 +2340,21 @@ const renderUpgradeModal = () => {
                           </div>
                         </div>
 
-                        {/* 柜体计算行 (单价与小计应用 isStone 切换合并) */}
-                        <div className="px-4 py-1.5 print:px-3 print:py-1 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px]">
-                          <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px] items-center">
-                          <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                          <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{(isStone ? stoneUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
-                          <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900 text-sm print:text-xs">¥{(isStone ? stoneTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
-                        </div>
+                        {/* 1. 板式柜计算行 (非石材时，保留在柜门配置正下方) */}
+                        {!isStone && (
+                          <>
+                            <div className="px-4 py-1.5 print:px-3 print:py-1 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px]">
+                              <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px] items-center">
+                              <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                              <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                              <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
+                            </div>
+                          </>
+                        )}
 
-                        {/* 台面配置区 (配置无条件渲染，计算行由 isStone 隐藏) */}
+                        {/* 2. 台面配置区 (配置无条件渲染，计算行由 isStone 隐藏) */}
                         {cab.countertop && cab.countertop.enabled && (
                           <div className="p-0 border-b border-gray-200">
                             <div className="p-3 print:p-2 border-b border-gray-100">
@@ -2353,10 +2375,24 @@ const renderUpgradeModal = () => {
                               <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 text-[12px] print:text-[10px] items-center">
                                 <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
                                 <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                                <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                                <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
                               </div>
                             )}
                           </div>
+                        )}
+
+                        {/* 3. 石材柜计算行 (物理移动到了台面模块的下方作为最终收口) */}
+                        {isStone && (
+                          <>
+                            <div className="px-4 py-1.5 print:px-3 print:py-1 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px]">
+                              <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px] items-center">
+                              <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                              <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{stoneUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                              <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900">¥{stoneTotal.toFixed(2)}</span></div>
+                            </div>
+                          </>
                         )}
 
                         {/* 工艺配置区 */}
@@ -3291,17 +3327,21 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                     </div>
                   </div>
 
-                  {/* 手机端柜体价格行 (应用合并逻辑) */}
-                  <div className="px-3 py-1.5 bg-gray-50 border-t border-b border-gray-200 text-xs">
-                    <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
-                    <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                    <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{(isStone ? stoneUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
-                    <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{(isStone ? stoneTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
-                  </div>
+                  {/* 1. 板式柜计算行 (非石材时，保留在柜门配置正下方) */}
+                  {!isStone && (
+                    <>
+                      <div className="px-3 py-1.5 bg-gray-50 border-t border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{comprehensiveUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
+                      </div>
+                    </>
+                  )}
 
-                  {/* 台面配置 (配置无条件渲染，计算行由 isStone 隐藏) */}
+                  {/* 2. 台面配置 (配置无条件渲染，计算行由 isStone 隐藏) */}
                   {cab.countertop && cab.countertop.enabled && (
                     <div className="p-0 border-b border-gray-200">
                       <div className="p-3">
@@ -3318,10 +3358,24 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                         <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 text-xs items-center">
                            <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
                            <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                           <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                           <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {/* 3. 石材柜计算行 (物理移动到了台面模块的下方作为最终收口) */}
+                  {isStone && (
+                    <>
+                      <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-xs">
+                        <span className="text-gray-500 font-normal">尺寸：</span><span className="font-bold text-gray-900 whitespace-nowrap">W{cab.width}×H{cab.height}×D{cab.depth}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs items-center">
+                        <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
+                        <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{stoneUnitPrice.toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal mr-1">小计：</span><span className="font-bold text-gray-900">¥{stoneTotal.toFixed(2)}</span></div>
+                      </div>
+                    </>
                   )}
 
                   {cabUpgs.length > 0 && (
