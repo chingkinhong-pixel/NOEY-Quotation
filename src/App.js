@@ -1909,6 +1909,21 @@ const renderUpgradeModal = () => {
                  comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
               }
 
+               // 【补丁修复】：彻底接管石材柜计算，确保 UI 数据源唯一
+              const isStone = cab.material_type === 'stone';
+              const stoneTotal = cabinetAndDoorSubtotal + (Number(cab.countertop?.subtotal) || 0) + upgradesTotal + Number(cab.excess_depth_fee || 0);
+              const stoneUnitPrice = displayQty > 0 ? stoneTotal / displayQty : 0;
+
+              if (isStone) {
+                console.log("石材柜调试", {
+                  cabinetAndDoorSubtotal,
+                  countertop: cab.countertop?.subtotal,
+                  upgradesTotal,
+                  excessDepthFee: Number(cab.excess_depth_fee || 0),
+                  stoneTotal
+                });
+              }     
+
               const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
               const dispDoorType = cab.snap_door_material_name || (cab.snap_door_brand && !cab.snap_door_brand.includes('系统') ? cab.snap_door_brand : '定制门板');
 
@@ -2234,6 +2249,21 @@ const renderUpgradeModal = () => {
                     let comprehensiveUnitPrice = displayQty > 0 ? (comprehensiveTotalAmount / displayQty) : 0;
                     if (comprehensiveUnitPrice === 0 && Number(cab.cabinet_total_price) > 0 && displayQty > 0) {
                        comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
+                    }
+
+                    // 【补丁修复】：彻底接管石材柜计算，确保 UI 数据源唯一
+                    const isStone = cab.material_type === 'stone';
+                    const stoneTotal = cabinetAndDoorSubtotal + (Number(cab.countertop?.subtotal) || 0) + upgradesTotal + Number(cab.excess_depth_fee || 0);
+                    const stoneUnitPrice = displayQty > 0 ? stoneTotal / displayQty : 0;
+
+                    if (isStone) {
+                      console.log("石材柜调试", {
+                        cabinetAndDoorSubtotal,
+                        countertop: cab.countertop?.subtotal,
+                        upgradesTotal,
+                        excessDepthFee: Number(cab.excess_depth_fee || 0),
+                        stoneTotal
+                      });
                     }
 
                     const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
@@ -3192,6 +3222,21 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
 
               if (comprehensiveUnitPrice === 0 && Number(cab.cabinet_total_price) > 0 && displayQty > 0) {
                  comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
+              }
+
+              // 【补丁修复】：彻底接管石材柜计算，确保 UI 数据源唯一
+              const isStone = cab.material_type === 'stone';
+              const stoneTotal = cabinetAndDoorSubtotal + (Number(cab.countertop?.subtotal) || 0) + upgradesTotal + Number(cab.excess_depth_fee || 0);
+              const stoneUnitPrice = displayQty > 0 ? stoneTotal / displayQty : 0;
+
+              if (isStone) {
+                console.log("石材柜调试", {
+                  cabinetAndDoorSubtotal,
+                  countertop: cab.countertop?.subtotal,
+                  upgradesTotal,
+                  excessDepthFee: Number(cab.excess_depth_fee || 0),
+                  stoneTotal
+                });
               }
 
               const dispCabType = cab.snap_cabinet_material_name || cab.cabinet_material_remark || '系统柜体';
