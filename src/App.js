@@ -2007,7 +2007,7 @@ const renderUpgradeModal = () => {
                         <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                       </div>
 
-                      {!isStone && cab.countertop && cab.countertop.enabled && (
+                      {cab.countertop && cab.countertop.enabled && (
                         <div className="p-0 border-b border-gray-200">
                           <div className="p-3">
                             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
@@ -2019,12 +2019,13 @@ const renderUpgradeModal = () => {
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
-                             <div></div>
-                             <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                             <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                             <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
-                          </div>
+                          {!isStone && (
+                            <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 text-xs items-center">
+                               <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
+                               <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
+                               <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -2368,7 +2369,7 @@ const renderUpgradeModal = () => {
                               <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                             </div>
 
-                            {!isStone && cab.countertop && cab.countertop.enabled && (
+                            {cab.countertop && cab.countertop.enabled && (
                               <div className="p-0 border-b border-gray-200">
                                 <div className="p-3 print:p-2 border-b border-gray-100">
                                   <div className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-1.5 uppercase tracking-widest text-[10px] print:text-[9px]">台面配置 COUNTERTOP</div>
@@ -2384,11 +2385,13 @@ const renderUpgradeModal = () => {
                                   </div>
                                 </div>
                                 
-                                <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 text-[12px] print:text-[10px] items-center">
-                                  <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                                  <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                                  <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
-                                </div>
+                                {!isStone && (
+                                  <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 text-[12px] print:text-[10px] items-center">
+                                    <div><span className="text-gray-500 font-normal">长度：</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
+                                    <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
+                                    <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900 text-sm print:text-xs">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -3344,7 +3347,7 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                         <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{cabinetAndDoorSubtotal.toFixed(2)}</span></div>
                       </div>
 
-                      {!isStone && cab.countertop && cab.countertop.enabled && (
+                      {cab.countertop && cab.countertop.enabled && (
                         <div className="p-0 border-b border-gray-200">
                           <div className="p-3">
                             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
@@ -3356,12 +3359,13 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-t border-gray-200 text-[10px] md:text-xs items-center">
-                             <div></div>
-                             <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
-                             <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
-                             <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
-                          </div>
+                          {!isStone && (
+                            <div className="grid grid-cols-3 gap-2 w-full px-3 py-2 bg-gray-50 text-xs items-center">
+                               <div><span className="text-gray-500 font-normal text-[9px] block">数量</span><span className="font-bold text-gray-900">{cab.countertop.quantity}{cab.countertop.unit}</span></div>
+                               <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{Number(cab.countertop.unitPrice || cab.countertop.unit_price || 0).toFixed(2)}/{cab.countertop.unit}</span></div>
+                               <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900 text-sm">¥{Number(cab.countertop.subtotal || 0).toFixed(2)}</span></div>
+                            </div>
+                          )}
                         </div>
                       )}
 
