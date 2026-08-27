@@ -1933,11 +1933,6 @@ const renderUpgradeModal = () => {
                   combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
               }
 
-              // 【问题1修复】：石材柜合并逻辑计算
-              const isStone = cab.material_type === 'stone';
-              const mergedTotal = unitTotal; 
-              const mergedUnitPrice = displayQty > 0 ? (mergedTotal / displayQty) : 0;
-
               return (
                 <div key={cab.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 mb-6">
                   
@@ -2275,11 +2270,6 @@ const renderUpgradeModal = () => {
                     if (specialItemsText) {
                         combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
                     }
-
-                    // 【问题1修复】：石材柜总价真合并 (柜体+门板+工艺+台面)
-                    const isStone = cab.material_type === 'stone';
-                    const mergedTotal = unitTotal; 
-                    const mergedUnitPrice = displayQty > 0 ? (mergedTotal / displayQty) : 0;
 
                     return (
                       <div key={cab.id} className="page-break-inside-avoid border border-gray-300 print:border-gray-400 bg-white shadow-sm mb-6 print:mb-4">
@@ -3247,11 +3237,6 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
               if (specialItemsText) {
                   combinedRemark = combinedRemark ? `${combinedRemark} ｜ 特殊工艺费：${specialItemsText}` : `特殊工艺费：${specialItemsText}`;
               }
-
-              // 【问题1修复】：石材柜合并逻辑计算
-              const isStone = cab.material_type === 'stone';
-              const mergedTotal = unitTotal; 
-              const mergedUnitPrice = displayQty > 0 ? (mergedTotal / displayQty) : 0;
 
               return (
                 <div key={cab.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 mb-6">
