@@ -1953,8 +1953,8 @@ const renderUpgradeModal = () => {
                       <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-b border-gray-200 text-[10px] md:text-xs items-center">
                         <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
                         <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
-                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{mergedTotal.toFixed(2)}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{(isStone ? stoneUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{(isStone ? stoneTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
                       </div>
                     </div>
                   ) : (
@@ -2295,8 +2295,8 @@ const renderUpgradeModal = () => {
                             </div>
                             <div className="grid grid-cols-3 gap-4 w-full px-4 py-2 print:px-3 print:py-1.5 bg-gray-50 border-b border-gray-200 text-[12px] print:text-[10px] items-center">
                               <div><span className="text-gray-500 font-normal">{isArea ? '面积' : '长度'}：</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                              <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
-                              <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900">¥{mergedTotal.toFixed(2)}</span></div>
+                              <div><span className="text-gray-500 font-normal">单价：</span><span className="font-bold text-gray-900">¥{(isStone ? stoneUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
+                              <div className="text-right"><span className="text-gray-500 font-normal mr-2">小计：</span><span className="font-bold text-gray-900">¥{(isStone ? stoneTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
                             </div>
                           </div>
                         ) : (
@@ -3258,8 +3258,8 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                       <div className="grid grid-cols-4 gap-1 w-full px-2 py-2 bg-gray-50 border-b border-gray-200 text-[10px] md:text-xs items-center">
                         <div><span className="text-gray-500 font-normal text-[9px] block">尺寸</span><span className="font-bold text-gray-900">W{cab.width}</span></div>
                         <div><span className="text-gray-500 font-normal text-[9px] block">{isArea ? '面积' : '长度'}</span><span className="font-bold text-gray-900">{displayQty.toFixed(2)}{unitLabel}</span></div>
-                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{mergedUnitPrice.toFixed(2)}/{unitLabel}</span></div>
-                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{mergedTotal.toFixed(2)}</span></div>
+                        <div><span className="text-gray-500 font-normal text-[9px] block">单价</span><span className="font-bold text-gray-900">¥{(isStone ? stoneUnitPrice : comprehensiveUnitPrice).toFixed(2)}/{unitLabel}</span></div>
+                        <div className="text-right"><span className="text-gray-500 font-normal text-[9px] block mr-1">小计</span><span className="font-bold text-gray-900">¥{(isStone ? stoneTotal : cabinetAndDoorSubtotal).toFixed(2)}</span></div>
                       </div>
                     </div>
                   ) : (
