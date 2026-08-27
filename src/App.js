@@ -1908,8 +1908,24 @@ const renderUpgradeModal = () => {
               if (comprehensiveUnitPrice === 0 && Number(cab.cabinet_total_price) > 0 && displayQty > 0) {
                  comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
               }
-              // 【补丁修复】：彻底接管石材柜计算，确保 UI 数据源唯一
-              const isStone = cab.material_type === 'stone';
+              // 【修复：材质识别兜底逻辑】
+                    const material = 
+                      cab.material_type || 
+                      cab.snap_cabinet_material_name || // 系统实际保存材料名称的快照字段
+                      cab.snap_cabinet_material || 
+                      cab.cabinet_material || 
+                      '';
+                      
+                    const isStone = material.includes('石');
+
+                    console.log("材质识别", {
+                      raw: cab.material_type,
+                      snap_name: cab.snap_cabinet_material_name,
+                      fallback1: cab.snap_cabinet_material,
+                      fallback2: cab.cabinet_material,
+                      final: material,
+                      isStone
+                    });
               const stoneTotal = cabinetAndDoorSubtotal + (Number(cab.countertop?.subtotal) || 0) + upgradesTotal + Number(cab.excess_depth_fee || 0);
               const stoneUnitPrice = displayQty > 0 ? stoneTotal / displayQty : 0;
 
@@ -2245,8 +2261,24 @@ const renderUpgradeModal = () => {
                        comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
                     }
                                                         
-                    // 【补丁修复】：彻底接管石材柜计算，确保 UI 数据源唯一
-                    const isStone = cab.material_type === 'stone';
+                    // 【修复：材质识别兜底逻辑】
+                    const material = 
+                      cab.material_type || 
+                      cab.snap_cabinet_material_name || // 系统实际保存材料名称的快照字段
+                      cab.snap_cabinet_material || 
+                      cab.cabinet_material || 
+                      '';
+                      
+                    const isStone = material.includes('石');
+
+                    console.log("材质识别", {
+                      raw: cab.material_type,
+                      snap_name: cab.snap_cabinet_material_name,
+                      fallback1: cab.snap_cabinet_material,
+                      fallback2: cab.cabinet_material,
+                      final: material,
+                      isStone
+                    });
                     const stoneTotal = cabinetAndDoorSubtotal + (Number(cab.countertop?.subtotal) || 0) + upgradesTotal + Number(cab.excess_depth_fee || 0);
                     const stoneUnitPrice = displayQty > 0 ? stoneTotal / displayQty : 0;
       
@@ -3213,8 +3245,24 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                  comprehensiveUnitPrice = Number(cab.cabinet_total_price) / displayQty;
               }
 
-              // 【补丁修复】：彻底接管石材柜计算，确保 UI 数据源唯一
-              const isStone = cab.material_type === 'stone';
+              // 【修复：材质识别兜底逻辑】
+                    const material = 
+                      cab.material_type || 
+                      cab.snap_cabinet_material_name || // 系统实际保存材料名称的快照字段
+                      cab.snap_cabinet_material || 
+                      cab.cabinet_material || 
+                      '';
+                      
+                    const isStone = material.includes('石');
+
+                    console.log("材质识别", {
+                      raw: cab.material_type,
+                      snap_name: cab.snap_cabinet_material_name,
+                      fallback1: cab.snap_cabinet_material,
+                      fallback2: cab.cabinet_material,
+                      final: material,
+                      isStone
+                    });
               const stoneTotal = cabinetAndDoorSubtotal + (Number(cab.countertop?.subtotal) || 0) + upgradesTotal + Number(cab.excess_depth_fee || 0);
               const stoneUnitPrice = displayQty > 0 ? stoneTotal / displayQty : 0;
 
