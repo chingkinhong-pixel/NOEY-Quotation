@@ -1334,7 +1334,13 @@ const renderUpgradeModal = () => {
                       setUpgradeModal({...upgradeModal, selectedItem: item, inputQty: '', inputRemark: '', subInputs: initialSubInputs});
                   }}
                     className={`p-4 border-2 rounded-2xl cursor-pointer ${upgradeModal.selectedItem?.id === item.id ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'}`}>
-                    <div className="flex justify-between font-bold mb-2"><span>{item.name}</span><span className="text-xs border px-1 rounded">{item.calculation_type}</span></div>
+                    <div className="flex justify-between font-bold mb-2">
+                      <span>
+                        {item.name}
+                        {item.description && <span className="text-rose-500 ml-1 font-normal text-xs">（{item.description}）</span>}
+                      </span>
+                      <span className="text-xs border px-1 rounded">{item.calculation_type}</span>
+                    </div>
                     <div className="text-sm font-black text-rose-600">¥{item.unit_price} <span className="text-xs text-gray-400">/ {item.unit}</span></div>
                   </div>
                 ))}
@@ -1416,7 +1422,10 @@ const renderUpgradeModal = () => {
                                     {relSubs.map(sub => (
                                         <div key={sub.id} className="flex justify-between items-center gap-4">
                                             <div className="flex-1">
-                                                <div className="text-sm font-bold text-gray-800">{sub.name}</div>
+                                                <div className="text-sm font-bold text-gray-800">
+                                                  {sub.name}
+                                                  {sub.description && <span className="text-rose-500 ml-1 font-normal text-[10px]">（{sub.description}）</span>}
+                                                </div>
                                                 <div className="text-[10px] text-gray-500">单价: ¥{sub.unit_price}/{sub.unit} | 最低起算: <span className="font-bold text-blue-600">{sub.minimum_quantity || '无'}</span></div>
                                             </div>
                                             <div className="w-24 shrink-0">
@@ -1804,7 +1813,11 @@ const renderUpgradeModal = () => {
                       return (
                         <div key={upg.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center">
                           <div>
-                            <div className="font-bold text-sm flex items-center gap-2">{upg.name} <span className="text-[10px] bg-white border px-1 rounded">{upg.category}</span></div>
+                            <div className="font-bold text-sm flex items-center gap-2">
+                              {upg.name}
+                              {upg.remark && <span className="text-rose-500 font-normal ml-1">（{upg.remark}）</span>}
+                              <span className="text-[10px] bg-white border px-1 rounded">{upg.category}</span>
+                            </div>
                             <div className="text-xs text-gray-500 mt-1">
                               原始价: ¥{upg.snap_original_unit_price} 
                               {upg.unit_price_adjustment !== 0 && <span className="text-rose-500 ml-1">(调: {upg.unit_price_adjustment > 0 ? '+' : ''}{upg.unit_price_adjustment})</span>}
