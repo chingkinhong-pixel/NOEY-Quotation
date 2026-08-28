@@ -1847,14 +1847,24 @@ const renderUpgradeModal = () => {
        {/* 底部悬浮算账条 */}
         <div className="fixed bottom-0 right-0 left-80 bg-white border-t p-4 flex justify-between items-center shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-20">
           <div className="flex gap-6 pl-4 font-bold text-sm">
-            {/* 严格按照要求补充台面金额 */}
             <div><div className="text-[10px] text-gray-400">柜体</div>¥{currentCalcs.cabinetPortionTotal.toFixed(0)}</div>
             <div><div className="text-[10px] text-gray-400">门板</div>¥{currentCalcs.doorPortionTotal.toFixed(0)}</div>
-            <div>
-              <div className="text-[10px] text-gray-400">台面</div>
-              ¥{((activeCabinet.countertop && activeCabinet.countertop.enabled) ? Number(activeCabinet.countertop.subtotal || 0) : 0).toFixed(0)}
-            </div>
-            <div><div className="text-[10px] text-gray-400">工艺</div><span className="text-rose-600">¥{currentCalcs.upgradePortionTotal.toFixed(0)}</span></div>
+            
+            {/* ✅ 台面价格显示条件：模块启用且金额大于0 */}
+            {activeCabinet.countertop && activeCabinet.countertop.enabled && Number(activeCabinet.countertop.subtotal) > 0 && (
+              <div>
+                <div className="text-[10px] text-gray-400">台面</div>
+                ¥{Number(activeCabinet.countertop.subtotal).toFixed(0)}
+              </div>
+            )}
+            
+            {/* ✅ 工艺价格显示条件：包含工艺数组且合计金额大于0 */}
+            {activeCabinet.upgrades && activeCabinet.upgrades.length > 0 && currentCalcs.upgradePortionTotal > 0 && (
+              <div>
+                <div className="text-[10px] text-gray-400">工艺</div>
+                <span className="text-rose-600">¥{currentCalcs.upgradePortionTotal.toFixed(0)}</span>
+              </div>
+            )}
           </div>
           <div className="flex gap-6 items-center pr-4">
             <div className="text-right">
@@ -2674,7 +2684,7 @@ const renderUpgradeModal = () => {
         <div className="w-64 bg-gray-900 text-white flex flex-col z-20">
           <div className="p-6 border-b border-gray-800"><h1 className="text-2xl font-black">NOEY<span className="font-light text-gray-400"> System Hub</span></h1></div>
           <div className="flex-1 py-4">
-            <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>✨ V1.3 升级工艺</button>
+            <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>✨ 工艺管理库</button>
             <button onClick={() => setAdminView('cabinet')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='cabinet'?'border-blue-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🗄️ 柜体基础库</button>
             <button onClick={() => setAdminView('door')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='door'?'border-indigo-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🚪 门板基础库</button>
             <button onClick={() => setAdminView('countertop')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='countertop'?'border-emerald-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🪨 台面基础库</button>
