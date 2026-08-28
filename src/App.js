@@ -1571,7 +1571,18 @@ const renderUpgradeModal = () => {
                 </div>
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div><label className="text-xs font-bold text-gray-500">板材厚度(mm)</label><input type="number" value={activeCabinet.cabinet_thickness} onChange={e=>updateActiveCabinet('cabinet_thickness', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">基础背板</label><select value={activeCabinet.snap_back_panel_spec} onChange={e=>updateActiveCabinet('snap_back_panel_spec', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1"><option>9mm标准</option><option>18mm需升级</option></select></div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">基础背板</label>
+                    <select 
+                      value={activeCabinet.snap_back_panel_spec || ''} 
+                      onChange={e => updateActiveCabinet('snap_back_panel_spec', e.target.value)} 
+                      className="w-full border-2 p-2 rounded-lg font-bold mt-1"
+                    >
+                      <option value="">无</option>
+                      <option value="9mm标准">9mm标准</option>
+                      <option value="18mm需升级">18mm需升级</option>
+                    </select>
+                  </div>
                   <div className="col-span-2"><label className="text-xs font-bold text-gray-500">选材备注</label><input placeholder="特殊说明、非标要求等" value={activeCabinet.cabinet_material_remark || ''} onChange={e=>updateActiveCabinet('cabinet_material_remark', e.target.value)} className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white transition-colors" /></div>
                 </div>
                 <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
@@ -1820,11 +1831,16 @@ const renderUpgradeModal = () => {
           </div>
         </div>
 
-       {/* 底部悬浮算账条 (支持最终结算磋商价) */}
+       {/* 底部悬浮算账条 */}
         <div className="fixed bottom-0 right-0 left-80 bg-white border-t p-4 flex justify-between items-center shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-20">
           <div className="flex gap-6 pl-4 font-bold text-sm">
+            {/* 严格按照要求补充台面金额 */}
             <div><div className="text-[10px] text-gray-400">柜体</div>¥{currentCalcs.cabinetPortionTotal.toFixed(0)}</div>
             <div><div className="text-[10px] text-gray-400">门板</div>¥{currentCalcs.doorPortionTotal.toFixed(0)}</div>
+            <div>
+              <div className="text-[10px] text-gray-400">台面</div>
+              ¥{((activeCabinet.countertop && activeCabinet.countertop.enabled) ? Number(activeCabinet.countertop.subtotal || 0) : 0).toFixed(0)}
+            </div>
             <div><div className="text-[10px] text-gray-400">工艺</div><span className="text-rose-600">¥{currentCalcs.upgradePortionTotal.toFixed(0)}</span></div>
           </div>
           <div className="flex gap-6 items-center pr-4">
