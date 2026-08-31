@@ -318,6 +318,8 @@ export default function App() {
   const [countertopForm, setCountertopForm] = useState({
     name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', thickness: '', description: ''
   });
+  const [draggedCabinetIdx, setDraggedCabinetIdx] = useState(null);
+  const [draggedUpgradeIdx, setDraggedUpgradeIdx] = useState(null);
   const [quoteCabinets, setQuoteCabinets] = useState([]);
   const [activeCabinetId, setActiveCabinetId] = useState(null);
   const [upgradeModal, setUpgradeModal] = useState({
