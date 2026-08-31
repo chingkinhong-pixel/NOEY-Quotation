@@ -319,6 +319,15 @@ export default function App() {
     name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', thickness: '', description: ''
   });
   const [quoteCabinets, setQuoteCabinets] = useState([]);
+  // === 新增：Toast 与拖拽交互状态 ===
+  const [toastInfo, setToastInfo] = useState({ visible: false, message: '', type: 'success' });
+  const [draggedCabinetIdx, setDraggedCabinetIdx] = useState(null);
+  const [draggedUpgradeIdx, setDraggedUpgradeIdx] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToastInfo({ visible: true, message, type });
+    setTimeout(() => setToastInfo({ visible: false, message: '', type: 'success' }), 2000);
+  };
   const [activeCabinetId, setActiveCabinetId] = useState(null);
   const [upgradeModal, setUpgradeModal] = useState({
     isOpen: false, activeCategory: '门板升级', selectedItem: null, inputQty: '', inputRemark: '',
@@ -1280,10 +1289,18 @@ const handleRemoveUpgrade = (upgId) => {
         }
       }
       setQuoteInfo(prev => ({ ...prev, status: '已保存草稿' }));
-      showToast(`报价草稿保存成功！`);
+      // 1. 替换成功提示
+      showToast('保存成功 / Saved successfully', 'success');
     } catch (err) { 
       console.error("保存失败详情:", err);
-      showToast('保存失败: ' + (err.message || '未知数据库错误'), 'error'); 
+      // 2. 增强错误捕获提示
+      let msg = "保存失败";
+      if (err.message && (err.message.includes("null") || err.message.includes("required"))) {
+        msg = "请填写完整必填信息";
+      } else {
+        msg = `保存失败: ${err.message || '未知数据库错误'}`;
+      }
+      showToast(msg, 'error'); 
     } finally { 
       setIsLoading(false); 
     }
