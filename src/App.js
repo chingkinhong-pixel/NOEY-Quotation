@@ -2886,7 +2886,38 @@ const renderUpgradeModal = () => {
                         </thead>
                         <tbody>
                           {catItems.map((u, index) => (
-                            <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                            <tr 
+                              key={u.id} 
+                              draggable
+                              onDragStart={() => setDraggedUpgradeIdx(index)}
+                              onDragEnd={() => setDraggedUpgradeIdx(null)}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={async (e) => {
+                                e.preventDefault();
+                                if (draggedUpgradeIdx === null || draggedUpgradeIdx === index) return;
+                                
+                                // 针对当前分类的 catItems 进行排序计算
+                                const newList = [...catItems];
+                                const [removed] = newList.splice(draggedUpgradeIdx, 1);
+                                newList.splice(index, 0, removed);
+                                
+                                // 重新分配当前分类下的排序号
+                                const updatedList = newList.map((item, i) => ({ ...item, sort_order: i }));
+                                setDraggedUpgradeIdx(null);
+                                
+                                // 后台静默持久化更新 sort_order
+                                try {
+                                   for (const item of updatedList) {
+                                      await supabase.from('upgrade_items').update({ sort_order: item.sort_order }).eq('id', item.id);
+                                   }
+                                   showToast('排序已保存，刷新页面后生效', 'success');
+                                   // 如果您的系统里有类似 fetchDictionaries() 或 loadData() 的函数，可以在这里调用以立即刷新数据
+                                } catch (error) {
+                                   showToast('排序保存失败', 'error');
+                                }
+                              }}
+                              className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-move ${draggedUpgradeIdx === index ? 'bg-blue-50 opacity-50' : ''}`}
+                            >
                               <td className="p-4 font-mono text-gray-400 font-bold">{String(index + 1).padStart(2, '0')}</td>
                               <td className="p-4 font-black text-gray-800">{u.name}</td>
                               <td className="p-4 font-black text-rose-600">¥{u.unit_price}</td>
