@@ -1511,7 +1511,30 @@ const renderUpgradeModal = () => {
               </div>
               <div className="space-y-3">
                 {quoteCabinets.map(cab => (
-                  <div key={cab.id} onClick={() => setActiveCabinetId(cab.id)} className={`p-4 rounded-xl cursor-pointer border-2 relative group ${activeCabinetId === cab.id ? 'bg-white border-black shadow-md' : 'bg-white border-transparent'}`}>
+                  <div 
+                    key={cab.id} 
+                    onClick={() => setActiveCabinetId(cab.id)}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedCabinetIdx(idx);
+                      e.currentTarget.style.opacity = '0.5'; 
+                    }}
+                    onDragEnd={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                      setDraggedCabinetIdx(null);
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedCabinetIdx === null || draggedCabinetIdx === idx) return;
+                      const newList = [...quoteCabinets];
+                      const [removed] = newList.splice(draggedCabinetIdx, 1);
+                      newList.splice(idx, 0, removed);
+                      setQuoteCabinets(newList); 
+                      setDraggedCabinetIdx(null);
+                    }}
+                    className={`p-4 rounded-xl cursor-pointer border-2 relative group ${activeCabinetId === cab.id ? 'bg-white border-black shadow-md' : 'bg-white border-transparent'} cursor-move transition-transform duration-200 ${draggedCabinetIdx === idx ? 'scale-95' : ''}`}
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <div className="font-bold text-sm">{cab.space}{cab.cabinetType}</div>
                       <div className="hidden group-hover:flex gap-1 absolute right-2 top-2 bg-white rounded p-1 shadow">
