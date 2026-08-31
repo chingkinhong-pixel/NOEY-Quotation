@@ -319,15 +319,6 @@ export default function App() {
     name: '', material_type: '石英石', unit: 'm', unit_price: '', brand: '', thickness: '', description: ''
   });
   const [quoteCabinets, setQuoteCabinets] = useState([]);
-  // === 新增：Toast 与拖拽交互状态 ===
-  const [toastInfo, setToastInfo] = useState({ visible: false, message: '', type: 'success' });
-  const [draggedCabinetIdx, setDraggedCabinetIdx] = useState(null);
-  const [draggedUpgradeIdx, setDraggedUpgradeIdx] = useState(null);
-
-  const showToast = (message, type = 'success') => {
-    setToastInfo({ visible: true, message, type });
-    setTimeout(() => setToastInfo({ visible: false, message: '', type: 'success' }), 2000);
-  };
   const [activeCabinetId, setActiveCabinetId] = useState(null);
   const [upgradeModal, setUpgradeModal] = useState({
     isOpen: false, activeCategory: '门板升级', selectedItem: null, inputQty: '', inputRemark: '',
