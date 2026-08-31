@@ -1519,7 +1519,7 @@ const renderUpgradeModal = () => {
                 <button onClick={handleAddCabinet} className="text-xs font-bold text-blue-600">➕ 新增</button>
               </div>
               <div className="space-y-3">
-                {quoteCabinets.map(cab => (
+                {quoteCabinets.map((cab, idx) => (
                   <div 
                     key={cab.id} 
                     onClick={() => setActiveCabinetId(cab.id)}
