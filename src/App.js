@@ -2767,10 +2767,10 @@ const renderUpgradeModal = () => {
         <div className="w-64 bg-gray-900 text-white flex flex-col z-20">
           <div className="p-6 border-b border-gray-800"><h1 className="text-2xl font-black">NOEY<span className="font-light text-gray-400"> System Hub</span></h1></div>
           <div className="flex-1 py-4">
-            <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>✨ 工艺管理库</button>
-            <button onClick={() => setAdminView('cabinet')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='cabinet'?'border-blue-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🗄️ 柜体基础库</button>
+            <button onClick={() => setAdminView('upgrade')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='upgrade'?'border-amber-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🔗 工艺管理库</button>
+            <button onClick={() => setAdminView('cabinet')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='cabinet'?'border-blue-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🪑 柜体基础库</button>
             <button onClick={() => setAdminView('door')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='door'?'border-indigo-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🚪 门板基础库</button>
-            <button onClick={() => setAdminView('countertop')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='countertop'?'border-emerald-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🪨 台面基础库</button>
+            <button onClick={() => setAdminView('countertop')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='countertop'?'border-emerald-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>⬛ 台面基础库</button>
             <button onClick={() => setAdminView('rules')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='rules'?'border-rose-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>⚙️ 计价参数规则</button>
           </div>
           <div className="p-4 border-t border-gray-800"><button onClick={() => {setCurrentUser(null); setCurrentView('home');}} className="w-full bg-gray-800 py-2 rounded font-bold text-sm text-gray-400 hover:text-white hover:bg-rose-600">退出返回</button></div>
@@ -3237,7 +3237,7 @@ const renderUpgradeModal = () => {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.3.6</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.3.7</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
