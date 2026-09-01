@@ -3018,8 +3018,16 @@ const renderUpgradeModal = () => {
                   </thead>
                   <tbody>
                     {cabinets.map((c, index) => (
-                      <tr key={c.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-mono text-gray-400">{String(index + 1).padStart(2, '0')}</td>
+                      <tr 
+                        key={c.id} 
+                        draggable
+                        onDragStart={(e) => handleSharedDragStart(e, index)}
+                        onDragEnd={handleSharedDragEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleSharedDrop(cabinets, setCabinets, 'materials_cabinet', e, index)}
+                        className="border-b hover:bg-gray-50 cursor-move transition-colors"
+                      >
+                        <td className="p-3 font-mono text-gray-400 cursor-move">☰ {String(index + 1).padStart(2, '0')}</td>
                         <td className="p-3 text-gray-800">{c.name}</td>
                         <td className="p-3 text-gray-500">{c.material_type === 'stone' ? '石材' : '板式'}</td>
                         <td className="p-3 text-rose-600">¥{c.base_price}</td><td className="p-3">¥{c.shallow_price}</td>
@@ -3054,8 +3062,16 @@ const renderUpgradeModal = () => {
                   </thead>
                   <tbody>
                     {doors.map((d, index) => (
-                      <tr key={d.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-mono text-gray-400">{String(index + 1).padStart(2, '0')}</td>
+                      <tr 
+                        key={d.id} 
+                        draggable
+                        onDragStart={(e) => handleSharedDragStart(e, index)}
+                        onDragEnd={handleSharedDragEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleSharedDrop(doors, setDoors, 'materials_door', e, index)}
+                        className="border-b hover:bg-gray-50 cursor-move transition-colors"
+                      >
+                        <td className="p-3 font-mono text-gray-400 cursor-move">☰ {String(index + 1).padStart(2, '0')}</td>
                         <td className="p-3 text-gray-800">{d.name}</td><td className="p-3 text-gray-500">{d.door_type}</td><td className="p-3 text-gray-500">{d.surface_finish || '-'}</td>
                         <td className="p-3 text-rose-600">¥{d.base_price}</td>
                         <td className="p-3"><button onClick={() => {setEditId(d.id); setDoorForm(d);}} className="text-blue-600 mr-4">编辑</button><button onClick={() => triggerDelete('materials_door', d.id, d.name)} className="text-rose-600">删除</button></td>
@@ -3089,12 +3105,23 @@ const renderUpgradeModal = () => {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-500 border-b"><tr><th className="p-3">名称</th><th className="p-3">材质</th><th className="p-3">单位</th><th className="p-3">单价</th><th className="p-3">品牌/厚度</th><th className="p-3">操作</th></tr></thead>
                   <tbody>
-                    {countertopItems.map(item => (
-                      <tr key={item.id} className="border-b hover:bg-gray-50"><td className="p-3 font-bold">{item.name}</td><td className="p-3">{item.material_type}</td><td className="p-3">{item.unit}</td><td className="p-3 font-black text-rose-600">¥{item.unit_price}</td><td className="p-3 text-gray-500">{item.brand} {item.thickness}</td>
-                      <td className="p-3">
-                         <button onClick={() => {setEditId(item.id); setCountertopForm(item);}} className="text-blue-600 font-bold mr-3">编辑</button>
-                         <button onClick={() => triggerDelete('countertop_items', item.id, item.name)} className="text-rose-600 font-bold">删除</button>
-                      </td></tr>
+                    {countertopItems.map((item, index) => (
+                      <tr 
+                        key={item.id} 
+                        draggable
+                        onDragStart={(e) => handleSharedDragStart(e, index)}
+                        onDragEnd={handleSharedDragEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleSharedDrop(countertopItems, setCountertopItems, 'countertop_items', e, index)}
+                        className="border-b hover:bg-gray-50 cursor-move transition-colors"
+                      >
+                        <td className="p-3 font-bold cursor-move text-gray-700">☰ {item.name}</td>
+                        <td className="p-3">{item.material_type}</td><td className="p-3">{item.unit}</td><td className="p-3 font-black text-rose-600">¥{item.unit_price}</td><td className="p-3 text-gray-500">{item.brand} {item.thickness}</td>
+                        <td className="p-3">
+                           <button onClick={() => {setEditId(item.id); setCountertopForm(item);}} className="text-blue-600 font-bold mr-3">编辑</button>
+                           <button onClick={() => triggerDelete('countertop_items', item.id, item.name)} className="text-rose-600 font-bold">删除</button>
+                        </td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
