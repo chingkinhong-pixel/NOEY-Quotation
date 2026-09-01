@@ -354,12 +354,13 @@ export default function App() {
     setIsLoading(true);
     try {
     const [resCab, resDoor, resUpg, resRule, resSubUpg, resCountertop] = await Promise.all([
-        supabase.from('materials_cabinet').select('*').order('name'),
-        supabase.from('materials_door').select('*').order('name'),
+        // 【新增：统增加 sort_order 排序优先级】
+        supabase.from('materials_cabinet').select('*').order('sort_order', { ascending: true }).order('name'),
+        supabase.from('materials_door').select('*').order('sort_order', { ascending: true }).order('name'),
         supabase.from('upgrade_items').select('*').order('sort_order').order('name'),
         supabase.from('pricing_rules').select('*').limit(1),
-        supabase.from('upgrade_sub_items').select('*').order('created_at'), // 拉取二级工艺
-        supabase.from('countertop_items').select('*').order('created_at') // 【新增】
+        supabase.from('upgrade_sub_items').select('*').order('created_at'),
+        supabase.from('countertop_items').select('*').order('sort_order', { ascending: true }).order('created_at')
       ]);
       if (resCab.data) setCabinets(resCab.data);
       if (resDoor.data) setDoors(resDoor.data);
@@ -424,6 +425,51 @@ export default function App() {
     // 解析完毕，解除渲染锁
     setIsInitializing(false);
   }, []);
+
+  // ==========================================
+  // 【新增】：全局统一的拖拽排序引擎 (支持所有基础库复用)
+  // ==========================================
+  const handleSharedDragStart = (e, index) => {
+    e.dataTransfer.setData('dragIndex', index);
+    e.currentTarget.style.opacity = '0.4'; // 拖动时的半透明视觉反馈
+  };
+
+  const handleSharedDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+  };
+
+  const handleSharedDrop = async (list, setList, tableName, e, dropIndex) => {
+    e.preventDefault();
+    e.currentTarget.style.opacity = '1';
+    
+    const dragIndex = Number(e.dataTransfer.getData('dragIndex'));
+    if (dragIndex === dropIndex || isNaN(dragIndex)) return;
+
+    // 1. 本地数组重排
+    const newList = [...list];
+    const [movedItem] = newList.splice(dragIndex, 1);
+    newList.splice(dropIndex, 0, movedItem);
+
+    // 2. 重新赋予排序权重
+    const updatedList = newList.map((item, idx) => ({
+      ...item,
+      sort_order: idx
+    }));
+
+    // 3. 立即响应 UI
+    setList(updatedList);
+
+    // 4. 静默同步至数据库
+    try {
+      const updates = updatedList.map(item => ({ id: item.id, sort_order: item.sort_order }));
+      for (const item of updates) {
+        await supabase.from(tableName).update({ sort_order: item.sort_order }).eq('id', item.id);
+      }
+      toast.success('排序已同步保存');
+    } catch (error) {
+      toast.error('排序保存至云端失败');
+    }
+  };
   
   const handleLoadClientView = async (quoteId) => {
     setIsLoading(true);
