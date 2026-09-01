@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode'; // 确保在文件顶部引入
+import toast, { Toaster } from 'react-hot-toast'; // 【新增：引入标准 Toast 库】
 
 const rawSupabaseUrl = 'https://muwzdigtehcperweliyg.supabase.co/rest/v1/'; 
 const supabaseKey = 'sb_publishable_SGHvdmqpvo3Z6GekTtk4cA_PcvbDGpd';
@@ -225,7 +226,14 @@ export default function App() {
   const [currentView, setCurrentView] = useState(directQuoteId ? 'quote-view' : 'home');
   // 1. 全局状态
   const [currentUser, setCurrentUser] = useState(null);
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  // 【修复 1】：统一使用 react-hot-toast 确保即时弹出，不依赖组件渲染周期
+  const showToast = (message, type = 'success') => {
+    if (type === 'error') {
+      toast.error(message);
+    } else {
+      toast.success(message);
+    }
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true); // 【核心修复】：增加路由解析初始化锁
   
@@ -1145,8 +1153,9 @@ const handleRemoveUpgrade = (upgId) => {
   };
 
   const handleSaveDraft = async () => {
-    if (!quoteInfo.customerName) { showToast('请填写客户姓名', 'error'); return; }
-    if (!isValidPhone(quoteInfo.customerPhone)) { showToast('手机号码格式不正确', 'error'); return; }
+    // 【修复 1】：前置校验拦截必须即时提示
+    if (!quoteInfo.customerName) { toast.error('请填写客户姓名'); return; }
+    if (!isValidPhone(quoteInfo.customerPhone)) { toast.error('手机号码格式不正确'); return; }
     setIsLoading(true);
 
     try {
@@ -1282,18 +1291,18 @@ const handleRemoveUpgrade = (upgId) => {
         }
       }
       setQuoteInfo(prev => ({ ...prev, status: '已保存草稿' }));
-      // 1. 替换成功提示
-      showToast('保存成功 / Saved successfully', 'success');
+      // 【修复 1】：保存成功直接调用 toast
+      toast.success('保存成功 / Saved successfully');
     } catch (err) { 
       console.error("保存失败详情:", err);
-      // 2. 增强错误捕获提示
       let msg = "保存失败";
       if (err.message && (err.message.includes("null") || err.message.includes("required"))) {
         msg = "请填写完整必填信息";
       } else {
         msg = `保存失败: ${err.message || '未知数据库错误'}`;
       }
-      showToast(msg, 'error'); 
+      // 【修复 1】：失败立即弹出 toast
+      toast.error(msg); 
     } finally { 
       setIsLoading(false); 
     }
