@@ -3140,35 +3140,33 @@ const renderUpgradeModal = () => {
   );
 
 // ==========================================
-  // 【核心修复】：渲染前置硬拦截 (等待路由与状态解析完毕)
+  // 【核心修复】：全局路由与 Toaster 挂载引擎
   // ==========================================
-  if (isInitializing) {
+  const renderActiveView = () => {
+    if (isInitializing) {
+      return (
+        <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-400 font-sans">
+          <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin mb-4"></div>
+          <div className="text-xs font-bold tracking-widest uppercase">Loading...</div>
+        </div>
+      );
+    }
+
+    if (currentView === 'quote-preview') return renderQuotePreview();
+    if (currentView === 'quote-view') return renderClientView();
+    if (currentView === 'sales-history') return renderSalesHistory();
+    if (currentView === 'sales') return renderSalesWorkspace();
+    if (currentView === 'admin-login') return renderAdminLogin();
+    if (currentView === 'admin') return renderAdmin();
+
+    // 默认的 Home 视图
     return (
-      <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-400 font-sans">
-        <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin mb-4"></div>
-        <div className="text-xs font-bold tracking-widest uppercase">Loading...</div>
-      </div>
-    );
-  }
-
-  // 以下是原有的路由分发代码，保持不动
-  if (currentView === 'quote-preview') return renderQuotePreview();
-  if (currentView === 'quote-view') return renderClientView();
-  if (currentView === 'sales-history') return renderSalesHistory();
-  if (currentView === 'sales') return renderSalesWorkspace();
-  if (currentView === 'admin-login') return renderAdminLogin();
-  if (currentView === 'admin') return renderAdmin();
-
-// ==========================================
-  // 【V4.01 视觉优化】：恢复居中高级商务风主页 (极简底部 Logo 印章)
-  // ==========================================
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
           <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.3.6</p>
         </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
             <div className="text-5xl mb-6 group-hover:scale-110 transition-transform origin-left">💻</div>
             <h2 className="text-2xl font-black text-gray-900 mb-2">Quote Studio</h2>
@@ -3190,35 +3188,35 @@ const renderUpgradeModal = () => {
 
         {/* 极简印章式品牌 Footer */}
         <div className="w-full text-center pb-12 pt-8 flex flex-col items-center justify-center">
-        
-        {/* 圆形 Logo 容器 */}
-        <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-2.5 mb-5">
-           <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain opacity-90" />
+          <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-2.5 mb-5">
+             <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain opacity-90" />
+          </div>
+          <div className="text-[11px] font-black text-gray-800 uppercase tracking-[0.25em] mb-2">NOEY FURNITURE MANUFACTURE</div>
+          <div className="text-[9px] font-medium text-gray-400 uppercase tracking-[0.2em] mb-6">OUR PROMISE YOUR SATISFACTION</div>
+          <div className="w-8 border-b border-gray-300 mb-6"></div>
+          <div className="text-[9px] font-medium text-gray-400 tracking-wider">© 2026 NOEY. All Rights Reserved.</div>
         </div>
-        
-        {/* 品牌名称 */}
-        <div className="text-[11px] font-black text-gray-800 uppercase tracking-[0.25em] mb-2">
-          NOEY FURNITURE MANUFACTURE
-        </div>
-        
-        {/* 品牌理念 */}
-        <div className="text-[9px] font-medium text-gray-400 uppercase tracking-[0.2em] mb-6">
-          OUR PROMISE YOUR SATISFACTION
-        </div>
-        
-        {/* 分割线 */}
-        <div className="w-8 border-b border-gray-300 mb-6"></div>
-        
-        {/* 版权 */}
-        <div className="text-[9px] font-medium text-gray-400 tracking-wider">
-          © 2026 NOEY. All Rights Reserved.
-        </div>
-
       </div>
+    );
+  };
 
-      {/* 【修复 1】：挂载全局即时提示组件 */}
-      <Toaster position="top-center" reverseOrder={false} />
-    </div>
+  return (
+    <>
+      {/* 【修复 1 & 2】：全局挂载 Toaster，彻底脱离具体页面的生命周期，不管路由怎么跳，它永远存在！ */}
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 2000,
+          style: {
+            fontSize: '14px',
+            borderRadius: '8px',
+            padding: '10px 16px'
+          }
+        }}
+      />
+      {/* 动态渲染子视图 */}
+      {renderActiveView()}
+    </>
   );
 }
 
