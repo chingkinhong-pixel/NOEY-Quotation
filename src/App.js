@@ -2898,34 +2898,41 @@ const renderUpgradeModal = () => {
                             <tr 
                               key={u.id} 
                               draggable
-                              onDragStart={() => setDraggedUpgradeIdx(index)}
-                              onDragEnd={() => setDraggedUpgradeIdx(null)}
+                              onDragStart={(e) => {
+                                // 【修复 2】：记录被拖拽项目的真实 ID
+                                e.dataTransfer.setData('dragId', u.id);
+                              }}
                               onDragOver={(e) => e.preventDefault()}
                               onDrop={async (e) => {
                                 e.preventDefault();
-                                if (draggedUpgradeIdx === null || draggedUpgradeIdx === index) return;
+                                const dragId = e.dataTransfer.getData('dragId');
+                                if (!dragId || dragId === u.id) return;
                                 
-                                // 针对当前分类的 catItems 进行排序计算
-                                const newList = [...catItems];
-                                const [removed] = newList.splice(draggedUpgradeIdx, 1);
-                                newList.splice(index, 0, removed);
+                                // 【修复 2】：操作全局 upgrades 数组进行真实重排
+                                const newList = [...upgrades];
+                                const dragIdx = newList.findIndex(item => item.id === dragId);
+                                const dropIdx = newList.findIndex(item => item.id === u.id);
                                 
-                                // 重新分配当前分类下的排序号
-                                const updatedList = newList.map((item, i) => ({ ...item, sort_order: i }));
-                                setDraggedUpgradeIdx(null);
+                                if (dragIdx === -1 || dropIdx === -1) return;
+                                
+                                const [removed] = newList.splice(dragIdx, 1);
+                                newList.splice(dropIdx, 0, removed);
+                                
+                                // 核心：立刻更新 React 状态，UI 瞬间改变
+                                setUpgrades(newList);
                                 
                                 // 后台静默持久化更新 sort_order
                                 try {
-                                   for (const item of updatedList) {
+                                   const updates = newList.map((item, i) => ({ id: item.id, sort_order: i }));
+                                   for (const item of updates) {
                                       await supabase.from('upgrade_items').update({ sort_order: item.sort_order }).eq('id', item.id);
                                    }
-                                   showToast('排序已保存，刷新页面后生效', 'success');
-                                   // 如果您的系统里有类似 fetchDictionaries() 或 loadData() 的函数，可以在这里调用以立即刷新数据
+                                   toast.success('排序已保存生效');
                                 } catch (error) {
-                                   showToast('排序保存失败', 'error');
+                                   toast.error('排序保存失败');
                                 }
                               }}
-                              className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-move ${draggedUpgradeIdx === index ? 'bg-blue-50 opacity-50' : ''}`}
+                              className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-move"
                             >
                               <td className="p-4 font-mono text-gray-400 font-bold">{String(index + 1).padStart(2, '0')}</td>
                               <td className="p-4 font-black text-gray-800">{u.name}</td>
@@ -3214,7 +3221,8 @@ const renderUpgradeModal = () => {
 
       </div>
 
-      {toast.show && <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-3 text-sm font-bold shadow-2xl z-50 rounded animate-fade-in-down">{toast.message}</div>}
+      {/* 【修复 1】：挂载全局即时提示组件 */}
+      <Toaster position="top-center" reverseOrder={false} />
     </div>
   );
 }
