@@ -335,11 +335,6 @@ export default function App() {
     unit_price_adjustment: 0, manual_door_area: '', subInputs: {} // 【新增】保存二级工艺的独立输入数量
   });
   
-  const showToast = (message, type = 'success') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
-  };
-
   const generateQuoteNo = () => {
     const date = new Date();
     const yy = String(date.getFullYear()).slice(2);
