@@ -259,6 +259,7 @@ export default function App() {
   const [adminUpgradeSearch, setAdminUpgradeSearch] = useState(''); // 【新增】：后台工艺管理专属搜索
   const [editId, setEditId] = useState(null); 
   const [adminLoginForm, setAdminLoginForm] = useState({ username: '', password: '' });
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });// === 新增：修改密码表单状态 ===
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, table: '', id: null, name: '' });
   const [cabinetForm, setCabinetForm] = useState({ name: '', material_type: 'panel', base_price: '', shallow_price: '', no_door_factor: '' });
   const [doorForm, setDoorForm] = useState({ name: '', door_type: '双饰面', surface_finish: '', base_price: '' });
@@ -552,6 +553,48 @@ export default function App() {
     } catch (error) { showToast(error.message, 'error'); } finally { setIsLoading(false); }
   };
 
+  // === 新增：修改密码处理逻辑 ===
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    const { oldPassword, newPassword, confirmPassword } = passwordForm;
+
+    // 1. 基础校验
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      toast.error('请填写完整');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('两次新密码不一致');
+      return;
+    }
+    // 2. 校验原密码 (基于当前登录用户的内存状态)
+    if (oldPassword !== currentUser.password) {
+      toast.error('当前密码不正确');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 3. 同步至 Supabase
+      const { error } = await supabase
+        .from('employees')
+        .update({ password: newPassword })
+        .eq('id', currentUser.id);
+
+      if (error) throw error;
+
+      toast.success('密码修改成功');
+      
+      // 4. 清空输入框并同步更新内存中的用户信息
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setCurrentUser({ ...currentUser, password: newPassword });
+    } catch (err) {
+      toast.error('修改失败: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const triggerDelete = (table, id, name) => {
     if (currentUser?.role !== 'admin') {
       showToast('权限不足：仅超级管理员可执行物理删除', 'error'); return;
@@ -3204,8 +3247,11 @@ const renderUpgradeModal = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-96 border">
         <h2 className="text-2xl font-black mb-8 text-center">NOEY<span className="font-light"> System Hub</span></h2>
-        <input type="text" placeholder="账号 (admin)" value={adminLoginForm.username} onChange={e=>setAdminLoginForm({...adminLoginForm, username:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-4 font-bold" />
-        <input type="password" placeholder="密码 (admin123)" value={adminLoginForm.password} onChange={e=>setAdminLoginForm({...adminLoginForm, password:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-6 font-bold" />
+        
+        {/* 【安全优化】：移除 placeholder 中的明文账号密码 */}
+        <input type="text" placeholder="请输入账号" value={adminLoginForm.username} onChange={e=>setAdminLoginForm({...adminLoginForm, username:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-4 font-bold" />
+        <input type="password" placeholder="请输入密码" value={adminLoginForm.password} onChange={e=>setAdminLoginForm({...adminLoginForm, password:e.target.value})} className="w-full border-2 p-3 rounded-xl mb-6 font-bold" />
+        
         <button onClick={handleAdminLogin} className="w-full bg-black text-white p-3 rounded-xl font-bold">登录控制台</button>
         <button onClick={() => setCurrentView('home')} className="w-full mt-4 text-sm font-bold text-gray-400 hover:text-black">← 返回</button>
       </div>
