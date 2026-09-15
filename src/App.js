@@ -2815,6 +2815,7 @@ const renderUpgradeModal = () => {
             <button onClick={() => setAdminView('door')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='door'?'border-indigo-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🚪  门板基础库</button>
             <button onClick={() => setAdminView('countertop')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='countertop'?'border-emerald-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>⬛  台面基础库</button>
             <button onClick={() => setAdminView('rules')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='rules'?'border-rose-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>⚙️  计价参数规则</button>
+            <button onClick={() => setAdminView('security')} className={`w-full text-left px-6 py-3 font-bold border-l-4 ${adminView==='security'?'border-purple-500 bg-gray-800':'border-transparent text-gray-400 hover:text-white'}`}>🔐 账号安全</button>
           </div>
           <div className="p-4 border-t border-gray-800"><button onClick={() => {setCurrentUser(null); setCurrentView('home');}} className="w-full bg-gray-800 py-2 rounded font-bold text-sm text-gray-400 hover:text-white hover:bg-rose-600">退出返回</button></div>
         </div>
@@ -3235,6 +3236,48 @@ const renderUpgradeModal = () => {
                  </div>
 
                  <button type="submit" className="w-full bg-black text-white p-3 rounded-lg font-black mt-8 text-lg shadow-lg hover:shadow-xl transition-shadow">保存并更新全局规则</button>
+               </form>
+             </div>
+          )}
+          {/* Security Admin View (修改密码) */}
+          {adminView === 'security' && (
+             <div className="max-w-md space-y-6">
+               <h2 className="text-2xl font-black">账号安全</h2>
+               
+               <form onSubmit={handleChangePassword} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                 <h3 className="text-lg font-bold mb-4">修改密码</h3>
+                 
+                 <div className="space-y-4">
+                   <input 
+                     type="password" 
+                     placeholder="当前密码" 
+                     value={passwordForm.oldPassword} 
+                     onChange={e => setPasswordForm({...passwordForm, oldPassword: e.target.value})} 
+                     className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white transition-colors" 
+                   />
+                   <input 
+                     type="password" 
+                     placeholder="新密码" 
+                     value={passwordForm.newPassword} 
+                     onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} 
+                     className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white transition-colors" 
+                   />
+                   <input 
+                     type="password" 
+                     placeholder="确认新密码" 
+                     value={passwordForm.confirmPassword} 
+                     onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} 
+                     className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white transition-colors" 
+                   />
+                 </div>
+
+                 <button 
+                   type="submit" 
+                   disabled={isLoading}
+                   className="mt-6 w-full bg-black text-white p-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                 >
+                   {isLoading ? '提交中...' : '确认修改'}
+                 </button>
                </form>
              </div>
           )}
