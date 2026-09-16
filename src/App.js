@@ -992,6 +992,112 @@ export default function App() {
       showToast('读取草稿失败: ' + err.message, 'error');
     } finally { setIsLoading(false); }
   };
+
+  // ==========================================
+  // 【新增】：报价单深拷贝复制逻辑
+  // ==========================================
+  const handleDuplicateQuote = async (quote) => {
+    setIsLoading(true);
+    try {
+      // 1. 深度拉取原报价的完整配置数据 (柜体、台面、工艺)
+      const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
+      if (cabErr) throw cabErr;
+
+      let upgData = [];
+      if (cabData && cabData.length > 0) {
+        const cabinetIds = cabData.map(cab => cab.id);
+        const { data: uData, error: upgErr } = await supabase.from('quote_upgrades').select('*').in('cabinet_id', cabinetIds);
+        if (upgErr) throw upgErr;
+        upgData = uData || [];
+      }
+
+      // 2. 在内存中重建并深拷贝数据，洗掉所有旧关联
+      let reconstructedCabinets = [];
+      if (cabData && cabData.length > 0) {
+        // 【核心】：按原排序还原
+        cabData.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        
+        reconstructedCabinets = cabData.map((dbCab, index) => {
+          let space = '未知空间'; let cabinetType = '未知柜体';
+          if (dbCab.name) {
+            if (dbCab.name.includes('｜')) {
+              const parts = dbCab.name.split('｜');
+              space = parts[0] || space; cabinetType = parts[1] || cabinetType;
+            } else space = dbCab.name;
+          }
+
+          const cabUpgrades = upgData.filter(u => u.cabinet_id === dbCab.id).map(dbUpg => {
+            const dictItem = upgrades.find(u => u.id === dbUpg.upgrade_item_id) || {};
+            return {
+              id: 'upg-copy-' + Date.now() + Math.random(), // 赋予全新前端脱机ID
+              item_id: dbUpg.upgrade_item_id,
+              name: dbUpg.snap_upgrade_name || dictItem.name || '已失效未知工艺',
+              category: dictItem.upgrade_category || '未知分类', unit: dictItem.unit || '项',
+              snap_original_unit_price: dbUpg.snap_original_unit_price || 0, unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
+              calculation_type: dictItem.calculation_type || '按面积㎡', upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
+              replace_calculation_mode: dictItem.replace_calculation_mode || null,
+              input_quantity: dbUpg.input_quantity || 0, minimum_quantity: dictItem.minimum_quantity || 0,
+              manual_door_area: dbUpg.manual_door_area || '', remark: dbUpg.remark || '', combo_type: dictItem.combo_type || 'single',
+              snap_material: dbUpg.snap_material || '', snap_style: dbUpg.snap_style || '', snap_specification: dbUpg.snap_specification || '',
+              parent_record_id: dbUpg.parent_record_id || null
+            };
+          });
+
+          const rawCountertop = dbCab.countertop;
+          let normalizedCountertop = rawCountertop && typeof rawCountertop === 'object' ? JSON.parse(JSON.stringify(rawCountertop)) : { ...DEFAULT_COUNTERTOP };
+
+          return {
+            id: 'cab-copy-' + Date.now() + Math.random(), // 赋予全新前端脱机ID
+            sort_order: index + 1,
+            space: space, cabinetType: cabinetType,
+            width: dbCab.width || '', height: dbCab.height || '', depth: dbCab.depth || '',
+            cabinet_mat_id: dbCab.cabinet_mat_id || '', door_mat_id: dbCab.door_mat_id || '',
+            snap_cabinet_brand: dbCab.snap_cabinet_brand || '', snap_cabinet_color: dbCab.snap_cabinet_color || '',
+            cabinet_thickness: dbCab.cabinet_thickness || '18', cabinet_material_remark: dbCab.cabinet_material_remark || '',
+            snap_back_panel_spec: dbCab.snap_back_panel_spec || '9mm标准', cabinet_unit_adjustment: dbCab.cabinet_unit_adjustment || '',
+            snap_door_brand: dbCab.snap_door_brand || '', snap_door_color: dbCab.snap_door_color || '',
+            door_unit_adjustment: dbCab.door_unit_adjustment || '', door_material_remark: dbCab.door_material_remark || '',
+            snap_door_surface_finish: dbCab.snap_door_surface_finish || '', upgrades: cabUpgrades,
+            material_type: cabinets.find(m => m.id === dbCab.cabinet_mat_id)?.material_type || 'panel',
+            countertop: normalizedCountertop
+          };
+        });
+      } else {
+        // 防空兜底
+        reconstructedCabinets = [{ 
+          id: 'cab-copy-fallback-' + Date.now(), sort_order: 1, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
+          cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
+          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [], material_type: 'panel',
+          countertop: { ...DEFAULT_COUNTERTOP }
+        }];
+      }
+
+      // 3. 将新草稿推入工作台
+      setQuoteCabinets(reconstructedCabinets);
+      setActiveCabinetId(reconstructedCabinets[0].id);
+
+      // 4. 重置主表信息：洗掉旧单号、清空电话、加注“副本”、状态重置为编辑中
+      setQuoteInfo({
+        quoteNo: generateQuoteNo(),
+        customerName: (quote.customer_name || '未填姓名') + ' (副本)',
+        customerPhone: '', // 安全防呆：清空电话
+        deliveryAddress: quote.delivery_address || '', 
+        status: '编辑中',
+        terms_content: quote.terms_content || rules.terms_template || DEFAULT_TERMS,
+        discountFinalPrice: '' // 清空历史折扣价
+      });
+
+      // 5. 执行视图跳转
+      setSalesOrigin('sales-history');
+      setCurrentView('sales');
+      
+      toast.success("报价已成功复制，请修改客户信息");
+    } catch (err) {
+      toast.error('复制报价失败: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const activeCabinet = quoteCabinets.find(c => c.id === activeCabinetId) || quoteCabinets[0];
   
@@ -2790,6 +2896,12 @@ const renderUpgradeModal = () => {
     ✏️ 编辑
   </button>
   <button 
+    onClick={() => handleDuplicateQuote(quote)}
+    className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold text-xs border border-gray-200 hover:bg-gray-200 transition-colors"
+  >
+    📄 复制
+  </button>
+    <button 
     onClick={() => handlePreviewQuote(quote)}
     className="flex-1 bg-white text-gray-700 py-2.5 rounded-xl font-bold text-xs border-2 border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors"
   >
