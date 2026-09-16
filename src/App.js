@@ -2426,6 +2426,52 @@ const renderUpgradeModal = () => {
 
     return (
       <div className="min-h-screen bg-gray-100 font-sans flex flex-col items-center py-10 pb-20">
+
+        {/* ========================================== */}
+        {/* 【新增】：高级版专业打印页脚 & CSS 控制引擎 */}
+        {/* ========================================== */}
+        <style>{`
+          @media print {
+            body {
+              margin-bottom: 40px;
+            }
+            .print-footer {
+              position: fixed;
+              bottom: 12px;
+              left: 0;
+              right: 0;
+              text-align: center;
+              font-size: 10px;
+              color: #999;
+              letter-spacing: 1px;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Helvetica Neue", Arial;
+              z-index: 9999;
+            }
+            .print-footer .divider {
+              margin: 0 10px;
+              color: #ccc;
+            }
+            /* 兼容现代浏览器页码生成 */
+            .print-footer .page-number::after {
+              content: counter(page) " / " counter(pages);
+            }
+          }
+          
+          /* 屏幕浏览模式下绝对隐藏，不干扰普通 UI */
+          @media screen {
+            .print-footer {
+              display: none;
+            }
+          }
+        `}</style>
+
+        <div className="print-footer">
+          {quote.quote_no}
+          <span className="divider">｜</span>
+          OUR PROMISE YOUR SATISFACTION
+          <span className="divider">｜</span>
+          <span className="page-number"></span>
+        </div>
         
         {/* 顶部操作条 */}
         <div className="w-full max-w-5xl px-4 md:px-0 mb-6 flex justify-between items-center print:hidden">
