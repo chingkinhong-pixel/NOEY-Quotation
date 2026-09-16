@@ -489,7 +489,9 @@ export default function App() {
         upgData = uData || [];
       }
 
-      setPreviewData({ quote: quoteData, cabinets: cabData || [], upgrades: upgData });
+      // 【核心修复 3】
+      const sortedCabs = (cabData || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      setPreviewData({ quote: quoteData, cabinets: sortedCabs, upgrades: upgData });
       setCurrentView('quote-view'); // 切换至客户独立视图
     } catch (err) {
       showToast('获取客户报价单失败，链接可能无效', 'error');
@@ -765,7 +767,9 @@ export default function App() {
         upgData = uData || [];
       }
 
-      setPreviewData({ quote, cabinets: cabData || [], upgrades: upgData });
+      // 【核心修复 3】
+      const sortedCabs = (cabData || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      setPreviewData({ quote, cabinets: sortedCabs, upgrades: upgData });
       setCurrentView('quote-preview');
     } catch (err) {
       showToast('读取预览数据失败: ' + err.message, 'error');
@@ -893,6 +897,11 @@ export default function App() {
       }
 
       if (cabData && cabData.length > 0) {
+        // 【核心修复 3：自动按 sort_order 排序，并兼容旧数据】
+        cabData.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        cabData.forEach((item, index) => {
+          if (item.sort_order == null) item.sort_order = index + 1;
+        });
         const reconstructedCabinets = cabData.map(dbCab => {
           let space = '未知空间'; let cabinetType = '未知柜体';
           if (dbCab.name) {
@@ -1316,7 +1325,11 @@ const handleRemoveUpgrade = (upgId) => {
         const cabDict = cabinets.find(m => m.id === cab.cabinet_mat_id);
         const doorDict = doors.find(m => m.id === cab.door_mat_id);
         const { data: insertedCab, error: cabErr2 } = await supabase.from('quote_cabinets').insert([{
-          quote_id: currentQuoteId, name: `${cab.space}｜${cab.cabinetType}`, 
+          quote_id: currentQuoteId, 
+          sort_order: cab.sort_order || 0, // 【核心修复 2：将排序值保存进数据库】
+          name: `${cab.space}｜${cab.cabinetType}`, 
+          width: parseFloat(cab.width) || 0, height: parseFloat(cab.height) || 0, depth: parseFloat(cab.depth) || 0,
+          name: `${cab.space}｜${cab.cabinetType}`, 
           width: parseFloat(cab.width) || 0, height: parseFloat(cab.height) || 0, depth: parseFloat(cab.depth) || 0,
           cabinet_mat_id: cab.cabinet_mat_id || null, door_mat_id: cab.door_mat_id || null,
           cabinet_thickness: parseFloat(cab.cabinet_thickness) || null,
@@ -1625,7 +1638,14 @@ const renderUpgradeModal = () => {
                       const newList = [...quoteCabinets];
                       const [removed] = newList.splice(draggedCabinetIdx, 1);
                       newList.splice(idx, 0, removed);
-                      setQuoteCabinets(newList); 
+                      
+                      // 【核心修复 1：重排后立即重新计算 sort_order】
+                      const orderedList = newList.map((item, index) => ({
+                        ...item,
+                        sort_order: index + 1
+                      }));
+                      
+                      setQuoteCabinets(orderedList); 
                       setDraggedCabinetIdx(null);
                     }}
                     className={`p-4 rounded-xl cursor-pointer border-2 relative group ${activeCabinetId === cab.id ? 'bg-white border-black shadow-md' : 'bg-white border-transparent'} cursor-move transition-transform duration-200 ${draggedCabinetIdx === idx ? 'scale-95' : ''}`}
@@ -3367,7 +3387,7 @@ const renderUpgradeModal = () => {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.1</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.2</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
@@ -3449,7 +3469,9 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
         }
 
         if (isMounted) {
-          setPreviewData({ quote: quoteData, cabinets: cabData || [], upgrades: upgData });
+          // 【核心修复 3】
+          const sortedCabs = (cabData || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          setPreviewData({ quote: quoteData, cabinets: sortedCabs, upgrades: upgData });
         }
       } catch (err) {
         if (isMounted) setErrorMsg(err.message || '获取报价信息失败');
