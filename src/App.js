@@ -811,45 +811,66 @@ export default function App() {
   };
   
 // ==========================================
-  // 【V4.06 最终修复】：直连本地的高精度 PDF 生成引擎 (A4 原生像素渲染法)
+  // 【V4.06 最终修复】：直连本地的高精度 PDF 生成引擎 (拦截 jsPDF 注入真实页脚)
   // ==========================================
   const handleDownloadPDF = () => {
     setIsLoading(true);
-    showToast('正在为您渲染并下载 PDF 文件，请稍候...', 'success');
+    toast.success('正在为您渲染并下载 PDF 文件，请稍候...');
     
     const element = document.getElementById('quote-document-container');
-    const filename = `NOEY_Quotation_${previewData?.quote?.quote_no || 'Document'}.pdf`;
+    const quoteNo = previewData?.quote?.quote_no || 'Document';
+    const filename = `NOEY_Quotation_${quoteNo}.pdf`;
 
     const generatePDF = () => {
-      // 1. 记录它原本在屏幕上的大尺寸
       const originalMaxWidth = element.style.maxWidth;
       const originalWidth = element.style.width;
 
-      // 2. 🚨 核心真理修复：把网页强行缩小到 A4 纸的标准物理像素宽度 (800px)！
-      // 这样截出来的画布 1:1 完美契合 A4，再也不需要引擎去费力计算缩放和偏移了。
+      // 强行缩小到 A4 纸的标准物理像素宽度，防截断
       element.style.maxWidth = '800px';
       element.style.width = '800px';
 
-      // 3. 极简参数，去掉了所有乱七八糟的坐标干扰
       const opt = {
-        margin:       [10, 0, 10, 0], // 上下留白 10mm
+        margin:       [10, 0, 15, 0], // 注意：底部 margin 改为 15mm，留出空间给 jsPDF 画页脚防遮挡
         filename:     filename,
         image:        { type: 'jpeg', quality: 1 },
         html2canvas:  { scale: 2, useCORS: true }, 
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
       
-      window.html2pdf().set(opt).from(element).save().then(() => {
-        // 瞬间恢复成原来的大尺寸，客户毫无察觉
+      // 【核心升级】：通过 .toPdf().get('pdf') 获取 jsPDF 实例，循环绘制每一页
+      window.html2pdf().set(opt).from(element).toPdf().get('pdf').then(function (pdf) {
+        
+        const totalPages = pdf.internal.getNumberOfPages();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          
+          // 设置页脚字体大小和颜色
+          pdf.setFontSize(9);
+          pdf.setTextColor(150, 150, 150); // rgb(150,150,150) 相当于灰字
+          
+          // 拼装页脚字符串
+          const footerText = `${quoteNo}   |   OUR PROMISE YOUR SATISFACTION   |   ${i} / ${totalPages}`;
+          
+          // 原生绘制到 A4 纸的正中心底部
+          pdf.text(footerText, pageWidth / 2, pageHeight - 8, {
+            align: 'center'
+          });
+        }
+        
+      }).save().then(() => {
+        // 瞬间恢复成原来的大尺寸
         element.style.maxWidth = originalMaxWidth;
         element.style.width = originalWidth;
         setIsLoading(false);
-        showToast('✅ PDF 报价单已成功下载！');
+        toast.success('✅ PDF 报价单已成功下载！');
       }).catch(err => {
         element.style.maxWidth = originalMaxWidth;
         element.style.width = originalWidth;
         setIsLoading(false);
-        showToast('PDF生成失败', 'error');
+        toast.error('PDF生成失败');
       });
     };
 
@@ -2426,52 +2447,6 @@ const renderUpgradeModal = () => {
 
     return (
       <div className="min-h-screen bg-gray-100 font-sans flex flex-col items-center py-10 pb-20">
-
-        {/* ========================================== */}
-        {/* 【新增】：高级版专业打印页脚 & CSS 控制引擎 */}
-        {/* ========================================== */}
-        <style>{`
-          @media print {
-            body {
-              margin-bottom: 40px;
-            }
-            .print-footer {
-              position: fixed;
-              bottom: 12px;
-              left: 0;
-              right: 0;
-              text-align: center;
-              font-size: 10px;
-              color: #999;
-              letter-spacing: 1px;
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Helvetica Neue", Arial;
-              z-index: 9999;
-            }
-            .print-footer .divider {
-              margin: 0 10px;
-              color: #ccc;
-            }
-            /* 兼容现代浏览器页码生成 */
-            .print-footer .page-number::after {
-              content: counter(page) " / " counter(pages);
-            }
-          }
-          
-          /* 屏幕浏览模式下绝对隐藏，不干扰普通 UI */
-          @media screen {
-            .print-footer {
-              display: none;
-            }
-          }
-        `}</style>
-
-        <div className="print-footer">
-          {quote.quote_no}
-          <span className="divider">｜</span>
-          OUR PROMISE YOUR SATISFACTION
-          <span className="divider">｜</span>
-          <span className="page-number"></span>
-        </div>
         
         {/* 顶部操作条 */}
         <div className="w-full max-w-5xl px-4 md:px-0 mb-6 flex justify-between items-center print:hidden">
