@@ -837,25 +837,36 @@ export default function App() {
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
       
-      // 【核心升级】：通过 .toPdf().get('pdf') 获取 jsPDF 实例，循环绘制每一页
+      // 【核心升级】：通过 .toPdf().get('pdf') 获取 jsPDF 实例，注入带分割线的专业版页脚
       window.html2pdf().set(opt).from(element).toPdf().get('pdf').then(function (pdf) {
         
         const totalPages = pdf.internal.getNumberOfPages();
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
         
         for (let i = 1; i <= totalPages; i++) {
           pdf.setPage(i);
           
-          // 设置页脚字体大小和颜色
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+
+          // ====== ① 分割线（视觉分层）======
+          pdf.setDrawColor(230); // 极浅灰
+          pdf.setLineWidth(0.3);
+          pdf.line(
+            pageWidth * 0.2, 
+            pageHeight - 18, 
+            pageWidth * 0.8, 
+            pageHeight - 18
+          );
+
+          // ====== ② 页脚文字（弱化设计）======
           pdf.setFontSize(9);
-          pdf.setTextColor(150, 150, 150); // rgb(150,150,150) 相当于灰字
+          pdf.setTextColor(160); // 调浅字号颜色，拉开层级
           
           // 拼装页脚字符串
           const footerText = `${quoteNo}   |   OUR PROMISE YOUR SATISFACTION   |   ${i} / ${totalPages}`;
           
-          // 原生绘制到 A4 纸的正中心底部
-          pdf.text(footerText, pageWidth / 2, pageHeight - 8, {
+          // 原生绘制，下移至 pageHeight - 10
+          pdf.text(footerText, pageWidth / 2, pageHeight - 10, {
             align: 'center'
           });
         }
@@ -872,7 +883,6 @@ export default function App() {
         setIsLoading(false);
         toast.error('PDF生成失败');
       });
-    };
 
     if (!window.html2pdf) {
       const script = document.createElement('script');
