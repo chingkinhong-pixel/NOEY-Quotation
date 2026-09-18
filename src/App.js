@@ -830,7 +830,7 @@ export default function App() {
       element.style.width = '800px';
 
       const opt = {
-        margin:       [10, 10, 25, 10], // 👈 关键：底部强制留白 25mm，确保内容在此区域上方截断
+        margin:       [10, 0, 25, 0], // 👈 关键：底部强制留白 25mm，确保内容在此区域上方截断
         filename:     filename,
         image:        { type: 'jpeg', quality: 1 },
         html2canvas:  { scale: 2, useCORS: true }, 
