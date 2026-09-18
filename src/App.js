@@ -883,6 +883,7 @@ export default function App() {
         setIsLoading(false);
         toast.error('PDF生成失败');
       });
+    };
 
     if (!window.html2pdf) {
       const script = document.createElement('script');
