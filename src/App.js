@@ -853,9 +853,9 @@ export default function App() {
           pdf.setLineWidth(0.3);
           pdf.line(
             pageWidth * 0.2, 
-            pageHeight - 15, // 固定在距底部 20mm 处
+            pageHeight - 10, // 固定在距底部 20mm 处
             pageWidth * 0.8, 
-            pageHeight - 15
+            pageHeight - 10
           );
 
           // ====== ② 页脚文字 ======
@@ -867,7 +867,7 @@ export default function App() {
           pdf.text(
             footerText, 
             pageWidth / 2, 
-            pageHeight - 12, // 固定在距底部 12mm 处
+            pageHeight - 5, // 固定在距底部 12mm 处
             { align: 'center' }
           );
         }
