@@ -830,7 +830,7 @@ export default function App() {
       element.style.width = '800px';
 
       const opt = {
-        margin:       [10, 0, 25, 0], // 👈 关键：底部强制留白 25mm，确保内容在此区域上方截断
+        margin:       [10, 0, 20, 0], // 👈 关键：底部强制留白 25mm，确保内容在此区域上方截断
         filename:     filename,
         image:        { type: 'jpeg', quality: 1 },
         html2canvas:  { scale: 2, useCORS: true }, 
@@ -853,9 +853,9 @@ export default function App() {
           pdf.setLineWidth(0.3);
           pdf.line(
             pageWidth * 0.2, 
-            pageHeight - 20, // 固定在距底部 20mm 处
+            pageHeight - 15, // 固定在距底部 20mm 处
             pageWidth * 0.8, 
-            pageHeight - 20
+            pageHeight - 15
           );
 
           // ====== ② 页脚文字 ======
