@@ -830,14 +830,14 @@ export default function App() {
       element.style.width = '800px';
 
       const opt = {
-        margin:       [10, 0, 15, 0], // 注意：底部 margin 改为 15mm，留出空间给 jsPDF 画页脚防遮挡
+        margin:       [10, 10, 25, 10], // 👈 关键：底部强制留白 25mm，确保内容在此区域上方截断
         filename:     filename,
         image:        { type: 'jpeg', quality: 1 },
         html2canvas:  { scale: 2, useCORS: true }, 
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
       
-      // 【核心升级】：通过 .toPdf().get('pdf') 获取 jsPDF 实例，注入带分割线的专业版页脚
+      // 【核心修复第二步：在绝对安全区内绘制页脚】
       window.html2pdf().set(opt).from(element).toPdf().get('pdf').then(function (pdf) {
         
         const totalPages = pdf.internal.getNumberOfPages();
@@ -848,27 +848,28 @@ export default function App() {
           const pageWidth = pdf.internal.pageSize.getWidth();
           const pageHeight = pdf.internal.pageSize.getHeight();
 
-          // ====== ① 分割线（视觉分层）======
+          // ====== ① 分割线 ======
           pdf.setDrawColor(230); // 极浅灰
           pdf.setLineWidth(0.3);
           pdf.line(
             pageWidth * 0.2, 
-            pageHeight - 18, 
+            pageHeight - 20, // 固定在距底部 20mm 处
             pageWidth * 0.8, 
-            pageHeight - 18
+            pageHeight - 20
           );
 
-          // ====== ② 页脚文字（弱化设计）======
+          // ====== ② 页脚文字 ======
           pdf.setFontSize(9);
-          pdf.setTextColor(160); // 调浅字号颜色，拉开层级
+          pdf.setTextColor(160);
           
-          // 拼装页脚字符串
           const footerText = `${quoteNo}   |   OUR PROMISE YOUR SATISFACTION   |   ${i} / ${totalPages}`;
           
-          // 原生绘制，下移至 pageHeight - 10
-          pdf.text(footerText, pageWidth / 2, pageHeight - 10, {
-            align: 'center'
-          });
+          pdf.text(
+            footerText, 
+            pageWidth / 2, 
+            pageHeight - 12, // 固定在距底部 12mm 处
+            { align: 'center' }
+          );
         }
         
       }).save().then(() => {
