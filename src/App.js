@@ -334,8 +334,6 @@ export default function App() {
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 
-  const currentHash = typeof window !== 'undefined' ? window.location.hash : '';
-
   const handleSaveSubUpgrade = async (e) => {
     e.preventDefault();
     if (!editId) return; 
