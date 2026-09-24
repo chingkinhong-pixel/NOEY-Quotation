@@ -328,6 +328,14 @@ export default function App() {
     name: '', calculation_type: '按数量', unit: '', unit_price: '', minimum_quantity: 0, description: ''
   });
 
+  // === 【修复】：将 Hook 移至 React 组件顶层 ===
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+  );
+
+  const currentHash = typeof window !== 'undefined' ? window.location.hash : '';
+
   const handleSaveSubUpgrade = async (e) => {
     e.preventDefault();
     if (!editId) return; 
@@ -1776,12 +1784,6 @@ const renderUpgradeModal = () => {
       const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
       return sum + cabBase + cabCountertop;
     }, 0);
-
-    // 【新增】：Dnd-kit 传感器配置 (同时支持鼠标与触摸屏)
-    const sensors = useSensors(
-      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-      useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }) // 触屏防误触延迟
-    );
 
     // 【新增】：拖拽结束处理逻辑
     const handleDragEnd = (event) => {
