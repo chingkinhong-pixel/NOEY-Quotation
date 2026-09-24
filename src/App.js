@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode'; // 确保在文件顶部引入
 import toast, { Toaster } from 'react-hot-toast'; // 【新增：引入标准 Toast 库】
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const rawSupabaseUrl = 'https://muwzdigtehcperweliyg.supabase.co/rest/v1/'; 
 const supabaseKey = 'sb_publishable_SGHvdmqpvo3Z6GekTtk4cA_PcvbDGpd';
@@ -209,6 +212,54 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
         >
           ✅ 确认并提交签字
         </button>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 【新增】：支持触摸与手柄的高级拖拽柜体组件
+// ==========================================
+const SortableCabinetItem = ({ cab, isActive, onActivate, onCopy, onDelete }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cab.id });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 1,
+    position: 'relative'
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`p-3 rounded-xl border-2 group flex gap-3 transition-colors ${isActive ? 'bg-white border-black shadow-md' : 'bg-white border-transparent'}`}
+    >
+      {/* 拖拽专用手柄：只有按住这里才能拖，彻底防误触 */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-center text-gray-300 hover:text-black cursor-grab active:cursor-grabbing px-1"
+        style={{ touchAction: 'none' }} // 关键：禁用触摸默认滚动，允许平板拖拽
+      >
+        <span className="text-2xl leading-none">≡</span>
+      </div>
+
+      {/* 柜体主体内容：点击正常触发激活选中 */}
+      <div className="flex-1 cursor-pointer relative" onClick={onActivate}>
+        <div className="flex justify-between items-start mb-2">
+          <div className="font-bold text-sm">{cab.space}{cab.cabinetType}</div>
+          
+          <div className="hidden group-hover:flex gap-1 absolute right-0 top-0 bg-white rounded p-1 shadow-sm border border-gray-100 z-10">
+            <button onClick={(e) => { e.stopPropagation(); onCopy(e, cab); }} className="text-blue-600 text-[10px] px-1 font-bold">复制</button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(e, cab.id); }} className="text-rose-600 text-[10px] px-1 font-bold">删除</button>
+          </div>
+        </div>
+        <div className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">
+          {cab.width || 0} × {cab.height || 0} × {cab.depth || 0}
+        </div>
       </div>
     </div>
   );
@@ -1726,6 +1777,32 @@ const renderUpgradeModal = () => {
       return sum + cabBase + cabCountertop;
     }, 0);
 
+    // 【新增】：Dnd-kit 传感器配置 (同时支持鼠标与触摸屏)
+    const sensors = useSensors(
+      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+      useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }) // 触屏防误触延迟
+    );
+
+    // 【新增】：拖拽结束处理逻辑
+    const handleDragEnd = (event) => {
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        const oldIndex = quoteCabinets.findIndex(c => c.id === active.id);
+        const newIndex = quoteCabinets.findIndex(c => c.id === over.id);
+        
+        // 执行物理位移
+        const newList = arrayMove(quoteCabinets, oldIndex, newIndex);
+        
+        // 核心：强制重写排序权重（沿用之前约定的从 1 开始的顺序）
+        const orderedList = newList.map((item, index) => ({
+          ...item,
+          sort_order: index + 1 
+        }));
+        
+        setQuoteCabinets(orderedList);
+      }
+    };
+
     return (
       <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
         {renderUpgradeModal()}
@@ -1756,49 +1833,21 @@ const renderUpgradeModal = () => {
                 <span className="text-xs font-black text-gray-400">🗄️ 空间柜体</span>
                 <button onClick={handleAddCabinet} className="text-xs font-bold text-blue-600">➕ 新增</button>
               </div>
-              <div className="space-y-3">
-                {quoteCabinets.map((cab, idx) => (
-                  <div 
-                    key={cab.id} 
-                    onClick={() => setActiveCabinetId(cab.id)}
-                    draggable
-                    onDragStart={(e) => {
-                      setDraggedCabinetIdx(idx);
-                      e.currentTarget.style.opacity = '0.5'; 
-                    }}
-                    onDragEnd={(e) => {
-                      e.currentTarget.style.opacity = '1';
-                      setDraggedCabinetIdx(null);
-                    }}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (draggedCabinetIdx === null || draggedCabinetIdx === idx) return;
-                      const newList = [...quoteCabinets];
-                      const [removed] = newList.splice(draggedCabinetIdx, 1);
-                      newList.splice(idx, 0, removed);
-                      
-                      // 【核心修复 1：重排后立即重新计算 sort_order】
-                      const orderedList = newList.map((item, index) => ({
-                        ...item,
-                        sort_order: index + 1
-                      }));
-                      
-                      setQuoteCabinets(orderedList); 
-                      setDraggedCabinetIdx(null);
-                    }}
-                    className={`p-4 rounded-xl cursor-pointer border-2 relative group ${activeCabinetId === cab.id ? 'bg-white border-black shadow-md' : 'bg-white border-transparent'} cursor-move transition-transform duration-200 ${draggedCabinetIdx === idx ? 'scale-95' : ''}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-bold text-sm">{cab.space}{cab.cabinetType}</div>
-                      <div className="hidden group-hover:flex gap-1 absolute right-2 top-2 bg-white rounded p-1 shadow">
-                        <button onClick={(e) => handleCopyCabinet(e, cab)} className="text-blue-600 text-[10px] px-1 font-bold">复制</button>
-                        <button onClick={(e) => handleDeleteCabinet(e, cab.id)} className="text-rose-600 text-[10px] px-1 font-bold">删除</button>
-                      </div>
-                    </div>
-                    <div className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">{cab.width||0} × {cab.height||0} × {cab.depth||0}</div>
-                  </div>
-                ))}
+              <div className="space-y-3 relative">
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={quoteCabinets.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                    {quoteCabinets.map((cab) => (
+                      <SortableCabinetItem 
+                        key={cab.id} 
+                        cab={cab} 
+                        isActive={activeCabinetId === cab.id}
+                        onActivate={() => setActiveCabinetId(cab.id)}
+                        onCopy={handleCopyCabinet}
+                        onDelete={handleDeleteCabinet}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </div>
             </div>
           </div>
