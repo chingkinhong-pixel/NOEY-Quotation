@@ -2244,10 +2244,26 @@ const renderUpgradeModal = () => {
         {/* 基础信息 */}
         <div className="p-4 mt-2">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-3 text-sm">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-1"><span className="text-gray-500 font-bold">订单编号</span><span className="font-mono font-black text-base">{quote.quote_no}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500 font-bold">客户名称</span><span className="font-black text-gray-900">{quote.customer_name || '-'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500 font-bold">出单日期</span><span className="font-bold text-gray-800">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span></div>
-            <div className="flex justify-between items-start"><span className="text-gray-500 font-bold whitespace-nowrap">交付地址</span><span className="font-bold text-gray-800 text-right">{quote.delivery_address || '-'}</span></div>
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-1">
+              <span className="text-gray-500 font-bold">订单编号</span>
+              <span className="font-mono font-black text-base">{quote.quote_no}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-bold">出单日期</span>
+              <span className="font-bold text-gray-800">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-bold">客户名称</span>
+              <span className="font-black text-gray-900">{quote.customer_name || '-'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-bold">联系电话</span>
+              <span className="font-bold text-gray-900">{quote.customer_phone || '-'}</span>
+            </div>
+            <div className="flex justify-between items-start">
+              <span className="text-gray-500 font-bold whitespace-nowrap">交付地址</span>
+              <span className="font-bold text-gray-800 text-right">{quote.delivery_address || '-'}</span>
+            </div>
           </div>
         </div>
 
@@ -3581,7 +3597,7 @@ const renderUpgradeModal = () => {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.2</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.3</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
@@ -3740,12 +3756,16 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
             <span className="font-mono font-black text-base">{quote.quote_no}</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-gray-500 font-bold">出单日期</span>
+            <span className="font-bold text-gray-800">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-gray-500 font-bold">客户名称</span>
             <span className="font-black text-gray-900">{quote.customer_name || '-'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500 font-bold">出单日期</span>
-            <span className="font-bold text-gray-800">{new Date(quote.updated_at || quote.created_at).toLocaleDateString('zh-CN')}</span>
+            <span className="text-gray-500 font-bold">联系电话</span>
+            <span className="font-bold text-gray-900">{quote.customer_phone || '-'}</span>
           </div>
           <div className="flex justify-between items-start">
             <span className="text-gray-500 font-bold whitespace-nowrap">交付地址</span>
