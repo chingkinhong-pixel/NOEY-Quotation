@@ -2734,8 +2734,8 @@ const renderUpgradeModal = () => {
                 
                 <div className="space-y-6 print:space-y-4">
                   {spaceCabinets.map(cab => {
-                    const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id)
-                        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)); // 严格对齐最终视觉排序
+                    const cabUpgrades = upgrades.filter(u => u.cabinet_id === cab.id)
+                        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
                     const w = parseFloat(cab.width) || 0;
                     const h = parseFloat(cab.height) || 0;
                     const isArea = h > (rules?.height_threshold || 1000);
