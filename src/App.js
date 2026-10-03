@@ -1653,10 +1653,13 @@ const handleRemoveUpgrade = (upgId) => {
         if (cabErr2) throw cabErr2;
 
         if (cab.upgrades && cab.upgrades.length > 0) {
-          const upgradeInserts = cab.upgrades.map(u => {
+          const upgradeInserts = cab.upgrades.map((u, i) => {
             const calculatedMatch = calcs.calculatedUpgrades.find(cu => cu.id === u.id);
-           return {
-              cabinet_id: insertedCab.id, upgrade_item_id: u.item_id,
+            return {
+              cabinet_id: insertedCab.id, 
+              upgrade_item_id: u.item_id || null, // null 则为自定义
+              is_custom: u.type === 'custom',     // 【新增】：写入临时项标记
+              sort_order: u.sort_order !== undefined ? u.sort_order : i, // 【核心修复】：持久化写入当前人工排序
               quantity: calculatedMatch.calculatedQty, unit: u.unit || '', remark: u.remark || '',
               snap_unit_price: calculatedMatch.snap_final_unit_price, snap_upgrade_effect_type: u.upgrade_effect_type,
               snap_upgrade_name: u.name, snap_base_door_price: calculatedMatch.snap_base_door_price,
@@ -1900,6 +1903,7 @@ const renderUpgradeModal = () => {
     return (
       <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
         {renderUpgradeModal()}
+        {renderCustomUpgradeModal()}
         <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-6 shrink-0 shadow-sm z-20">
           <div className="flex items-center gap-6">
             <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span></div>
@@ -2223,47 +2227,44 @@ const renderUpgradeModal = () => {
                 })()}
               </div>
   
-              {/* 升级工艺引擎 */}
+              {/* 升级工艺引擎 (支持拖拽与临时增项) */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10">
                 <div className="flex justify-between items-center mb-4 border-b pb-4">
                   <h3 className="font-black text-gray-900">✨ 局部升级与工艺</h3>
-                  <button onClick={() => setUpgradeModal({...upgradeModal, isOpen: true})} className="bg-black text-white px-4 py-1.5 rounded-full text-sm font-bold shadow">+ 添加工艺</button>
+                  <div className="flex items-center gap-2">
+                    {/* 【新增】：临时增项按钮 */}
+                    <button onClick={() => setCustomUpgradeModal({...customUpgradeModal, isOpen: true})} className="bg-white border border-gray-200 text-gray-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm hover:bg-gray-50">+ 新增临时项</button>
+                    <button onClick={() => setUpgradeModal({...upgradeModal, isOpen: true})} className="bg-black text-white px-4 py-1.5 rounded-full text-sm font-bold shadow">+ 添加标准工艺</button>
+                  </div>
                 </div>
+                
                 {(!activeCabinet.upgrades || activeCabinet.upgrades.length === 0) ? (
-                   <div className="py-8 text-center text-gray-400 font-bold border-2 border-dashed rounded-xl">尚未添加工艺</div>
+                   <div className="py-8 text-center text-gray-400 font-bold border-2 border-dashed rounded-xl">尚未添加任何工艺项</div>
                 ) : (
-                  <div className="space-y-3">
-                   {activeCabinet.upgrades.map(upg => {
-                      // 【V4.0 容错修复】：如果尺寸被清空导致引擎短路，给一个默认空对象兜底防崩溃
-                      const calced = currentCalcs.calculatedUpgrades.find(u => u.id === upg.id) || {
-                        calculatedQty: 0, finalAmount: 0, snap_base_door_price: 0
-                      };
-                      return (
-                        <div key={upg.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center">
-                          <div>
-                            <div className="font-bold text-sm flex items-center gap-2">
-                              {upg.name}
-                              {upg.remark && <span className="text-rose-500 font-normal ml-1">（{upg.remark}）</span>}
-                              <span className="text-[10px] bg-white border px-1 rounded">{upg.category}</span>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              原始价: ¥{upg.snap_original_unit_price} 
-                              {upg.unit_price_adjustment !== 0 && <span className="text-rose-500 ml-1">(调: {upg.unit_price_adjustment > 0 ? '+' : ''}{upg.unit_price_adjustment})</span>}
-                              <span className="mx-2">|</span>
-                              计价量: {calced.calculatedQty} {upg.unit} 
-                              {upg.input_quantity !== calced.calculatedQty && upg.calculation_type !== '人工直接输金额' && <span className="text-amber-500 ml-1">(输入: {upg.input_quantity})</span>}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              {upg.upgrade_effect_type === 'replace' && upg.replace_calculation_mode === 'full_price' && <div className="text-[10px] text-rose-500">自动扣底 (¥{calced.snap_base_door_price})</div>}
-                              <div className="text-lg font-black">¥{calced.finalAmount.toFixed(0)}</div>
-                            </div>
-                            <button onClick={() => handleRemoveUpgrade(upg.id)} className="text-gray-400 hover:text-rose-600 font-bold px-2">✕</button>
-                          </div>
-                        </div>
-                      )
-                    })}
+                  <div className="space-y-3 relative">
+                    <DndContext 
+                      sensors={sensors} 
+                      collisionDetection={closestCenter} 
+                      onDragEnd={(event) => {
+                        const { active, over } = event;
+                        if (over && active.id !== over.id) {
+                          const oldIndex = activeCabinet.upgrades.findIndex(u => u.id === active.id);
+                          const newIndex = activeCabinet.upgrades.findIndex(u => u.id === over.id);
+                          const newList = arrayMove(activeCabinet.upgrades, oldIndex, newIndex);
+                          // 强制写入最新排序号
+                          const orderedList = newList.map((item, index) => ({ ...item, sort_order: index }));
+                          updateActiveCabinet('upgrades', orderedList);
+                        }
+                      }}
+                    >
+                      <SortableContext items={(activeCabinet.upgrades || []).map(u => u.id)} strategy={verticalListSortingStrategy}>
+                        {(activeCabinet.upgrades || []).map(upg => {
+                          const calced = currentCalcs.calculatedUpgrades.find(u => u.id === upg.id) || { calculatedQty: 0, finalAmount: 0, snap_base_door_price: 0 };
+                          return <SortableUpgradeItem key={upg.id} upg={upg} calced={calced} onRemove={handleRemoveUpgrade} />;
+                        })}
+                      </SortableContext>
+                    </DndContext>
+                    
                     <div className="text-right pt-2 mt-2 border-t font-black text-rose-600">工艺小计 ¥{currentCalcs.upgradePortionTotal.toFixed(0)}</div>
                   </div>
                 )}
