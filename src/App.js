@@ -1095,22 +1095,28 @@ export default function App() {
             } else space = dbCab.name;
           }
 
-          const cabUpgrades = upgData.filter(u => u.cabinet_id === dbCab.id).map(dbUpg => {
-            const dictItem = upgrades.find(u => u.id === dbUpg.upgrade_item_id) || {};
-            return {
-              id: dbUpg.id, item_id: dbUpg.upgrade_item_id,
-              name: dbUpg.snap_upgrade_name || dictItem.name || '已失效未知工艺',
-              category: dictItem.upgrade_category || '未知分类', unit: dictItem.unit || '项',
-              snap_original_unit_price: dbUpg.snap_original_unit_price || 0, unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
-              calculation_type: dictItem.calculation_type || '按面积㎡', upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
-              replace_calculation_mode: dictItem.replace_calculation_mode || null,
-              input_quantity: dbUpg.input_quantity || 0, minimum_quantity: dictItem.minimum_quantity || 0,
-              manual_door_area: dbUpg.manual_door_area || '', remark: dbUpg.remark || '', combo_type: dictItem.combo_type || 'single',
-              snap_material: dbUpg.snap_material || '', snap_style: dbUpg.snap_style || '', snap_specification: dbUpg.snap_specification || '',
-              parent_record_id: dbUpg.parent_record_id || null
-            };
+          const cabUpgrades = upgData.filter(u => u.cabinet_id === dbCab.id)
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) // 【核心修复】：必须先按人工排序顺序流转
+            .map(dbUpg => {
+              const dictItem = dbUpg.upgrade_item_id ? upgrades.find(u => u.id === dbUpg.upgrade_item_id) : null;
+              return {
+                id: dbUpg.id || ('upg-copy-' + Date.now() + Math.random()), 
+                item_id: dbUpg.upgrade_item_id || null,
+                name: dbUpg.snap_upgrade_name || (dictItem ? dictItem.name : '临时工艺'),
+                category: dbUpg.is_custom ? '临时项' : (dictItem?.upgrade_category || '未知分类'),
+                unit: dbUpg.unit || (dictItem?.unit || '项'),
+                snap_original_unit_price: dbUpg.snap_original_unit_price || 0, 
+                unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
+                calculation_type: dbUpg.is_custom ? '按数量' : (dictItem?.calculation_type || '按面积㎡'),
+                upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
+                replace_calculation_mode: dictItem?.replace_calculation_mode || null,
+                input_quantity: dbUpg.input_quantity || 0, minimum_quantity: dictItem?.minimum_quantity || 0,
+                manual_door_area: dbUpg.manual_door_area || '', remark: dbUpg.remark || '', 
+                combo_type: dictItem?.combo_type || 'single', parent_record_id: dbUpg.parent_record_id || null,
+                type: dbUpg.is_custom ? 'custom' : 'standard',
+                sort_order: dbUpg.sort_order || 0
+              };
           });
-
          // 【修复】：countertop 数据标准化与兜底
           const rawCountertop = dbCab.countertop;
           let normalizedCountertop;
@@ -1210,23 +1216,29 @@ export default function App() {
             } else space = dbCab.name;
           }
 
-          const cabUpgrades = upgData.filter(u => u.cabinet_id === dbCab.id).map(dbUpg => {
-            const dictItem = upgrades.find(u => u.id === dbUpg.upgrade_item_id) || {};
-            return {
-              id: 'upg-copy-' + Date.now() + Math.random(), // 赋予全新前端脱机ID
-              item_id: dbUpg.upgrade_item_id,
-              name: dbUpg.snap_upgrade_name || dictItem.name || '已失效未知工艺',
-              category: dictItem.upgrade_category || '未知分类', unit: dictItem.unit || '项',
-              snap_original_unit_price: dbUpg.snap_original_unit_price || 0, unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
-              calculation_type: dictItem.calculation_type || '按面积㎡', upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
-              replace_calculation_mode: dictItem.replace_calculation_mode || null,
-              input_quantity: dbUpg.input_quantity || 0, minimum_quantity: dictItem.minimum_quantity || 0,
-              manual_door_area: dbUpg.manual_door_area || '', remark: dbUpg.remark || '', combo_type: dictItem.combo_type || 'single',
-              snap_material: dbUpg.snap_material || '', snap_style: dbUpg.snap_style || '', snap_specification: dbUpg.snap_specification || '',
-              parent_record_id: dbUpg.parent_record_id || null
-            };
+          const cabUpgrades = upgData.filter(u => u.cabinet_id === dbCab.id)
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) // 【核心修复】：必须先按人工排序顺序流转
+            .map(dbUpg => {
+              const dictItem = dbUpg.upgrade_item_id ? upgrades.find(u => u.id === dbUpg.upgrade_item_id) : null;
+              return {
+                id: dbUpg.id || ('upg-copy-' + Date.now() + Math.random()), 
+                item_id: dbUpg.upgrade_item_id || null,
+                name: dbUpg.snap_upgrade_name || (dictItem ? dictItem.name : '临时工艺'),
+                category: dbUpg.is_custom ? '临时项' : (dictItem?.upgrade_category || '未知分类'),
+                unit: dbUpg.unit || (dictItem?.unit || '项'),
+                snap_original_unit_price: dbUpg.snap_original_unit_price || 0, 
+                unit_price_adjustment: dbUpg.unit_price_adjustment || 0,
+                calculation_type: dbUpg.is_custom ? '按数量' : (dictItem?.calculation_type || '按面积㎡'),
+                upgrade_effect_type: dbUpg.snap_upgrade_effect_type || 'add_cost',
+                replace_calculation_mode: dictItem?.replace_calculation_mode || null,
+                input_quantity: dbUpg.input_quantity || 0, minimum_quantity: dictItem?.minimum_quantity || 0,
+                manual_door_area: dbUpg.manual_door_area || '', remark: dbUpg.remark || '', 
+                combo_type: dictItem?.combo_type || 'single', parent_record_id: dbUpg.parent_record_id || null,
+                type: dbUpg.is_custom ? 'custom' : 'standard',
+                sort_order: dbUpg.sort_order || 0
+              };
           });
-
+          
           const rawCountertop = dbCab.countertop;
           let normalizedCountertop = rawCountertop && typeof rawCountertop === 'object' ? JSON.parse(JSON.stringify(rawCountertop)) : { ...DEFAULT_COUNTERTOP };
 
@@ -2367,7 +2379,8 @@ const renderUpgradeModal = () => {
           <h2 className="text-sm font-black text-gray-900 tracking-widest uppercase mb-4 pl-3 border-l-4 border-black">定制方案明细</h2>
           <div className="space-y-6">
             {cabinets.map((cab, idx) => {
-              const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
+              const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id)
+                        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)); // 严格对齐最终视觉排序
               const w = parseFloat(cab.width) || 0;
               const h = parseFloat(cab.height) || 0;
               const isArea = h > (rules?.height_threshold || 1000);
@@ -2721,7 +2734,8 @@ const renderUpgradeModal = () => {
                 
                 <div className="space-y-6 print:space-y-4">
                   {spaceCabinets.map(cab => {
-                    const cabUpgrades = upgrades.filter(u => u.cabinet_id === cab.id);
+                    const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id)
+                        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)); // 严格对齐最终视觉排序
                     const w = parseFloat(cab.width) || 0;
                     const h = parseFloat(cab.height) || 0;
                     const isArea = h > (rules?.height_threshold || 1000);
@@ -3692,7 +3706,7 @@ const renderUpgradeModal = () => {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.3</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.4</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
@@ -3874,7 +3888,8 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
         <h2 className="text-sm font-black text-gray-900 tracking-widest uppercase mb-4 pl-3 border-l-4 border-black">定制方案明细</h2>
         <div className="space-y-6">
           {cabinets.map((cab, idx) => {
-              const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
+              const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id)
+                        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)); // 严格对齐最终视觉排序
               const w = parseFloat(cab.width) || 0;
               const h = parseFloat(cab.height) || 0;
               const isArea = h > (rules?.height_threshold || 1000);
