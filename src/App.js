@@ -265,6 +265,47 @@ const SortableCabinetItem = ({ cab, isActive, onActivate, onCopy, onDelete }) =>
   );
 };
 
+// ==========================================
+// 【新增】：工艺专属的高级拖拽组件
+// ==========================================
+const SortableUpgradeItem = ({ upg, calced, onRemove }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: upg.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: 'relative', zIndex: isDragging ? 50 : 1 };
+  const isChild = !!upg.parent_record_id;
+
+  return (
+    <div ref={setNodeRef} style={style} className={`bg-gray-50 border p-3 rounded-xl flex justify-between items-center ${isChild ? 'bg-gray-50/50 pl-8 border-l-2 border-gray-200' : ''}`}>
+      <div className="flex items-center gap-3">
+        {/* 专属拖拽手柄：支持平板触摸 */}
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-black px-2" style={{ touchAction: 'none' }}>
+          <span className="text-xl leading-none">☰</span>
+        </div>
+        <div>
+          <div className="font-bold text-sm flex items-center gap-2">
+            {isChild ? '↳ ' : ''}{upg.name}
+            {upg.remark && <span className="text-rose-500 font-normal ml-1">（{upg.remark}）</span>}
+            <span className="text-[10px] bg-white border px-1 rounded">{upg.type === 'custom' ? '临时项' : upg.category}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            原始价: ¥{upg.snap_original_unit_price} 
+            {upg.unit_price_adjustment !== 0 && <span className="text-rose-500 ml-1">(调: {upg.unit_price_adjustment > 0 ? '+' : ''}{upg.unit_price_adjustment})</span>}
+            <span className="mx-2">|</span>
+            计价量: {calced.calculatedQty} {upg.unit} 
+            {upg.input_quantity !== calced.calculatedQty && upg.calculation_type !== '人工直接输金额' && <span className="text-amber-500 ml-1">(输入: {upg.input_quantity})</span>}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="text-right">
+          {upg.upgrade_effect_type === 'replace' && upg.replace_calculation_mode === 'full_price' && <div className="text-[10px] text-rose-500">自动扣底 (¥{calced.snap_base_door_price})</div>}
+          <div className="text-lg font-black">¥{calced.finalAmount.toFixed(0)}</div>
+        </div>
+        <button onClick={() => onRemove(upg.id)} className="text-gray-400 hover:text-rose-600 font-bold px-2">✕</button>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   // ==========================================
   // 【核心修复1】：在首次 Render 前同步提取 Hash 路由（彻底消除首页闪现）
@@ -392,6 +433,59 @@ export default function App() {
     isOpen: false, activeCategory: '门板升级', selectedItem: null, inputQty: '', inputRemark: '',
     unit_price_adjustment: 0, manual_door_area: '', subInputs: {} // 【新增】保存二级工艺的独立输入数量
   });
+
+  // === 【新增】：临时增项状态 ===
+  const [customUpgradeModal, setCustomUpgradeModal] = useState({
+    isOpen: false, name: '', price: '', qty: 1, unit: '项', remark: ''
+  });
+
+  const handleConfirmAddCustom = () => {
+    if (!customUpgradeModal.name) { toast.error("请输入临时项名称"); return; }
+    const qty = parseFloat(customUpgradeModal.qty) || 1;
+    const price = parseFloat(customUpgradeModal.price) || 0;
+
+    const newItem = {
+      id: 'upg-custom-' + Date.now(),
+      item_id: null, // 临时项脱离基础库
+      name: customUpgradeModal.name, category: '临时项', unit: customUpgradeModal.unit,
+      snap_original_unit_price: price, unit_price_adjustment: 0,
+      calculation_type: '按数量', // 复用现有按数量算法
+      upgrade_effect_type: 'add_cost', replace_calculation_mode: null,
+      input_quantity: qty, minimum_quantity: 0, manual_door_area: '',
+      remark: customUpgradeModal.remark || '', combo_type: 'single', parent_record_id: null,
+      type: 'custom', sort_order: (activeCabinet?.upgrades || []).length // 默认插到最后
+    };
+
+    updateActiveCabinet('upgrades', [...(activeCabinet.upgrades || []), newItem]);
+    setCustomUpgradeModal({ isOpen: false, name: '', price: '', qty: 1, unit: '项', remark: '' });
+    toast.success("临时增项已添加");
+  };
+
+  const renderCustomUpgradeModal = () => {
+    if (!customUpgradeModal.isOpen) return null;
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col">
+          <h2 className="text-xl font-black mb-4">➕ 新增临时增项 <span className="text-xs text-gray-400 font-normal ml-2">仅限本订单有效</span></h2>
+          <div className="space-y-4">
+            <div><label className="block text-xs font-bold text-gray-500 mb-1">项目名称</label><input required placeholder="输入名称" value={customUpgradeModal.name} onChange={e=>setCustomUpgradeModal({...customUpgradeModal, name: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">单价 (元)</label><input type="number" placeholder="0" value={customUpgradeModal.price} onChange={e=>setCustomUpgradeModal({...customUpgradeModal, price: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black text-rose-600 bg-gray-50 focus:bg-white" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">数量</label><input type="number" placeholder="1" value={customUpgradeModal.qty} onChange={e=>setCustomUpgradeModal({...customUpgradeModal, qty: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black bg-gray-50 focus:bg-white" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">单位</label><input placeholder="如: 项/米/个" value={customUpgradeModal.unit} onChange={e=>setCustomUpgradeModal({...customUpgradeModal, unit: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">备注说明</label><input placeholder="选填" value={customUpgradeModal.remark} onChange={e=>setCustomUpgradeModal({...customUpgradeModal, remark: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-6">
+            <button onClick={() => setCustomUpgradeModal({...customUpgradeModal, isOpen: false})} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold">取消</button>
+            <button onClick={handleConfirmAddCustom} className="flex-1 bg-black text-white px-6 py-3 rounded-xl font-bold shadow-lg">确认添加</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
   
   const generateQuoteNo = () => {
     const date = new Date();
