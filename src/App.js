@@ -412,8 +412,21 @@ export default function App() {
   // 4. 销售工作台专属状态
   const [quoteInfo, setQuoteInfo] = useState({ 
     quoteNo: '', customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中', terms_content: '',
-    discountFinalPrice: '' // 【新增】工作台最终结算价缓存
+    discountFinalPrice: '', surcharges: [] // 【新增】订单附加费用数组
   });
+
+  // 2. 紧接着在下方插入附加费用专属状态和核心计算函数
+  const [surchargeModal, setSurchargeModal] = useState({
+    isOpen: false, editId: null, name: '', calcType: 'fixed', amount: '', qty: 1, unit: '项', percentage: '', remark: ''
+  });
+
+  // 【核心引擎】：计算单条附加费用金额 (严格防循环依赖：百分比仅基于基础总价计算)
+  const calculateSurchargeAmount = (item, baseTotal) => {
+    if (item.calcType === 'fixed') return parseFloat(item.amount) || 0;
+    if (item.calcType === 'unit') return (parseFloat(item.qty) || 0) * (parseFloat(item.amount) || 0);
+    if (item.calcType === 'percent') return baseTotal * ((parseFloat(item.percentage) || 0) / 100);
+    return 0;
+  };
   // 【Phase 1 新增】：台面模块仅前端展示状态
   const [countertop, setCountertop] = useState({
     enabled: false, type: '', brand: '', color: '', thickness: '',
@@ -865,7 +878,7 @@ export default function App() {
   const enterSalesWorkspace = () => {
     setQuoteInfo({ 
       quoteNo: generateQuoteNo(), customerName: '', customerPhone: '', deliveryAddress: '', status: '编辑中',
-      terms_content: rules.terms_template || DEFAULT_TERMS, discountFinalPrice: '' // 重置折扣价
+      terms_content: rules.terms_template || DEFAULT_TERMS, discountFinalPrice: '', surcharges: [] // 重置
     });
     const initCabId = 'cab-' + Date.now();
     setQuoteCabinets([{ 
@@ -1066,7 +1079,8 @@ export default function App() {
         quoteNo: quote.quote_no, customerName: quote.customer_name || '',
         customerPhone: quote.customer_phone || '', deliveryAddress: quote.delivery_address || '', status: quote.status || '编辑中',
         terms_content: quote.terms_content || rules.terms_template || DEFAULT_TERMS,
-        discountFinalPrice: quote.discount_final_price || '' // 【回显】：历史成交价
+        discountFinalPrice: quote.discount_final_price || '', // 【回显】：历史成交价
+        surcharges: quote.surcharges || [] // 【回显】：读取订单附加费用
       });
 
       const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quote.id);
@@ -1280,7 +1294,8 @@ export default function App() {
         deliveryAddress: quote.delivery_address || '', 
         status: '编辑中',
         terms_content: quote.terms_content || rules.terms_template || DEFAULT_TERMS,
-        discountFinalPrice: '' // 清空历史折扣价
+        discountFinalPrice: '', // 清空历史折扣价
+        surcharges: quote.surcharges ? JSON.parse(JSON.stringify(quote.surcharges)) : [] // 【深拷贝】：确保彻底脱离原单
       });
 
       // 5. 执行视图跳转
@@ -1555,20 +1570,24 @@ const handleRemoveUpgrade = (upgId) => {
 
     try {
       const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
-      // 【修复】：从柜体数组中归集所有台面总价，告别失效的全局独立 state
-      const grandTotal = quoteCabinets.reduce((sum, cab) => {
+      // 【修改】：安全分离基础报价与附加费用，严格按照基数计算
+      const baseGrandTotal = quoteCabinets.reduce((sum, cab) => {
         const cabBase = calculateCabinetDetails(cab).baseTotal;
         const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
         return sum + cabBase + cabCountertop;
       }, 0);
+      
+      const surchargesTotal = (quoteInfo.surcharges || []).reduce((sum, item) => sum + calculateSurchargeAmount(item, baseGrandTotal), 0);
+      const finalGrandTotal = baseGrandTotal + surchargesTotal;
 
       const quotePayload = {
         quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
         customer_phone: quoteInfo.customerPhone, delivery_address: quoteInfo.deliveryAddress,
         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
-        total_amount: grandTotal, updated_at: new Date().toISOString(),
+        total_amount: finalGrandTotal, updated_at: new Date().toISOString(), // 使用加入附加费用后的终价
         terms_content: quoteInfo.terms_content, terms_version: 'v1.0',
-        discount_final_price: parseFloat(quoteInfo.discountFinalPrice) || null // 【新增】保存最终人工结算价
+        discount_final_price: parseFloat(quoteInfo.discountFinalPrice) || null,
+        surcharges: quoteInfo.surcharges // 【新增】：同步保存至 JSONB 字段
       };
 
       let currentQuoteId = null;
