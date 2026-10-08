@@ -2709,6 +2709,52 @@ const renderUpgradeModal = () => {
           </div>
         </div>
 
+        {/* 【新增】：独立呈现的订单附加费用 (仅有数据时渲染) */}
+          {quote.surcharges && quote.surcharges.length > 0 && (() => {
+             // 客户端复刻基础金额的防循环算总价逻辑
+             const baseGrandTotal = cabinets.reduce((sum, cab) => {
+               const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
+               const upgTotal = cabUpgs.reduce((s, upg) => s + Number(upg.snap_upgrade_price || 0), 0);
+               return sum + Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
+             }, 0);
+             const surchargesTotal = quote.surcharges.reduce((sum, sc) => {
+               let val = 0;
+               if (sc.calcType === 'fixed') val = parseFloat(sc.amount) || 0;
+               else if (sc.calcType === 'unit') val = (parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0);
+               else if (sc.calcType === 'percent') val = baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100);
+               return sum + val;
+             }, 0);
+
+             return (
+               <div className="mt-8">
+                 <h2 className="text-sm font-black text-gray-900 tracking-widest uppercase mb-4 pl-3 border-l-4 border-black">订单附加费用</h2>
+                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-4 space-y-3">
+                   {quote.surcharges.map(sc => (
+                     <div key={sc.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                       <div>
+                         <div className="font-bold text-gray-800 mb-1">{sc.name}</div>
+                         <div className="text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded inline-block">
+                           {sc.calcType === 'fixed' ? '固定金额计费' : sc.calcType === 'unit' ? `${sc.qty} ${sc.unit} × ¥${sc.amount}/${sc.unit}` : `基于订单基础额 × ${sc.percentage}%`}
+                           {sc.remark && ` ｜ ${sc.remark}`}
+                         </div>
+                       </div>
+                       <div className="font-black text-gray-900 text-base">¥ {(() => {
+                           if (sc.calcType === 'fixed') return (parseFloat(sc.amount) || 0).toFixed(2);
+                           if (sc.calcType === 'unit') return ((parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0)).toFixed(2);
+                           if (sc.calcType === 'percent') return (baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100)).toFixed(2);
+                           return '0.00';
+                       })()}</div>
+                     </div>
+                   ))}
+                   <div className="flex justify-between items-center pt-3 mt-1 border-t border-gray-100">
+                     <span className="text-xs font-bold text-gray-500">附加费用合计</span>
+                     <span className="font-black text-rose-600 text-lg">¥ {surchargesTotal.toFixed(2)}</span>
+                   </div>
+                 </div>
+               </div>
+             );
+          })()}
+
         {/* 【新增】：手机端报价条款展示 */}
         <div className="mt-4 bg-white">
           <RenderTermsBlock content={quote.terms_content || DEFAULT_TERMS} />
@@ -3080,6 +3126,51 @@ const renderUpgradeModal = () => {
             ))}
           </div>
 
+          {/* 【新增】：PDF 版订单附加费用 */}
+          {quote.surcharges && quote.surcharges.length > 0 && (() => {
+             const baseGrandTotal = cabinets.reduce((sum, cab) => sum + Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0), 0);
+             const surchargesTotal = quote.surcharges.reduce((sum, sc) => {
+               if (sc.calcType === 'fixed') return sum + (parseFloat(sc.amount) || 0);
+               if (sc.calcType === 'unit') return sum + ((parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0));
+               if (sc.calcType === 'percent') return sum + (baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100));
+               return sum;
+             }, 0);
+
+             return (
+               <div className="px-8 md:px-12 py-6 print:px-8 print:py-4 page-break-inside-avoid border-t border-gray-200">
+                 <div className="flex justify-between items-end border-b-2 border-gray-900 pb-2 mb-4 print:mb-3">
+                   <h3 className="text-lg print:text-base font-black text-black tracking-[0.1em] uppercase">订单附加费用 SURCHARGES</h3>
+                 </div>
+                 
+                 <div className="border border-gray-300 print:border-gray-400 bg-white shadow-sm">
+                   {quote.surcharges.map((sc, idx) => (
+                     <div key={sc.id} className={`flex justify-between items-center px-4 py-3 print:px-3 print:py-2 ${idx !== quote.surcharges.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                       <div className="flex-1">
+                         <div className="font-bold text-gray-900 text-[13px] print:text-[11px] mb-1">{sc.name}</div>
+                         <div className="text-[11px] print:text-[9px] text-gray-500">
+                           {sc.calcType === 'fixed' ? '固定金额' : sc.calcType === 'unit' ? `${sc.qty} ${sc.unit} × ¥${sc.amount}/${sc.unit}` : `税率/费率: ${sc.percentage}% (基数: ¥${baseGrandTotal.toFixed(2)})`}
+                           {sc.remark && ` ｜ 备注: ${sc.remark}`}
+                         </div>
+                       </div>
+                       <div className="text-right font-black text-gray-900 text-sm print:text-xs">
+                          ¥ {(() => {
+                            if (sc.calcType === 'fixed') return (parseFloat(sc.amount) || 0).toFixed(2);
+                            if (sc.calcType === 'unit') return ((parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0)).toFixed(2);
+                            if (sc.calcType === 'percent') return (baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100)).toFixed(2);
+                            return '0.00';
+                          })()}
+                       </div>
+                     </div>
+                   ))}
+                   <div className="bg-gray-50 px-4 py-2 print:px-3 print:py-1.5 border-t border-gray-200 flex justify-between items-center">
+                     <span className="text-[11px] print:text-[10px] font-bold text-gray-600 uppercase">附加费用小计 Subtotal</span>
+                     <span className="font-black text-rose-600 text-sm print:text-xs">¥ {surchargesTotal.toFixed(2)}</span>
+                   </div>
+                 </div>
+               </div>
+             );
+          })()}
+  
           {/* 全案总计 Footer (保留大留白与划线降级，彰显重要性) */}
           <div className="bg-black text-white px-8 md:px-12 py-8 print:px-8 print:py-6 flex flex-col md:flex-row print:flex-row justify-between items-center print:border-t-[4px] print:border-black print:bg-white print:text-black page-break-inside-avoid">
             <div className="mb-4 md:mb-0 print:mb-0 text-center md:text-left print:text-left">
@@ -4219,6 +4310,52 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
         </div>
       </div>
 
+      {/* 【新增】：独立呈现的订单附加费用 (仅有数据时渲染) */}
+          {quote.surcharges && quote.surcharges.length > 0 && (() => {
+             // 客户端复刻基础金额的防循环算总价逻辑
+             const baseGrandTotal = cabinets.reduce((sum, cab) => {
+               const cabUpgs = upgrades.filter(u => u.cabinet_id === cab.id);
+               const upgTotal = cabUpgs.reduce((s, upg) => s + Number(upg.snap_upgrade_price || 0), 0);
+               return sum + Number(cab.cabinet_total_price || 0) + (cab.countertop?.enabled ? Number(cab.countertop.subtotal || 0) : 0);
+             }, 0);
+             const surchargesTotal = quote.surcharges.reduce((sum, sc) => {
+               let val = 0;
+               if (sc.calcType === 'fixed') val = parseFloat(sc.amount) || 0;
+               else if (sc.calcType === 'unit') val = (parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0);
+               else if (sc.calcType === 'percent') val = baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100);
+               return sum + val;
+             }, 0);
+
+             return (
+               <div className="mt-8">
+                 <h2 className="text-sm font-black text-gray-900 tracking-widest uppercase mb-4 pl-3 border-l-4 border-black">订单附加费用</h2>
+                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-4 space-y-3">
+                   {quote.surcharges.map(sc => (
+                     <div key={sc.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                       <div>
+                         <div className="font-bold text-gray-800 mb-1">{sc.name}</div>
+                         <div className="text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded inline-block">
+                           {sc.calcType === 'fixed' ? '固定金额计费' : sc.calcType === 'unit' ? `${sc.qty} ${sc.unit} × ¥${sc.amount}/${sc.unit}` : `基于订单基础额 × ${sc.percentage}%`}
+                           {sc.remark && ` ｜ ${sc.remark}`}
+                         </div>
+                       </div>
+                       <div className="font-black text-gray-900 text-base">¥ {(() => {
+                           if (sc.calcType === 'fixed') return (parseFloat(sc.amount) || 0).toFixed(2);
+                           if (sc.calcType === 'unit') return ((parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0)).toFixed(2);
+                           if (sc.calcType === 'percent') return (baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100)).toFixed(2);
+                           return '0.00';
+                       })()}</div>
+                     </div>
+                   ))}
+                   <div className="flex justify-between items-center pt-3 mt-1 border-t border-gray-100">
+                     <span className="text-xs font-bold text-gray-500">附加费用合计</span>
+                     <span className="font-black text-rose-600 text-lg">¥ {surchargesTotal.toFixed(2)}</span>
+                   </div>
+                 </div>
+               </div>
+             );
+          })()}
+      
       {/* 条款模块 */}
       <div className="mt-4 bg-white">
         <div className="px-6 md:px-16 print:px-8 py-8 print:py-4 bg-white border-t border-gray-200 page-break-inside-avoid">
