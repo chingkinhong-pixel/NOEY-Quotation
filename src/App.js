@@ -1904,12 +1904,6 @@ const renderUpgradeModal = () => {
     const cabinetStructureType = selectedCabinetMaterial?.material_type || activeCabinet.material_type || 'panel';
     const currentCalcs = calculateCabinetDetails(activeCabinet);
     const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
-    // 【修复】：工作台总价实时推导同步
-    const grandTotal = quoteCabinets.reduce((sum, cab) => {
-      const cabBase = calculateCabinetDetails(cab).baseTotal;
-      const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
-      return sum + cabBase + cabCountertop;
-    }, 0);
 
     // 【新增】：拖拽结束处理逻辑
     const handleDragEnd = (event) => {
