@@ -2340,8 +2340,6 @@ const renderUpgradeModal = () => {
 
                 {(!quoteInfo.surcharges || quoteInfo.surcharges.length === 0) ? null : (
                   <div className="space-y-3">
-                    {(!quoteInfo.surcharges || quoteInfo.surcharges.length === 0) ? null : (
-                  <div className="space-y-3">
                     {quoteInfo.surcharges.map(sc => (
                       <div key={sc.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center hover:shadow-sm transition-shadow">
                         <div>
