@@ -2340,6 +2340,8 @@ const renderUpgradeModal = () => {
 
                 {(!quoteInfo.surcharges || quoteInfo.surcharges.length === 0) ? null : (
                   <div className="space-y-3">
+                    {(!quoteInfo.surcharges || quoteInfo.surcharges.length === 0) ? null : (
+                  <div className="space-y-3">
                     {quoteInfo.surcharges.map(sc => (
                       <div key={sc.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center hover:shadow-sm transition-shadow">
                         <div>
@@ -2348,13 +2350,13 @@ const renderUpgradeModal = () => {
                             {sc.calcType === 'fixed' && '固定金额'}
                             {sc.calcType === 'unit' && `${sc.qty} ${sc.unit} × ¥${sc.amount} / ${sc.unit}`}
                             {sc.calcType === 'percent' && `订单基础金额 × ${sc.percentage}%`}
-                            {/* 【修改】：备注内容独立包裹红色样式 */}
+                            {/* 备注保持红色 */}
                             {sc.remark && <span className="ml-2 pl-2 border-l border-gray-300 text-rose-600">备注: {sc.remark}</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          {/* 【修改】：单项金额字号缩小至 text-base，保持与上方一致的 text-gray-900 深色 */}
-                          <div className="text-base font-black text-gray-900">¥{calculateSurchargeAmount(sc, baseGrandTotal).toFixed(2)}</div>
+                          {/* 【修复】：由 text-base font-black 改为 text-sm font-bold，降低视觉突兀感 */}
+                          <div className="text-sm font-bold text-gray-900">¥{calculateSurchargeAmount(sc, baseGrandTotal).toFixed(2)}</div>
                           <div className="flex gap-1">
                             <button onClick={() => setSurchargeModal({ isOpen: true, editId: sc.id, name: sc.name, calcType: sc.calcType, amount: sc.amount, qty: sc.qty, unit: sc.unit, percentage: sc.percentage, remark: sc.remark })} className="text-blue-500 hover:text-blue-700 font-bold px-2">编辑</button>
                             <button onClick={() => removeSurcharge(sc.id)} className="text-gray-400 hover:text-rose-600 font-bold px-2">✕</button>
@@ -2362,8 +2364,8 @@ const renderUpgradeModal = () => {
                         </div>
                       </div>
                     ))}
-                    {/* 【修改】：合计金额取消红色，采用 text-gray-900 深色标准小计样式 */}
-                    <div className="text-right pt-2 mt-2 border-t font-black text-gray-900">附加费用合计 ¥{surchargesTotal.toFixed(2)}</div>
+                    {/* 【修复】：由 font-black 改为 font-bold text-sm */}
+                    <div className="text-right pt-2 mt-2 border-t text-sm font-bold text-gray-900">附加费用合计 ¥{surchargesTotal.toFixed(2)}</div>
                   </div>
                 )}
               </div>
@@ -2737,12 +2739,12 @@ const renderUpgradeModal = () => {
                          <div className="font-bold text-gray-800 mb-1">{sc.name}</div>
                          <div className="text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded inline-block">
                            {sc.calcType === 'fixed' ? '固定金额计费' : sc.calcType === 'unit' ? `${sc.qty} ${sc.unit} × ¥${sc.amount}/${sc.unit}` : `基于订单基础额 × ${sc.percentage}%`}
-                           {/* 【修改】：备注文字单独包裹 text-rose-600 */}
+                           {/* 备注保持红色 */}
                            {sc.remark && <span className="text-rose-600 ml-1"> ｜ 备注: {sc.remark}</span>}
                          </div>
                        </div>
-                       {/* 【修改】：金额字号降级为 text-base，色值对齐 text-gray-900 */}
-                       <div className="font-black text-gray-900 text-base">¥ {(() => {
+                       {/* 【修复】：由 font-black text-base 改为 font-bold text-sm，与左侧名称字号完全平级 */}
+                       <div className="font-bold text-gray-900 text-sm">¥ {(() => {
                            if (sc.calcType === 'fixed') return (parseFloat(sc.amount) || 0).toFixed(2);
                            if (sc.calcType === 'unit') return ((parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0)).toFixed(2);
                            if (sc.calcType === 'percent') return (baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100)).toFixed(2);
@@ -2752,8 +2754,8 @@ const renderUpgradeModal = () => {
                    ))}
                    <div className="flex justify-between items-center pt-3 mt-1 border-t border-gray-100">
                      <span className="text-xs font-bold text-gray-500">附加费用合计</span>
-                     {/* 【修改】：合计金额取消 text-rose-600，色值与字号对齐 text-gray-900 text-base */}
-                     <span className="font-black text-gray-900 text-base">¥ {surchargesTotal.toFixed(2)}</span>
+                     {/* 【修复】：合计金额彻底消除红色，并使用 font-bold text-sm 匹配普通小计视觉 */}
+                     <span className="font-bold text-gray-900 text-sm">¥ {surchargesTotal.toFixed(2)}</span>
                    </div>
                  </div>
                </div>
@@ -3154,11 +3156,12 @@ const renderUpgradeModal = () => {
                          <div className="font-bold text-gray-900 text-[13px] print:text-[11px] mb-1">{sc.name}</div>
                          <div className="text-[11px] print:text-[9px] text-gray-500">
                            {sc.calcType === 'fixed' ? '固定金额' : sc.calcType === 'unit' ? `${sc.qty} ${sc.unit} × ¥${sc.amount}/${sc.unit}` : `税率/费率: ${sc.percentage}% (基数: ¥${baseGrandTotal.toFixed(2)})`}
-                           {/* 【修改】：打印/PC端的备注提取并染红 */}
+                           {/* 备注保持红色 */}
                            {sc.remark && <span className="text-rose-600 ml-1"> ｜ 备注: {sc.remark}</span>}
                          </div>
                        </div>
-                       <div className="text-right font-black text-gray-900 text-sm print:text-xs">
+                       {/* 【修复】：严格对齐上方柜体小计的 text-[12px] print:text-[10px] font-bold 规范 */}
+                       <div className="text-right font-bold text-gray-900 text-[12px] print:text-[10px]">
                           ¥ {(() => {
                             if (sc.calcType === 'fixed') return (parseFloat(sc.amount) || 0).toFixed(2);
                             if (sc.calcType === 'unit') return ((parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0)).toFixed(2);
@@ -3170,8 +3173,8 @@ const renderUpgradeModal = () => {
                    ))}
                    <div className="bg-gray-50 px-4 py-2 print:px-3 print:py-1.5 border-t border-gray-200 flex justify-between items-center">
                      <span className="text-[11px] print:text-[10px] font-bold text-gray-600 uppercase">附加费用小计 Subtotal</span>
-                     {/* 【修改】：合计金额取消 text-rose-600，采用深色 text-gray-900 text-sm print:text-xs */}
-                     <span className="font-black text-gray-900 text-sm print:text-xs">¥ {surchargesTotal.toFixed(2)}</span>
+                     {/* 【修复】：合计金额使用与普通小计完全一致的深色与字号规范 */}
+                     <span className="font-bold text-gray-900 text-[12px] print:text-[10px]">¥ {surchargesTotal.toFixed(2)}</span>
                    </div>
                  </div>
                </div>
@@ -4343,12 +4346,12 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                          <div className="font-bold text-gray-800 mb-1">{sc.name}</div>
                          <div className="text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded inline-block">
                            {sc.calcType === 'fixed' ? '固定金额计费' : sc.calcType === 'unit' ? `${sc.qty} ${sc.unit} × ¥${sc.amount}/${sc.unit}` : `基于订单基础额 × ${sc.percentage}%`}
-                           {/* 【修改】：备注文字单独包裹 text-rose-600 */}
+                           {/* 备注保持红色 */}
                            {sc.remark && <span className="text-rose-600 ml-1"> ｜ 备注: {sc.remark}</span>}
                          </div>
                        </div>
-                       {/* 【修改】：金额字号降级为 text-base，色值对齐 text-gray-900 */}
-                       <div className="font-black text-gray-900 text-base">¥ {(() => {
+                       {/* 【修复】：由 font-black text-base 改为 font-bold text-sm，与左侧名称字号完全平级 */}
+                       <div className="font-bold text-gray-900 text-sm">¥ {(() => {
                            if (sc.calcType === 'fixed') return (parseFloat(sc.amount) || 0).toFixed(2);
                            if (sc.calcType === 'unit') return ((parseFloat(sc.qty) || 0) * (parseFloat(sc.amount) || 0)).toFixed(2);
                            if (sc.calcType === 'percent') return (baseGrandTotal * ((parseFloat(sc.percentage) || 0) / 100)).toFixed(2);
@@ -4358,8 +4361,8 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
                    ))}
                    <div className="flex justify-between items-center pt-3 mt-1 border-t border-gray-100">
                      <span className="text-xs font-bold text-gray-500">附加费用合计</span>
-                     {/* 【修改】：合计金额取消 text-rose-600，色值与字号对齐 text-gray-900 text-base */}
-                     <span className="font-black text-gray-900 text-base">¥ {surchargesTotal.toFixed(2)}</span>
+                     {/* 【修复】：合计金额彻底消除红色，并使用 font-bold text-sm 匹配普通小计视觉 */}
+                     <span className="font-bold text-gray-900 text-sm">¥ {surchargesTotal.toFixed(2)}</span>
                    </div>
                  </div>
                </div>
