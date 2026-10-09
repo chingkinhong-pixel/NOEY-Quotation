@@ -2329,11 +2329,7 @@ const renderUpgradeModal = () => {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-
-      {/* 【新增】：订单附加费用引擎 */}
+              {/* 【新增】：订单附加费用引擎 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10 mt-6">
                 <div className="flex justify-between items-center border-b pb-4 mb-4">
                   <h3 className="font-black text-gray-900">📦 订单附加费用</h3>
@@ -2414,7 +2410,10 @@ const renderUpgradeModal = () => {
                     </div>
                   </div>
                 </div>
-              )}
+              )}  
+            </div>
+          </div>
+        </div>
 
        {/* 底部悬浮算账条 */}
         <div className="fixed bottom-0 right-0 left-80 bg-white border-t p-4 flex justify-between items-center shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-20">
