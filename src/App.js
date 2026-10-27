@@ -671,39 +671,6 @@ export default function App() {
     }
   };
 
-// ==========================================
-  // 【修复】：原生路由拦截引擎 (兼容旧版二维码 + Hash路由防闪屏)
-  // ==========================================
-  useEffect(() => {
-    const path = window.location.pathname;
-    const hash = window.location.hash;
-
-    // 1. 【新增】：向下兼容旧版二维码 (/quote-view/xxxx)
-    if (path.startsWith('/quote-view/')) {
-      const oldQuoteId = path.replace('/quote-view/', '').replace(/\/$/, '');
-      if (oldQuoteId) {
-        // 强制跳转为 hash 路由（不保留历史记录），利用 location.origin 确保根路径准确
-        window.location.replace(`${window.location.origin}/#/quote/${oldQuoteId}`);
-        return; // 直接 return，不解除 isInitializing 锁，等待浏览器完成 URL 替换与刷新
-      }
-    }
-
-    // 2. 【保留】：处理标准新版二维码 (#/quote/xxxx)
-    if (hash.startsWith('#/quote/')) {
-      const quoteId = hash.replace('#/quote/', '');
-      if (quoteId) {
-        // 🔥 关键：先切页面状态
-        setCurrentView('quote-view'); 
-        
-        // 再加载数据
-        handleLoadClientView(quoteId);
-      }
-    }
-
-    // 解析完毕，解除渲染锁
-    setIsInitializing(false);
-  }, []);
-
   // ==========================================
   // 【新增】：全局统一的拖拽排序引擎 (支持所有基础库复用)
   // ==========================================
@@ -4197,17 +4164,6 @@ const QuoteClientStandalone = ({ quoteId, supabase, NativeSignaturePad, DEFAULT_
     );
   }
 
-  if (errorMsg || !previewData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
-        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border border-gray-200">
-          <div className="text-4xl mb-4">⚠️</div>
-          <div className="text-lg font-black text-gray-900 mb-2">链接失效</div>
-          <div className="text-xs font-bold text-gray-500">{errorMsg || '无法调取当前报价数据'}</div>
-        </div>
-      </div>
-    );
-  }
 // 弱网强容错交互界面，决不跳回主页
   if (errorType) {
     return (
