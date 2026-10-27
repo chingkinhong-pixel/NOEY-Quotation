@@ -387,41 +387,39 @@ export default function App() {
     }
   };
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true); // 【核心修复】：增加路由解析初始化锁
-  // === 【新增】：内部访问会话状态 ===
+  const [isInitializing, setIsInitializing] = useState(true);
   const [internalAuth, setInternalAuth] = useState({ isAuthenticated: false, isChecking: true });
-  // 【重构】：原生路由拦截引擎 (整合内部密码验证与客户路由硬隔离)
+  const [clientQuoteId, setClientQuoteId] = useState(null);
+
   useEffect(() => {
     const initSystemAndAuth = async () => {
       const path = window.location.pathname;
       const hash = window.location.hash;
-
-      // 1. 【客户独立分享通道解析】
       let isClientShare = false;
+      let qId = null;
+
+      // 1. 客户独立通道解析 (兼容新旧版)
       if (path.startsWith('/quote-view/')) {
-        const oldQuoteId = path.replace('/quote-view/', '').replace(/\/$/, '');
-        if (oldQuoteId) {
-          window.location.replace(`${window.location.origin}/#/quote/${oldQuoteId}`);
-          return; 
-        }
-      }
-      if (hash.startsWith('#/quote/')) {
-        const quoteId = hash.replace('#/quote/', '');
-        if (quoteId) {
+        qId = path.replace('/quote-view/', '').replace(/\/$/, '');
+        if (qId) {
+          window.history.replaceState(null, '', `/#/quote/${qId}`);
           isClientShare = true;
-          setCurrentView('quote-view'); 
-          handleLoadClientView(quoteId);
         }
+      } else if (hash.startsWith('#/quote/')) {
+        qId = hash.replace('#/quote/', '');
+        if (qId) isClientShare = true;
       }
 
-      // 【核心阻断】：如果被判定为客户专属视图，直接放行，彻底跳过内部验证
-      if (isClientShare) {
+      // 核心阻断：客户扫码直接放行至独立组件
+      if (isClientShare && qId) {
+        setClientQuoteId(qId);
+        setCurrentView('client'); 
         setInternalAuth({ isAuthenticated: false, isChecking: false });
         setIsInitializing(false);
         return;
       }
 
-      // 2. 【内部系统安全校验】校验当前浏览器生命周期会话
+      // 2. 内部安全网关
       const savedVersion = sessionStorage.getItem('noey_session_version');
       if (savedVersion) {
         try {
@@ -432,11 +430,10 @@ export default function App() {
             return;
           }
         } catch (err) {
-          console.error("Session check error", err);
+          console.error("Session error", err);
         }
       }
 
-      // 验证失败或无会话记录，拦截在门外
       sessionStorage.removeItem('noey_session_version');
       setInternalAuth({ isAuthenticated: false, isChecking: false });
       setIsInitializing(false);
@@ -752,34 +749,6 @@ export default function App() {
     }
   };
   
-  const handleLoadClientView = async (quoteId) => {
-    setIsLoading(true);
-    try {
-      // 脱离后台验证，直接根据 ID 获取快照数据
-      const { data: quoteData, error: quoteErr } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
-      if (quoteErr || !quoteData) throw new Error('报价单不存在');
-
-      const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quoteData.id);
-      if (cabErr) throw cabErr;
-
-      let upgData = [];
-      if (cabData && cabData.length > 0) {
-        const { data: uData, error: upgErr } = await supabase.from('quote_upgrades').select('*').in('cabinet_id', cabData.map(c => c.id));
-        if (upgErr) throw upgErr;
-        upgData = uData || [];
-      }
-
-      // 【核心修复 3】
-      const sortedCabs = (cabData || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-      setPreviewData({ quote: quoteData, cabinets: sortedCabs, upgrades: upgData });
-      setCurrentView('quote-view'); // 切换至客户独立视图
-    } catch (err) {
-      showToast('获取客户报价单失败，链接可能无效', 'error');
-      setCurrentView('home');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // 【修复】：客户签字持久化保存
   const handleConfirmSignature = async (base64Image) => {
@@ -4062,9 +4031,10 @@ const renderUpgradeModal = () => {
       );
     }
 
-    // 1. 客户分享端绝对放行，无视内部密码限制
-    if (currentView === 'quote-view') return renderClientView();
-
+   // 客户分享端绝对放行，移交至弱网强容错组件
+    if (currentView === 'client') {
+      return <QuoteClientStandalone quoteId={clientQuoteId} supabase={supabase} NativeSignaturePad={NativeSignaturePad} DEFAULT_TERMS={DEFAULT_TERMS} />;
+    }
     // 2. 内部安全网关拦截：未认证强制回退到入口组件
     if (!internalAuth.isAuthenticated) {
       return <InternalLogin onLoginSuccess={() => setInternalAuth({ isAuthenticated: true, isChecking: false })} />;
@@ -4146,46 +4116,54 @@ const renderUpgradeModal = () => {
   );
 }
 
-// ==========================================
-// 【组件】：脱离主系统的独立客户端直连渲染器（Zero-Flash）
-// ==========================================
-const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, DEFAULT_TERMS }) => {
+const QuoteClientStandalone = ({ quoteId, supabase, NativeSignaturePad, DEFAULT_TERMS }) => {
   const [previewData, setPreviewData] = React.useState(null);
+  const [rules, setRules] = React.useState({});
   const [isLoading, setIsLoading] = React.useState(true);
-  const [errorMsg, setErrorMsg] = React.useState('');
+  const [errorType, setErrorType] = React.useState(null);
 
-  React.useEffect(() => {
-    let isMounted = true;
-    const loadQuoteData = async () => {
-      try {
+  const loadQuoteData = React.useCallback(async () => {
+    setIsLoading(true);
+    setErrorType(null);
+    try {
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 15000));
+
+      const fetchTask = async () => {
+        const { data: ruleData } = await supabase.from('pricing_rules').select('*').limit(1);
+        if (ruleData && ruleData.length > 0) setRules(ruleData[0]);
+
         const { data: quoteData, error: quoteErr } = await supabase.from('quotes').select('*').eq('id', quoteId).single();
-        if (quoteErr || !quoteData) throw new Error('报价单不存在或已被物理删除');
+        if (quoteErr || !quoteData) throw new Error('NOT_FOUND');
 
         const { data: cabData, error: cabErr } = await supabase.from('quote_cabinets').select('*').eq('quote_id', quoteData.id);
-        if (cabErr) throw cabErr;
+        if (cabErr) throw new Error('NETWORK_ERROR');
 
         let upgData = [];
         if (cabData && cabData.length > 0) {
           const { data: uData, error: upgErr } = await supabase.from('quote_upgrades').select('*').in('cabinet_id', cabData.map(c => c.id));
-          if (upgErr) throw upgErr;
+          if (upgErr) throw new Error('NETWORK_ERROR');
           upgData = uData || [];
         }
 
-        if (isMounted) {
-          // 【核心修复 3】
-          const sortedCabs = (cabData || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-          setPreviewData({ quote: quoteData, cabinets: sortedCabs, upgrades: upgData });
-        }
-      } catch (err) {
-        if (isMounted) setErrorMsg(err.message || '获取报价信息失败');
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
+        const sortedCabs = (cabData || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        return { quote: quoteData, cabinets: sortedCabs, upgrades: upgData };
+      };
 
+      const result = await Promise.race([fetchTask(), timeout]);
+      setPreviewData(result);
+    } catch (err) {
+      if (err.message === 'NOT_FOUND') setErrorType('NOT_FOUND');
+      else setErrorType('NETWORK_ERROR');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [quoteId, supabase]);
+
+  React.useEffect(() => {
+    let isMounted = true;
     loadQuoteData();
     return () => { isMounted = false; };
-  }, [quoteId, supabase]);
+  }, [loadQuoteData]);
 
   const handleConfirmSignature = async (base64Image) => {
     setIsLoading(true);
@@ -4226,6 +4204,27 @@ const QuoteClientStandalone = ({ quoteId, supabase, rules, NativeSignaturePad, D
           <div className="text-4xl mb-4">⚠️</div>
           <div className="text-lg font-black text-gray-900 mb-2">链接失效</div>
           <div className="text-xs font-bold text-gray-500">{errorMsg || '无法调取当前报价数据'}</div>
+        </div>
+      </div>
+    );
+  }
+// 弱网强容错交互界面，决不跳回主页
+  if (errorType) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border border-gray-200">
+          <div className="text-5xl mb-6">{errorType === 'NOT_FOUND' ? '📭' : '📡'}</div>
+          <div className="text-lg font-black text-gray-900 mb-2">
+            {errorType === 'NOT_FOUND' ? '链接已失效' : '网络连接异常'}
+          </div>
+          <div className="text-xs font-bold text-gray-500 mb-8">
+            {errorType === 'NOT_FOUND' ? '该报价单不存在或已被系统移除' : '报价单读取超时，请检查您的移动网络设置后重试'}
+          </div>
+          {errorType === 'NETWORK_ERROR' && (
+            <button onClick={loadQuoteData} className="w-full bg-black text-white font-bold py-3.5 rounded-xl text-sm transition-transform active:scale-95 shadow-lg hover:shadow-xl">
+              重新加载报价
+            </button>
+          )}
         </div>
       </div>
     );
