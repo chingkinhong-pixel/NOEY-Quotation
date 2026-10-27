@@ -3962,33 +3962,60 @@ const renderUpgradeModal = () => {
              <div className="max-w-md space-y-6">
                <h2 className="text-2xl font-black">账号安全</h2>
                
-               <form onSubmit={handleChangePassword} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                 <h3 className="text-lg font-bold mb-4">修改密码</h3>
+               {/* 【新增】：01｜系统入口密码管理 */}
+               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                 <h3 className="text-lg font-black mb-1">01｜系统入口密码</h3>
+                 <p className="text-xs text-rose-600 font-bold mb-4">⚠️ 修改成功后，全网旧设备授权将立即失效，需重新登录。</p>
                  
+                 <div className="space-y-4">
+                   <input type="password" id="newInternalPwd" placeholder="新系统入口密码" className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white" />
+                   <input type="password" id="confirmInternalPwd" placeholder="再次确认新密码" className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white" />
+                   <button onClick={async () => {
+                     const p1 = document.getElementById('newInternalPwd').value;
+                     const p2 = document.getElementById('confirmInternalPwd').value;
+                     if (!p1 || p1 !== p2) return toast.error("两次密码输入不一致或为空");
+                     
+                     // 执行密码更新 RPC (包含自动将 session 版本号递增的安全策略)
+                     const { error } = await supabase.rpc('update_internal_password', { new_pwd: p1 });
+                     if (error) {
+                        toast.error("修改失败: " + error.message);
+                     } else {
+                        toast.success("入口密码已更新，旧会话已彻底撤销");
+                        document.getElementById('newInternalPwd').value = '';
+                        document.getElementById('confirmInternalPwd').value = '';
+                     }
+                   }} className="w-full bg-black text-white p-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all">
+                     确认更新系统密码
+                   </button>
+                 </div>
+               </div>
+
+               {/* 【保留】：02｜后台管理员账号安全 */}
+               <form onSubmit={handleChangePassword} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                 <h3 className="text-lg font-bold mb-4">02｜后台管理员密码 (System Hub)</h3>
                  <div className="space-y-4">
                    <input 
                      type="password" 
-                     placeholder="当前密码" 
+                     placeholder="当前管理员密码" 
                      value={passwordForm.oldPassword} 
                      onChange={e => setPasswordForm({...passwordForm, oldPassword: e.target.value})} 
                      className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white transition-colors" 
                    />
                    <input 
                      type="password" 
-                     placeholder="新密码" 
+                     placeholder="新管理员密码" 
                      value={passwordForm.newPassword} 
                      onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} 
                      className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white transition-colors" 
                    />
                    <input 
                      type="password" 
-                     placeholder="确认新密码" 
+                     placeholder="确认新管理员密码" 
                      value={passwordForm.confirmPassword} 
                      onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} 
                      className="w-full border-2 p-3 rounded-lg font-bold bg-gray-50 focus:bg-white transition-colors" 
                    />
                  </div>
-
                  <button 
                    type="submit" 
                    disabled={isLoading}
