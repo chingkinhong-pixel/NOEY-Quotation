@@ -306,6 +306,63 @@ const SortableUpgradeItem = ({ upg, calced, onRemove }) => {
   );
 };
 
+// ==========================================
+// 【新增】：系统入口安全拦截组件
+// ==========================================
+const InternalLogin = ({ onLoginSuccess }) => {
+  const [pwd, setPwd] = React.useState('');
+  const [showPwd, setShowPwd] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!pwd) return toast.error("请输入系统访问密码");
+    setLoading(true);
+    try {
+      // 绝对安全的后端哈希比对
+      const { data: version, error } = await supabase.rpc('verify_internal_access', { input_pwd: pwd });
+      if (error) throw error;
+      
+      // 使用生命周期为“关闭浏览器即销毁”的 sessionStorage 保存验证凭证
+      sessionStorage.setItem('noey_session_version', version);
+      toast.success("欢迎进入 NOEY QUOTATION");
+      onLoginSuccess();
+    } catch (err) {
+      toast.error("访问拒绝：" + (err.message || "密码错误"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans selection:bg-black selection:text-white">
+      <div className="max-w-sm w-full bg-white p-8 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center">
+        <h1 className="text-3xl font-black tracking-tighter mb-1">NOEY</h1>
+        <h2 className="text-[10px] font-bold tracking-[0.2em] text-gray-400 mb-8 uppercase">Internal Access</h2>
+        
+        <form onSubmit={handleLogin} className="w-full space-y-4">
+          <div className="relative">
+            <input 
+              type={showPwd ? "text" : "password"} 
+              autoFocus
+              value={pwd} 
+              onChange={e => setPwd(e.target.value)}
+              placeholder="请输入系统访问密码"
+              className="w-full bg-gray-50 border-2 border-transparent focus:border-black focus:bg-white rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all pr-10"
+            />
+            <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black font-bold text-xs">
+              {showPwd ? '隐藏' : '查看'}
+            </button>
+          </div>
+          <button type="submit" disabled={loading} className="w-full bg-black text-white font-bold py-3.5 rounded-xl text-sm transition-transform active:scale-95 disabled:bg-gray-400">
+            {loading ? '验证中...' : '进入系统'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   // ==========================================
   // 【核心修复1】：在首次 Render 前同步提取 Hash 路由（彻底消除首页闪现）
@@ -328,6 +385,62 @@ export default function App() {
   };
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true); // 【核心修复】：增加路由解析初始化锁
+  // === 【新增】：内部访问会话状态 ===
+  const [internalAuth, setInternalAuth] = useState({ isAuthenticated: false, isChecking: true });
+  // 【重构】：原生路由拦截引擎 (整合内部密码验证与客户路由硬隔离)
+  useEffect(() => {
+    const initSystemAndAuth = async () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+
+      // 1. 【客户独立分享通道解析】
+      let isClientShare = false;
+      if (path.startsWith('/quote-view/')) {
+        const oldQuoteId = path.replace('/quote-view/', '').replace(/\/$/, '');
+        if (oldQuoteId) {
+          window.location.replace(`${window.location.origin}/#/quote/${oldQuoteId}`);
+          return; 
+        }
+      }
+      if (hash.startsWith('#/quote/')) {
+        const quoteId = hash.replace('#/quote/', '');
+        if (quoteId) {
+          isClientShare = true;
+          setCurrentView('quote-view'); 
+          handleLoadClientView(quoteId);
+        }
+      }
+
+      // 【核心阻断】：如果被判定为客户专属视图，直接放行，彻底跳过内部验证
+      if (isClientShare) {
+        setInternalAuth({ isAuthenticated: false, isChecking: false });
+        setIsInitializing(false);
+        return;
+      }
+
+      // 2. 【内部系统安全校验】校验当前浏览器生命周期会话
+      const savedVersion = sessionStorage.getItem('noey_session_version');
+      if (savedVersion) {
+        try {
+          const { data: isValid, error } = await supabase.rpc('check_session_version', { client_version: parseInt(savedVersion) });
+          if (isValid && !error) {
+            setInternalAuth({ isAuthenticated: true, isChecking: false });
+            setIsInitializing(false);
+            return;
+          }
+        } catch (err) {
+          console.error("Session check error", err);
+        }
+      }
+
+      // 验证失败或无会话记录，拦截在门外
+      sessionStorage.removeItem('noey_session_version');
+      setInternalAuth({ isAuthenticated: false, isChecking: false });
+      setIsInitializing(false);
+    };
+
+    initSystemAndAuth();
+  }, []);
   
   // 2. 基础数据字典状态
   const [cabinets, setCabinets] = useState([]);
@@ -3907,10 +4020,10 @@ const renderUpgradeModal = () => {
   );
 
 // ==========================================
-  // 【核心修复】：全局路由与 Toaster 挂载引擎
+  // 【核心修复】：全局路由与安全门卫引擎
   // ==========================================
   const renderActiveView = () => {
-    if (isInitializing) {
+    if (isInitializing || internalAuth.isChecking) {
       return (
         <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-400 font-sans">
           <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin mb-4"></div>
@@ -3919,19 +4032,36 @@ const renderUpgradeModal = () => {
       );
     }
 
-    if (currentView === 'quote-preview') return renderQuotePreview();
+    // 1. 客户分享端绝对放行，无视内部密码限制
     if (currentView === 'quote-view') return renderClientView();
+
+    // 2. 内部安全网关拦截：未认证强制回退到入口组件
+    if (!internalAuth.isAuthenticated) {
+      return <InternalLogin onLoginSuccess={() => setInternalAuth({ isAuthenticated: true, isChecking: false })} />;
+    }
+
+    // 3. 受保护的内部功能视图分发
+    if (currentView === 'quote-preview') return renderQuotePreview();
     if (currentView === 'sales-history') return renderSalesHistory();
     if (currentView === 'sales') return renderSalesWorkspace();
     if (currentView === 'admin-login') return renderAdminLogin();
     if (currentView === 'admin') return renderAdmin();
 
-    // 默认的 Home 视图
+    const handleInternalLogout = () => {
+      sessionStorage.removeItem('noey_session_version');
+      setInternalAuth({ isAuthenticated: false, isChecking: false });
+      toast.success("已安全退出系统");
+    };
+
+    // 默认返回：安全的 Home 内部主页视图
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center font-sans relative">
+        <button onClick={handleInternalLogout} className="absolute top-8 right-8 text-xs font-bold text-gray-400 hover:text-black transition-colors">
+          退出系统 / Log Out
+        </button>
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.5</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.7</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
@@ -3953,7 +4083,6 @@ const renderUpgradeModal = () => {
           </button>
         </div>
 
-        {/* 极简印章式品牌 Footer */}
         <div className="w-full text-center pb-12 pt-8 flex flex-col items-center justify-center">
           <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-2.5 mb-5">
              <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain opacity-90" />
