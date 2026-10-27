@@ -337,7 +337,10 @@ const InternalLogin = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans selection:bg-black selection:text-white">
       <div className="max-w-sm w-full bg-white p-8 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center">
-        <h1 className="text-3xl font-black tracking-tighter mb-1">NOEY</h1>
+        {/* 【UI修复】：复用主页底部圆形 Logo，尺寸设为 w-16 h-16 (64px) 以满足 55-65px 的要求 */}
+        <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center p-3 mb-2">
+           <img src="/LOGO英版.png" alt="NOEY" className="w-full h-full object-contain opacity-90" />
+        </div>
         <h2 className="text-[10px] font-bold tracking-[0.2em] text-gray-400 mb-8 uppercase">Internal Access</h2>
         
         <form onSubmit={handleLogin} className="w-full space-y-4">
