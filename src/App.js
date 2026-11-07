@@ -105,7 +105,7 @@ const RenderTermsBlock = ({ content }) => {
 };
 
 // ==========================================
-// 【升级版】：全屏/横屏高保真原生签字引擎 (极简 UI 优化版)
+// 【终极版】：强制全屏横向原生签字引擎 (CSS硬件级旋转 + 反向坐标映射)
 // ==========================================
 const NativeSignaturePad = ({ onSave, onClear }) => {
   const canvasRef = React.useRef(null);
@@ -115,16 +115,35 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
   const [isDrawing, setIsDrawing] = React.useState(false);
   const [pointsCount, setPointsCount] = React.useState(0);
   const [firstStrokeTime, setFirstStrokeTime] = React.useState(null);
+  const [screenSize, setScreenSize] = React.useState({ w: window.innerWidth, h: window.innerHeight });
 
-  // 高精度画布初始化引擎 (包含尺寸变化时的图像备份机制)
+  // 动态监听尺寸更新，解决软键盘等因素引起的重算
+  const updateScreenSize = React.useCallback(() => {
+    setScreenSize({ w: window.innerWidth, h: window.innerHeight });
+  }, []);
+
+  // 检测是否处于需要强制旋转的竖屏状态
+  const isForceLandscape = isFullscreen && screenSize.w < screenSize.h;
+
+  React.useEffect(() => {
+    if (isFullscreen) {
+      updateScreenSize();
+      window.addEventListener('resize', updateScreenSize);
+      window.addEventListener('orientationchange', updateScreenSize);
+      return () => {
+        window.removeEventListener('resize', updateScreenSize);
+        window.removeEventListener('orientationchange', updateScreenSize);
+      };
+    }
+  }, [isFullscreen, updateScreenSize]);
+
+  // 高精度画布初始化引擎
   const initCanvas = React.useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
     const ctx = canvas.getContext('2d');
-    
-    // 备份当前已有签名笔迹，防止横竖屏切换时画布重置导致笔迹丢失
     let backupCanvas = null;
     if (canvas.width > 0 && canvas.height > 0 && pointsCount > 0) {
       backupCanvas = document.createElement('canvas');
@@ -133,11 +152,13 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
       backupCanvas.getContext('2d').drawImage(canvas, 0, 0);
     }
 
-    const rect = container.getBoundingClientRect();
+    // 【核心修复】：必须使用自身未被 CSS transform 扭曲过的真实逻辑尺寸 clientWidth/clientHeight
+    const logicalWidth = container.clientWidth;
+    const logicalHeight = container.clientHeight;
     const dpr = window.devicePixelRatio || 1; 
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = logicalWidth * dpr;
+    canvas.height = logicalHeight * dpr;
     ctx.scale(dpr, dpr);
 
     ctx.lineWidth = 4;
@@ -166,10 +187,20 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
     }
   }, [isFullscreen, initCanvas]);
 
-  // ================= 现代 PointerEvent 统一事件处理 =================
+  // ================= 现代 PointerEvent 统一事件与逆向坐标映射 =================
   const getCoordinates = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    let x, y;
+    if (isForceLandscape) {
+       // 【神奇の坐标变换】：物理Y等于逻辑X，物理屏幕右端等于逻辑Y起点
+       x = e.clientY - rect.top;
+       y = rect.right - e.clientX;
+    } else {
+       // 正常横屏或PC端普通状态
+       x = e.clientX - rect.left;
+       y = e.clientY - rect.top;
+    }
+    return { x, y };
   };
 
   const handlePointerDown = (e) => {
@@ -203,9 +234,6 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
   // ================= 业务动作逻辑 =================
   const openFullscreen = () => {
     setIsFullscreen(true);
-    if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
-      window.screen.orientation.lock('landscape').catch(() => {});
-    }
   };
 
   const closeFullscreen = () => {
@@ -213,9 +241,6 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
       if (!window.confirm('您有未提交的签名，确认退出吗？退出将清空当前笔迹。')) return;
     }
     setIsFullscreen(false);
-    if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
-      window.screen.orientation.unlock().catch(()=>{});
-    }
     clearCanvas();
   };
 
@@ -240,38 +265,56 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
       alert('⚠️ 签名过程过快，请认真签署确认单。');
       return;
     }
+    // 尽管外壳视觉旋转了 90度，由于 Canvas 的逻辑坐标与分辨率是按横屏模式初始化的
+    // 所以导出的 Base64 图片天然就是正确的“水平签名图片”，完美融入 PDF！
     onSave(canvasRef.current.toDataURL('image/png'));
   };
 
-  // 1. 如果未开启全屏，仅显示入口占位按钮
+  // 1. 正常嵌入卡片入口：白底/无Emoji/极简商务化
   if (!isFullscreen) {
     return (
       <div className="w-full flex flex-col items-center">
         <button 
           onClick={openFullscreen} 
-          className="w-full py-10 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center hover:bg-gray-100 transition-colors shadow-inner"
+          className="w-full py-10 bg-white border border-gray-200 rounded-2xl flex flex-col items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
         >
-          <span className="text-4xl mb-3">✍️</span>
-          <span className="text-sm font-black text-gray-800 tracking-widest uppercase">点击进入全屏签字</span>
-          <span className="text-[10px] text-gray-400 mt-2 font-bold">支持全屏横向空间及高精度书写适配</span>
+          <span className="text-sm font-black text-gray-900 tracking-widest uppercase mb-2">点击进入全屏签字</span>
+          <span className="text-[11px] text-gray-500 font-bold">请横向握持手机，完整签署姓名</span>
         </button>
       </div>
     );
   }
 
-  // 2. 全屏签字界面 (极简无标题栏版本)
+  // 2. 强制横屏布局 (动态 CSS Transform)
+  const wrapperStyle = isForceLandscape ? {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: `${screenSize.h}px`,
+    height: `${screenSize.w}px`,
+    transformOrigin: 'top left',
+    transform: 'rotate(90deg) translateY(-100%)',
+    zIndex: 9999,
+  } : {
+    position: 'fixed',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 9999,
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] bg-gray-100 flex flex-col selection:bg-transparent">
+    <div style={wrapperStyle} className="bg-gray-100 flex flex-row selection:bg-transparent">
       
-      {/* 画布核心区域 (最大化占据剩余屏幕) */}
-      <div className="flex-1 p-4 md:p-6 flex items-center justify-center min-h-0 bg-gray-100">
-        <div ref={containerRef} className="w-full h-full bg-white rounded-2xl shadow-md border-[3px] border-gray-200 relative overflow-hidden touch-none">
+      {/* 左侧：画布核心区域 (85%空间，预留四周边距避让刘海和安全区) */}
+      <div className="flex-1 p-4 md:p-6 flex items-center justify-center relative">
+        <div ref={containerRef} className="w-full h-full bg-white rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden touch-none">
           
-          {/* 【新增】：动态占位提示，无笔迹时才显示，利用 pointer-events-none 穿透点击事件 */}
+          {/* 空白占位文字 */}
           {pointsCount === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none px-4 text-center">
-              <div className="text-xl md:text-3xl font-bold text-gray-300 mb-2 tracking-widest">客户手写签名区域</div>
-              <div className="text-xs md:text-base font-medium text-gray-300 tracking-wider">（请完整签署姓名）</div>
+              <div className="text-xl md:text-2xl font-bold text-gray-300 mb-2 tracking-widest">客户手写签名区域</div>
+              <div className="text-xs md:text-sm font-medium text-gray-300 tracking-wider">（请完整签署姓名）</div>
             </div>
           )}
 
@@ -288,30 +331,30 @@ const NativeSignaturePad = ({ onSave, onClear }) => {
         </div>
       </div>
 
-      {/* 底部操作栏 (三按钮同行安全布局) */}
-      <div className="bg-white border-t border-gray-200 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] flex items-center justify-between p-4 shrink-0 gap-3 pb-safe">
+      {/* 右侧：操作按钮栏 (15%空间，纵向紧凑排列，避让底部条) */}
+      <div className="w-[110px] md:w-[150px] bg-white border-l border-gray-200 shadow-[-5px_0_15px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center p-3 md:p-4 gap-3 md:gap-4 shrink-0 pb-safe-right">
         <button 
           onClick={closeFullscreen} 
-          className="flex-1 max-w-[100px] md:max-w-[150px] py-4 bg-white border border-gray-300 text-gray-600 font-bold text-sm md:text-base rounded-xl hover:bg-gray-50 transition-colors"
+          className="w-full py-4 md:py-5 bg-white border border-gray-300 text-gray-600 font-bold text-xs md:text-sm rounded-xl hover:bg-gray-50 transition-colors shrink-0"
         >
           取消
         </button>
         <button 
           onClick={clearCanvas} 
-          className="flex-1 max-w-[100px] md:max-w-[150px] py-4 bg-gray-100 text-gray-700 font-bold text-sm md:text-base rounded-xl hover:bg-gray-200 transition-colors"
+          className="w-full py-4 md:py-5 bg-gray-100 text-gray-700 font-bold text-xs md:text-sm rounded-xl hover:bg-gray-200 transition-colors shrink-0"
         >
           重写
         </button>
         <button
           onClick={handleConfirm}
           disabled={pointsCount < 50}
-          className={`flex-[2] py-4 font-bold text-sm md:text-base rounded-xl shadow-lg transition-all ${
+          className={`w-full flex-1 min-h-[100px] flex items-center justify-center font-bold text-xs md:text-sm rounded-xl shadow-lg transition-all ${
             pointsCount < 50
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70'
               : 'bg-black text-white hover:bg-gray-800 active:scale-[0.98]'
           }`}
         >
-          ✅ 确认并提交
+          <span>确认<br/><span className="mt-1 block">并提交</span></span>
         </button>
       </div>
     </div>
