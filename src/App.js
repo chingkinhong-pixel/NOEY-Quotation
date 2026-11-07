@@ -105,109 +105,232 @@ const RenderTermsBlock = ({ content }) => {
 };
 
 // ==========================================
-// 【组件】：纯原生手写签字 Canvas (引入防作弊、轨迹长度与时间校验)
+// 【升级版】：全屏/横屏高保真原生签字引擎 (防作弊 + 弱网保护 + DPR适配)
 // ==========================================
 const NativeSignaturePad = ({ onSave, onClear }) => {
   const canvasRef = React.useRef(null);
+  const containerRef = React.useRef(null);
+  
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [isDrawing, setIsDrawing] = React.useState(false);
   const [pointsCount, setPointsCount] = React.useState(0);
   const [firstStrokeTime, setFirstStrokeTime] = React.useState(null);
+  const [isPortrait, setIsPortrait] = React.useState(false);
 
+  // 检测屏幕方向
+  const checkOrientation = React.useCallback(() => {
+    setIsPortrait(window.innerHeight > window.innerWidth);
+  }, []);
+
+  // 监听全屏状态下的旋转
   React.useEffect(() => {
+    if (!isFullscreen) return;
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, [isFullscreen, checkOrientation]);
+
+  // 高精度画布初始化引擎 (包含尺寸变化时的图像备份机制)
+  const initCanvas = React.useCallback(() => {
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = 260; // 强制物理高度适配 css
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
     const ctx = canvas.getContext('2d');
+    
+    // 【核心】：备份当前已有签名笔迹，防止横竖屏切换时画布重置导致笔迹丢失
+    let backupCanvas = null;
+    if (canvas.width > 0 && canvas.height > 0 && pointsCount > 0) {
+      backupCanvas = document.createElement('canvas');
+      backupCanvas.width = canvas.width;
+      backupCanvas.height = canvas.height;
+      backupCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    }
+
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1; // 适配高分屏 (Retina屏)
+
+    // 设置实际物理像素尺寸
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    // 强制缩放上下文，使坐标映射正常
+    ctx.scale(dpr, dpr);
+
+    // 恢复画笔参数
     ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#000000';
-  }, []);
 
-  const getCoordinates = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    if (e.touches && e.touches.length > 0) {
-      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    // 如果有备份图像，将其完美还原回新画布中
+    if (backupCanvas) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // 暂时重置缩放以恢复原像素级图像
+      ctx.drawImage(backupCanvas, 0, 0);
+      ctx.restore();
     }
-    return { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+  }, [pointsCount]);
+
+  React.useEffect(() => {
+    if (isFullscreen) {
+      // 延迟 100ms 确保弹窗 DOM 已完全展开后再计算尺寸
+      const timer = setTimeout(initCanvas, 100);
+      window.addEventListener('resize', initCanvas);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('resize', initCanvas);
+      };
+    }
+  }, [isFullscreen, initCanvas]);
+
+  // ================= 现代 PointerEvent 统一事件处理 =================
+  const getCoordinates = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const startDrawing = (e) => {
+  const handlePointerDown = (e) => {
     e.preventDefault();
+    canvasRef.current.setPointerCapture(e.pointerId); // 锁定当前指针，防滑出边界断触
     setIsDrawing(true);
-    if (!firstStrokeTime) setFirstStrokeTime(Date.now()); // 记录起笔时间
+    if (!firstStrokeTime) setFirstStrokeTime(Date.now());
     const ctx = canvasRef.current.getContext('2d');
     const { x, y } = getCoordinates(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
-    setPointsCount(prev => prev + 1); // 记录轨迹点
+    setPointsCount(prev => prev + 1);
   };
 
-  const draw = (e) => {
+  const handlePointerMove = (e) => {
     e.preventDefault();
     if (!isDrawing) return;
     const ctx = canvasRef.current.getContext('2d');
     const { x, y } = getCoordinates(e);
     ctx.lineTo(x, y);
     ctx.stroke();
-    setPointsCount(prev => prev + 2); // 绘制中加倍累加轨迹
+    setPointsCount(prev => prev + 2);
   };
 
-  const endDrawing = () => setIsDrawing(false);
+  const handlePointerUp = (e) => {
+    e.preventDefault();
+    setIsDrawing(false);
+    canvasRef.current.releasePointerCapture(e.pointerId);
+  };
+
+  // ================= 业务动作逻辑 =================
+  const openFullscreen = () => {
+    setIsFullscreen(true);
+    // 尝试在支持的设备（部分安卓机）上强制锁定横屏
+    if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+      window.screen.orientation.lock('landscape').catch(() => { /* 静默忽略不支持的浏览器报错 */ });
+    }
+  };
+
+  const closeFullscreen = () => {
+    if (pointsCount > 0) {
+      if (!window.confirm('您有未提交的签名，确认退出吗？退出将清空当前笔迹。')) return;
+    }
+    setIsFullscreen(false);
+    if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+      window.screen.orientation.unlock().catch(()=>{});
+    }
+    clearCanvas();
+  };
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current; 
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setPointsCount(0); // 清空防作弊数据
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    setPointsCount(0);
     setFirstStrokeTime(null);
     if (onClear) onClear();
   };
 
-  // 【核心】：三层防作弊校验引擎
   const handleConfirm = () => {
-    // 1. 空白或过少笔画校验
     if (pointsCount < 50) {
       alert('⚠️ 签名笔画过于简单，请使用正楷完整签署姓名！');
       return;
     }
-    // 2. 签署时间校验
     const drawTime = (Date.now() - firstStrokeTime) / 1000;
     if (drawTime < 1.5) {
       alert('⚠️ 签名过程过快，请认真签署确认单。');
       return;
     }
-    
-    // 校验通过，提取 Base64
+    // 输出高清 PNG 给父组件。父组件如果保存成功会自动销毁该弹窗
     onSave(canvasRef.current.toDataURL('image/png'));
   };
 
-  const isSubmitDisabled = pointsCount < 50; // 实时禁用状态控制
-
-  return (
-    <div className="w-full flex flex-col items-center">
-      <div className="w-full text-xs font-bold text-rose-600 mb-3 flex items-center justify-center bg-rose-50 py-2 rounded-lg border border-rose-100 shadow-sm">
-        ✍️ 请使用手指完整签署姓名，签名后不可修改
+  // 1. 如果未开启全屏，仅显示入口占位按钮
+  if (!isFullscreen) {
+    return (
+      <div className="w-full flex flex-col items-center">
+        <button 
+          onClick={openFullscreen} 
+          className="w-full py-10 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center hover:bg-gray-100 transition-colors shadow-inner"
+        >
+          <span className="text-4xl mb-3">✍️</span>
+          <span className="text-sm font-black text-gray-800 tracking-widest uppercase">点击进入全屏签字</span>
+          <span className="text-[10px] text-gray-400 mt-2 font-bold">支持全屏横向空间及高精度书写适配</span>
+        </button>
       </div>
-      <canvas 
-        ref={canvasRef} 
-        className="w-full h-[260px] border-[3px] border-gray-300 rounded-xl bg-gray-100 touch-none cursor-crosshair mb-4 shadow-inner"
-        onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={endDrawing} onMouseOut={endDrawing} 
-        onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={endDrawing} 
-      />
-      <div className="flex gap-4 w-full">
-        <button onClick={clearCanvas} className="w-1/3 py-4 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-colors">
+    );
+  }
+
+  // 2. 全屏签字界面
+  return (
+    <div className="fixed inset-0 z-[9999] bg-gray-100 flex flex-col selection:bg-transparent">
+      {/* 顶部工具栏 */}
+      <div className="h-14 bg-white shadow-sm flex items-center justify-between px-4 shrink-0 border-b border-gray-200">
+        <button onClick={closeFullscreen} className="text-gray-500 hover:text-black font-bold text-sm">取消签字</button>
+        <div className="font-black tracking-[0.2em] text-sm uppercase text-gray-900">客户签字 SIGNATURE</div>
+        <div className="text-[11px] font-bold text-rose-600 hidden md:block">请使用手指完整签署姓名</div>
+        <div className="text-[11px] font-bold text-rose-600 md:hidden">完整签署姓名</div>
+      </div>
+
+      {/* 移动端竖屏方向提示 (软拦截) */}
+      {isPortrait && (
+        <div className="bg-amber-50 text-amber-700 text-xs font-bold py-2 text-center flex-shrink-0 border-b border-amber-100">
+          💡 建议将手机【横向旋转】，以获得更大的书写空间
+        </div>
+      )}
+
+      {/* 画布核心区域 */}
+      <div className="flex-1 p-4 md:p-8 flex items-center justify-center min-h-0 bg-gray-100">
+        <div ref={containerRef} className="w-full h-full bg-white rounded-2xl shadow-md border-[3px] border-gray-300 relative overflow-hidden touch-none">
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
+            style={{ touchAction: 'none' }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onPointerOut={handlePointerUp}
+          />
+        </div>
+      </div>
+
+      {/* 底部操作栏 */}
+      <div className="h-20 bg-white border-t border-gray-200 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] flex items-center justify-between px-6 shrink-0 gap-4">
+        <button 
+          onClick={clearCanvas} 
+          className="w-1/3 max-w-[150px] py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+        >
           清除重写
         </button>
-        <button 
-          onClick={handleConfirm} 
-          disabled={isSubmitDisabled} 
-          className={`flex-1 py-4 font-bold rounded-xl shadow-lg text-lg transition-all ${
-            isSubmitDisabled 
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70' 
-              : 'bg-black text-white hover:bg-gray-800'
+        <button
+          onClick={handleConfirm}
+          disabled={pointsCount < 50}
+          className={`flex-1 py-4 font-bold rounded-xl shadow-lg transition-all ${
+            pointsCount < 50
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70'
+              : 'bg-black text-white hover:bg-gray-800 active:scale-[0.98]'
           }`}
         >
           ✅ 确认并提交签字
@@ -4028,7 +4151,7 @@ const renderUpgradeModal = () => {
         </button>
         <div className="text-center mb-12">
           <h1 className="text-5xl font-black text-gray-900 tracking-widest mb-4">NOEY<span className="font-light">QUOTATION</span></h1>
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.7</p>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">诺一家具 · 核心报价引擎 V1.4.8</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full px-6">
           <button onClick={enterSalesWorkspace} className="bg-white p-10 rounded-3xl shadow-xl hover:shadow-2xl border-2 border-transparent hover:border-black text-left group transition-all">
