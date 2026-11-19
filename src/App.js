@@ -761,26 +761,32 @@ export default function App() {
   });
 
   const handleConfirmAddCustom = () => {
-    if (!customUpgradeModal.name) { toast.error("请输入临时项名称"); return; }
-    const qty = parseFloat(customUpgradeModal.qty) || 1;
-    const price = parseFloat(customUpgradeModal.price) || 0;
+  if (!customUpgradeModal.name) { toast.error("请输入临时项名称"); return; }
+  const qty = parseFloat(customUpgradeModal.qty) || 1;
+  const price = parseFloat(customUpgradeModal.price) || 0;
+  const isPanelMode = activeMode === 'panel' && activePanel;
+  const targetUpgrades = isPanelMode ? (activePanel.upgrades || []) : (activeCabinet?.upgrades || []);
 
-    const newItem = {
-      id: 'upg-custom-' + Date.now(),
-      item_id: null, // 临时项脱离基础库
-      name: customUpgradeModal.name, category: '临时项', unit: customUpgradeModal.unit,
-      snap_original_unit_price: price, unit_price_adjustment: 0,
-      calculation_type: '按数量', // 复用现有按数量算法
-      upgrade_effect_type: 'add_cost', replace_calculation_mode: null,
-      input_quantity: qty, minimum_quantity: 0, manual_door_area: '',
-      remark: customUpgradeModal.remark || '', combo_type: 'single', parent_record_id: null,
-      type: 'custom', sort_order: (activeCabinet?.upgrades || []).length // 默认插到最后
-    };
-
-    updateActiveCabinet('upgrades', [...(activeCabinet.upgrades || []), newItem]);
-    setCustomUpgradeModal({ isOpen: false, name: '', price: '', qty: 1, unit: '项', remark: '' });
-    toast.success("临时增项已添加");
+  const newItem = {
+    id: 'upg-custom-' + Date.now(),
+    item_id: null, // 临时项脱离基础库
+    name: customUpgradeModal.name, category: '临时项', unit: customUpgradeModal.unit,
+    snap_original_unit_price: price, unit_price_adjustment: 0,
+    calculation_type: '按数量', // 复用现有按数量算法
+    upgrade_effect_type: 'add_cost', replace_calculation_mode: null,
+    input_quantity: qty, minimum_quantity: 0, manual_door_area: '',
+    remark: customUpgradeModal.remark || '', combo_type: 'single', parent_record_id: null,
+    type: 'custom', sort_order: targetUpgrades.length // 默认插到最后
   };
+
+  if (isPanelMode) {
+    updateActivePanel('upgrades', [...targetUpgrades, newItem]);
+  } else {
+    updateActiveCabinet('upgrades', [...targetUpgrades, newItem]);
+  }
+  setCustomUpgradeModal({ isOpen: false, name: '', price: '', qty: 1, unit: '项', remark: '' });
+  toast.success("临时增项已添加");
+};
 
   const renderCustomUpgradeModal = () => {
     if (!customUpgradeModal.isOpen) return null;
@@ -1887,12 +1893,21 @@ const handleConfirmAddUpgrade = () => {
       showToast(`已添加工艺: ${item.name}`);
     }
 
+    if (activeMode === 'panel' && activePanel) {
+    const baseLen = (activePanel.upgrades || []).length;
+    const panelItems = itemsToAdd.map((it, i) => ({ ...it, sort_order: baseLen + i }));
+    updateActivePanel('upgrades', [...(activePanel.upgrades || []), ...panelItems]);
+  } else {
     updateActiveCabinet('upgrades', [...(activeCabinet.upgrades || []), ...itemsToAdd]);
-    setUpgradeModal({ ...upgradeModal, isOpen: false, selectedItem: null, inputQty: '', inputRemark: '', unit_price_adjustment: 0, manual_door_area: '' });
-  };
+  }
+  setUpgradeModal({ ...upgradeModal, isOpen: false, selectedItem: null, inputQty: '', inputRemark: '', unit_price_adjustment: 0, manual_door_area: '' });
+};
 const handleRemoveUpgrade = (upgId) => {
-    updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
-  };
+  updateActiveCabinet('upgrades', (activeCabinet.upgrades || []).filter(u => u.id !== upgId));
+};
+const handleRemovePanelUpgrade = (upgId) => {
+  updateActivePanel('upgrades', (activePanel?.upgrades || []).filter(u => u.id !== upgId));
+};
 
   const handleSaveDraft = async () => {
     // 【修复 1】：前置校验拦截必须即时提示
@@ -2137,7 +2152,7 @@ const renderUpgradeModal = () => {
                             {upgradeModal.selectedItem.calculation_type === '按柜宽自动算' ? (
                               <div className="space-y-2">
                                 <div className="bg-blue-50 text-blue-800 p-3 rounded-xl text-xs font-bold flex justify-between items-center">
-                                  <span>🤖 系统按柜宽自动计算 (默认: {activeCabinet?.width/1000})</span>
+                                  <span>🤖 系统按宽自动计算 (默认: {((activeMode === 'panel' ? activePanel?.width : activeCabinet?.width) || 0) / 1000})</span>
                                 </div>
                                 <input type="number" placeholder={`留空则系统自动算; 若调整不得低于起算量 ${upgradeModal.selectedItem.minimum_quantity||0}`} value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-blue-200 p-3 rounded-xl font-black text-lg bg-white" />
                               </div>
@@ -2145,7 +2160,7 @@ const renderUpgradeModal = () => {
                               <>
                                 <input type="number" value={upgradeModal.inputQty} onChange={e=>setUpgradeModal({...upgradeModal, inputQty:e.target.value})} className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-xl" />
                                {isExcessDrawer && (() => {
-                                  const w = parseFloat(activeCabinet?.width) || 0;
+                                  const w = parseFloat(activeMode === 'panel' ? activePanel?.width : activeCabinet?.width) || 0;
                                   const standard = Math.max(1, Math.round(w / 1000));
                                   const input = parseFloat(upgradeModal.inputQty) || 0;
                                   const excess = Math.max(0, input - standard);
@@ -2712,18 +2727,208 @@ const renderUpgradeModal = () => {
               </>
             )}
             
-            {activeMode === 'panel' && activePanel && (
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-                <div className="flex justify-between items-center border-b pb-4 mb-4">
-                  <h3 className="font-black text-gray-900">🪵 定制板件编辑区（阶段三结构测试中）</h3>
-                  <span className="text-xs font-mono bg-gray-100 px-3 py-1 rounded-full text-gray-600">ID: {activePanel.id}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="text-gray-400 font-bold">当前板件名称：</span><span className="font-black">{activePanel.name}</span></div>
-                  <div><span className="text-gray-400 font-bold">最低计价面积快照：</span><span className="font-black text-emerald-600">{activePanel.snap_min_area} ㎡</span></div>
-                </div>
-              </div>
-            )}
+            {activeMode === 'panel' && activePanel && (() => {
+              const panelFinalUnitPrice = (parseFloat(activePanel.snap_door_base_price) || 0) + (parseFloat(activePanel.door_unit_adjustment) || 0);
+              return (
+                <>
+                  {/* 1. 板件基础尺寸与属性 */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-center mb-4 border-b pb-4">
+                      <h3 className="font-black text-gray-800">🪵 定制板件基础信息</h3>
+                      <div className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full">
+                        最低计价面积快照: {activePanel.snap_min_area ?? (rules.panel_min_area ?? 0.1)} ㎡/块
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-4">
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-gray-500">板件名称 / 类型</label>
+                        <input
+                          placeholder="如: 衣柜门板 / 装饰补板"
+                          value={activePanel.name || ''}
+                          onChange={e => updateActivePanel('name', e.target.value)}
+                          className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-blue-600">宽 W(mm)</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={activePanel.width}
+                          onChange={e => updateActivePanel('width', e.target.value)}
+                          className="w-full border-2 border-blue-200 p-2 rounded-lg font-black mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-blue-600">高 H(mm)</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={activePanel.height}
+                          onChange={e => updateActivePanel('height', e.target.value)}
+                          className="w-full border-2 border-blue-200 p-2 rounded-lg font-black mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-blue-600">数量 (块)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={activePanel.qty}
+                          onChange={e => updateActivePanel('qty', e.target.value)}
+                          className="w-full border-2 border-blue-200 p-2 rounded-lg font-black mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-4 mt-4">
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-gray-500">开门方向（手动选择）</label>
+                        <select
+                          value={activePanel.open_direction || ''}
+                          onChange={e => updateActivePanel('open_direction', e.target.value)}
+                          className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white"
+                        >
+                          <option value="">空白（装饰板/补板等）</option>
+                          <option value="左开">左开</option>
+                          <option value="右开">右开</option>
+                          <option value="对开">对开</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+            
+                  {/* 2. 板件材料选配（完全复用现有门板基础库 doors） */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-center mb-4 border-b pb-4">
+                      <h3 className="font-black">🚪 板件材料选配</h3>
+                      <div className="text-xs font-bold text-gray-500">
+                        系统底价快照: <span className="text-black font-black ml-1">¥{Number(activePanel.snap_door_base_price || 0)} / ㎡</span>
+                      </div>
+                    </div>
+            
+                    <div className="grid grid-cols-5 gap-4 mb-4">
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-gray-500">系统门板材料</label>
+                        <select
+                          value={activePanel.door_mat_id || ''}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const doorDict = doors.find(d => String(d.id) === String(val));
+                            setQuotePanels(prev => prev.map(p => p.id === activePanelId ? {
+                              ...p,
+                              door_mat_id: val,
+                              snap_door_name: doorDict ? doorDict.name : '',
+                              snap_door_base_price: doorDict ? (parseFloat(doorDict.base_price) || 0) : 0,
+                              snap_door_surface_finish: doorDict ? (doorDict.surface_finish || '') : ''
+                            } : p));
+                          }}
+                          className="w-full border-2 p-2 rounded-lg font-bold mt-1"
+                        >
+                          <option value="">-- 选择门板材料 --</option>
+                          {doors.map(d => <option key={d.id} value={d.id}>{d.name} (¥{d.base_price})</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-blue-600">表面工艺(可改)</label>
+                        <input
+                          value={activePanel.snap_door_surface_finish || ''}
+                          onChange={e => updateActivePanel('snap_door_surface_finish', e.target.value)}
+                          placeholder="如: 肤感膜"
+                          className="w-full border-2 border-blue-100 p-2 rounded-lg font-bold mt-1 bg-blue-50 focus:bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500">指定品牌</label>
+                        <input
+                          value={activePanel.snap_door_brand || ''}
+                          onChange={e => updateActivePanel('snap_door_brand', e.target.value)}
+                          className="w-full border-2 p-2 rounded-lg font-bold mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500">指定颜色</label>
+                        <input
+                          value={activePanel.snap_door_color || ''}
+                          onChange={e => updateActivePanel('snap_door_color', e.target.value)}
+                          className="w-full border-2 p-2 rounded-lg font-bold mt-1"
+                        />
+                      </div>
+                    </div>
+            
+                    <div className="mb-4">
+                      <label className="text-xs font-bold text-gray-500">板件备注</label>
+                      <input
+                        value={activePanel.remark || ''}
+                        onChange={e => updateActivePanel('remark', e.target.value)}
+                        placeholder="特殊说明、开孔/拉手位置要求等"
+                        className="w-full border-2 p-2 rounded-lg font-bold mt-1 bg-gray-50 focus:bg-white transition-colors"
+                      />
+                    </div>
+            
+                    <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                      <div className="text-sm font-black text-gray-900">人工调价 (元/㎡)</div>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="number"
+                          placeholder="+0"
+                          value={activePanel.door_unit_adjustment || ''}
+                          onChange={e => updateActivePanel('door_unit_adjustment', e.target.value)}
+                          className="w-24 border-2 p-2 rounded-lg font-black text-center"
+                        />
+                        <div className="text-right border-l pl-4">
+                          <div className="text-xs font-bold text-gray-500">最终单价快照</div>
+                          <div className="text-xl font-black">¥{panelFinalUnitPrice}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+            
+                  {/* 3. 板件专属局部升级与工艺（复用现有弹窗与拖拽组件） */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10">
+                    <div className="flex justify-between items-center mb-4 border-b pb-4">
+                      <h3 className="font-black text-gray-900">✨ 局部升级与工艺（当前板件）</h3>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setCustomUpgradeModal({ ...customUpgradeModal, isOpen: true })} className="bg-white border border-gray-200 text-gray-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm hover:bg-gray-50">+ 新增临时项</button>
+                        <button onClick={() => setUpgradeModal({ ...upgradeModal, isOpen: true })} className="bg-black text-white px-4 py-1.5 rounded-full text-sm font-bold shadow">+ 添加标准工艺</button>
+                      </div>
+                    </div>
+            
+                    {(!activePanel.upgrades || activePanel.upgrades.length === 0) ? (
+                      <div className="py-8 text-center text-gray-400 font-bold border-2 border-dashed rounded-xl">尚未为当前板件添加任何工艺项</div>
+                    ) : (
+                      <div className="space-y-3 relative">
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(event) => {
+                            const { active, over } = event;
+                            if (over && active.id !== over.id) {
+                              const oldIndex = activePanel.upgrades.findIndex(u => u.id === active.id);
+                              const newIndex = activePanel.upgrades.findIndex(u => u.id === over.id);
+                              const newList = arrayMove(activePanel.upgrades, oldIndex, newIndex).map((item, index) => ({ ...item, sort_order: index }));
+                              updateActivePanel('upgrades', newList);
+                            }
+                          }}
+                        >
+                          <SortableContext items={(activePanel.upgrades || []).map(u => u.id)} strategy={verticalListSortingStrategy}>
+                            {(activePanel.upgrades || []).map(upg => {
+                              const unitPrice = (parseFloat(upg.snap_original_unit_price) || 0) + (parseFloat(upg.unit_price_adjustment) || 0);
+                              const qty = Math.max(parseFloat(upg.input_quantity) || 0, parseFloat(upg.minimum_quantity) || 0);
+                              const previewCalc = {
+                                calculatedQty: upg.calculation_type === '人工直接输金额' ? 1 : qty,
+                                finalAmount: upg.calculation_type === '人工直接输金额' ? (parseFloat(upg.input_quantity) || 0) : qty * unitPrice,
+                                snap_base_door_price: 0
+                              };
+                              return <SortableUpgradeItem key={upg.id} upg={upg} calced={previewCalc} onRemove={handleRemovePanelUpgrade} />;
+                            })}
+                          </SortableContext>
+                        </DndContext>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
               {/* 【新增】：订单附加费用引擎 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10 mt-6">
                 <div className="flex justify-between items-center border-b pb-4 mb-4">
