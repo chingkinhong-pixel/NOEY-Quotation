@@ -593,7 +593,7 @@ export default function App() {
   const [subUpgrades, setSubUpgrades] = useState([]); // 【V4.08 新增】二级工艺专属状态
   const [rules, setRules] = useState({ 
     id: null, standard_depth: 600, shallow_depth: 295, height_threshold: 1000, minimum_area: 1, minimum_width: 1000,
-    depth_overage_enabled: true, depth_calculation_mode: 'ratio'
+    panel_min_area: 0.1, depth_overage_enabled: true, depth_calculation_mode: 'ratio'
   });
   // --- Phase 2 新增状态 ---
   const [historyList, setHistoryList] = useState([]);
@@ -4005,6 +4005,26 @@ const renderUpgradeModal = () => {
                      </div>
                    </div>
                  </div>
+                 {/* 【新增】：独立定制板件计价参数区（与定制柜参数彻底隔离） */}
+                  <div className="space-y-4 mt-6">
+                    <h3 className="text-sm uppercase tracking-widest text-gray-400 border-b pb-2">独立定制板件计价参数</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">定制板件最低计价面积 (㎡)</label>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          min="0"
+                          value={rules.panel_min_area ?? 0.1} 
+                          onChange={e => setRules({ ...rules, panel_min_area: parseFloat(e.target.value) || 0 })} 
+                          className="w-full border-2 border-emerald-200 bg-emerald-50 p-2 rounded-lg font-black text-emerald-900" 
+                        />
+                        <div className="text-xs text-gray-400 mt-1 font-normal">
+                          仅对「独立定制板件」生效，每块板件单独套用（默认 0.1㎡），不影响空间柜体最低计价规则。
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                  {/* 特殊加价逻辑区 */}
                  <div className="space-y-4 mt-6">
