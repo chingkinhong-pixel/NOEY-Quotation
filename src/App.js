@@ -408,7 +408,54 @@ const SortableCabinetItem = ({ cab, isActive, onActivate, onCopy, onDelete }) =>
     </div>
   );
 };
+// ==========================================
+// 【新增】：独立定制板件的高级拖拽组件
+// ==========================================
+const SortablePanelItem = ({ panel, indexLabel, isActive, onActivate, onCopy, onDelete }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: panel.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 1,
+    position: 'relative'
+  };
 
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`p-3 rounded-xl border-2 group flex gap-3 transition-colors ${isActive ? 'bg-white border-black shadow-md' : 'bg-white border-transparent'}`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-center text-gray-300 hover:text-black cursor-grab active:cursor-grabbing px-1"
+        style={{ touchAction: 'none' }}
+      >
+        <span className="text-2xl leading-none">≡</span>
+      </div>
+
+      <div className="flex-1 cursor-pointer relative" onClick={onActivate}>
+        <div className="flex justify-between items-start mb-1.5">
+          <div className="font-bold text-sm text-gray-900 pr-14 truncate">
+            <span className="text-xs font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-1.5">{indexLabel}</span>
+            {panel.name || '未命名板件'}
+          </div>
+          <div className="hidden group-hover:flex gap-1 absolute right-0 top-0 bg-white rounded p-1 shadow-sm border border-gray-100 z-10">
+            <button onClick={(e) => { e.stopPropagation(); onCopy(e, panel); }} className="text-blue-600 text-[10px] px-1 font-bold">复制</button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(e, panel.id); }} className="text-rose-600 text-[10px] px-1 font-bold">删除</button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-mono text-gray-500">
+          <span className="bg-gray-100 px-2 py-0.5 rounded">{panel.width || 0} × {panel.height || 0}</span>
+          <span className="bg-gray-100 px-2 py-0.5 rounded">×{panel.qty || 1}</span>
+          {panel.open_direction && <span className="text-[10px] text-gray-600 font-sans font-bold">{panel.open_direction}</span>}
+        </div>
+      </div>
+    </div>
+  );
+};
 // ==========================================
 // 【新增】：工艺专属的高级拖拽组件
 // ==========================================
@@ -699,6 +746,10 @@ export default function App() {
   const [draggedUpgradeIdx, setDraggedUpgradeIdx] = useState(null);
   const [quoteCabinets, setQuoteCabinets] = useState([]);
   const [activeCabinetId, setActiveCabinetId] = useState(null);
+  // === 【新增】：独立定制板件状态与工作台模式切换 ===
+  const [quotePanels, setQuotePanels] = useState([]);
+  const [activePanelId, setActivePanelId] = useState(null);
+  const [activeMode, setActiveMode] = useState('cabinet'); // 'cabinet' | 'panel'
   const [upgradeModal, setUpgradeModal] = useState({
     isOpen: false, activeCategory: '门板升级', selectedItem: null, inputQty: '', inputRemark: '',
     unit_price_adjustment: 0, manual_door_area: '', subInputs: {} // 【新增】保存二级工艺的独立输入数量
@@ -1086,6 +1137,9 @@ export default function App() {
     }]);
     setActiveCabinetId(initCabId);
     setSalesOrigin('home'); 
+    setQuotePanels([]);
+    setActivePanelId(null);
+    setActiveMode('cabinet');
     setCurrentView('sales');
   };
   
@@ -1530,33 +1584,115 @@ export default function App() {
   };
   
   const handleAddCabinet = () => {
-    const newId = 'cab-' + Date.now();
-    setQuoteCabinets([...quoteCabinets, { 
-      id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
-      cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-      door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [], material_type: 'panel',
-     // 【修复 3】：防止 fallback 覆盖
-      countertop: { ...DEFAULT_COUNTERTOP }
-    }]);
-    setActiveCabinetId(newId);
-  };
+  const newId = 'cab-' + Date.now();
+  setQuoteCabinets([...quoteCabinets, { 
+    id: newId, space: '次卧', cabinetType: '衣柜', width: '', height: '', depth: '',
+    cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
+    door_mat_id: '', snap_door_brand: '', snap_door_color: '', snap_door_surface_finish: '', door_unit_adjustment: '', upgrades: [], material_type: 'panel',
+    countertop: { ...DEFAULT_COUNTERTOP }
+  }]);
+  setActiveCabinetId(newId);
+  setActiveMode('cabinet');
+};
 
-  const handleCopyCabinet = (e, cab) => {
-    e.stopPropagation();
-    const newId = 'cab-' + Date.now() + Math.floor(Math.random()*1000);
-    const newCab = { ...cab, id: newId, space: cab.space + ' (副本)', upgrades: [...(cab.upgrades || [])] };
-    setQuoteCabinets([...quoteCabinets, newCab]);
-    setActiveCabinetId(newId);
-    showToast('柜体已复制');
-  };
+const handleCopyCabinet = (e, cab) => {
+  e.stopPropagation();
+  const newId = 'cab-' + Date.now() + Math.floor(Math.random()*1000);
+  const newCab = { ...cab, id: newId, space: cab.space + ' (副本)', upgrades: JSON.parse(JSON.stringify(cab.upgrades || [])) };
+  setQuoteCabinets([...quoteCabinets, newCab]);
+  setActiveCabinetId(newId);
+  setActiveMode('cabinet');
+  showToast('柜体已复制');
+};
 
-  const handleDeleteCabinet = (e, id) => {
-    e.stopPropagation();
-    if (quoteCabinets.length <= 1) { showToast('至少需要保留一个柜体', 'error'); return; }
-    const newList = quoteCabinets.filter(c => c.id !== id);
-    setQuoteCabinets(newList);
-    if (activeCabinetId === id) setActiveCabinetId(newList[0].id);
+const handleDeleteCabinet = (e, id) => {
+  e.stopPropagation();
+  if (quoteCabinets.length <= 1 && quotePanels.length === 0) {
+    showToast('订单至少需要保留一个空间柜体或定制板件', 'error');
+    return;
+  }
+  const newList = quoteCabinets.filter(c => c.id !== id);
+  setQuoteCabinets(newList);
+  if (newList.length === 0) {
+    setActiveCabinetId(null);
+    if (quotePanels.length > 0) {
+      setActivePanelId(quotePanels[0].id);
+      setActiveMode('panel');
+    }
+  } else if (activeCabinetId === id) {
+    setActiveCabinetId(newList[0].id);
+  }
+};
+
+// === 【新增】：独立定制板件管理引擎 ===
+const activePanel = quotePanels.find(p => p.id === activePanelId) || quotePanels[0] || null;
+
+const updateActivePanel = (field, value) => {
+  setQuotePanels(prev => prev.map(p => p.id === activePanelId ? { ...p, [field]: value } : p));
+};
+
+const handleAddPanel = () => {
+  const newId = 'panel-' + Date.now();
+  const newPanel = {
+    id: newId,
+    name: '定制门板',
+    width: '',
+    height: '',
+    qty: 1,
+    open_direction: '', // 固定选项：'左开' | '右开' | '对开' | ''
+    door_mat_id: '',
+    snap_door_name: '',
+    snap_door_base_price: 0,
+    snap_door_surface_finish: '',
+    snap_door_brand: '',
+    snap_door_color: '',
+    door_unit_adjustment: '',
+    remark: '',
+    snap_min_area: parseFloat(rules.panel_min_area) || 0.1, // 记录创建时的后台最低计价面积快照
+    upgrades: [],
+    sort_order: quotePanels.length + 1
   };
+  setQuotePanels([...quotePanels, newPanel]);
+  setActivePanelId(newId);
+  setActiveMode('panel');
+};
+
+const handleCopyPanel = (e, panel) => {
+  e.stopPropagation();
+  const newId = 'panel-' + Date.now() + Math.floor(Math.random() * 1000);
+  // 深拷贝：彻底隔离新旧板件及内部所有升级工艺
+  const copied = JSON.parse(JSON.stringify(panel));
+  copied.id = newId;
+  copied.name = (panel.name || '定制板件') + ' (副本)';
+  copied.sort_order = quotePanels.length + 1;
+  copied.upgrades = (copied.upgrades || []).map((u, idx) => ({
+    ...u,
+    id: 'pupg-copy-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 1000)
+  }));
+  setQuotePanels([...quotePanels, copied]);
+  setActivePanelId(newId);
+  setActiveMode('panel');
+  showToast('板件已完整复制');
+};
+
+const handleDeletePanel = (e, id) => {
+  e.stopPropagation();
+  if (quotePanels.length <= 1 && quoteCabinets.length === 0) {
+    showToast('订单至少需要保留一个空间柜体或定制板件', 'error');
+    return;
+  }
+  const newList = quotePanels.filter(p => p.id !== id).map((item, idx) => ({ ...item, sort_order: idx + 1 }));
+  setQuotePanels(newList);
+  if (newList.length === 0) {
+    setActivePanelId(null);
+    if (quoteCabinets.length > 0) {
+      setActiveCabinetId(quoteCabinets[0].id);
+      setActiveMode('cabinet');
+    }
+  } else if (activePanelId === id) {
+    setActivePanelId(newList[0].id);
+  }
+};
 
   // ==========================================
   // 【核心引擎代码：未做任何修改】
@@ -2093,12 +2229,12 @@ const renderUpgradeModal = () => {
   };
 
   const renderSalesWorkspace = () => {
-    if (!activeCabinet) return null;
-    // 【第一步 & 第二步：获取 material 的 type】
-    // 通过基础库比对，精准识别当前选中的柜体类型（stone 或 panel）
-    const selectedCabinetMaterial = cabinets.find(m => m.id === activeCabinet.cabinet_mat_id);
-    const cabinetStructureType = selectedCabinetMaterial?.material_type || activeCabinet.material_type || 'panel';
-    const currentCalcs = calculateCabinetDetails(activeCabinet);
+  if (!activeCabinet && !activePanel) return null;
+  const selectedCabinetMaterial = activeCabinet ? cabinets.find(m => m.id === activeCabinet.cabinet_mat_id) : null;
+  const cabinetStructureType = selectedCabinetMaterial?.material_type || activeCabinet?.material_type || 'panel';
+  const currentCalcs = activeCabinet
+    ? calculateCabinetDetails(activeCabinet)
+    : { qty: 0, calcMethod: '未计算', cabinetPortionTotal: 0, doorPortionTotal: 0, upgradePortionTotal: 0, baseTotal: 0, finalCabUnitPrice: 0, finalDoorUnitPrice: 0, calculatedUpgrades: [] };
     const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
 
     // 【新增】：拖拽结束处理逻辑
@@ -2118,6 +2254,19 @@ const renderUpgradeModal = () => {
         }));
         
         setQuoteCabinets(orderedList);
+      }
+    };
+    // 【新增】：定制板件拖拽排序处理逻辑
+    const handlePanelDragEnd = (event) => {
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        const oldIndex = quotePanels.findIndex(p => p.id === active.id);
+        const newIndex = quotePanels.findIndex(p => p.id === over.id);
+        const newList = arrayMove(quotePanels, oldIndex, newIndex).map((item, index) => ({
+          ...item,
+          sort_order: index + 1
+        }));
+        setQuotePanels(newList);
       }
     };
 
@@ -2188,27 +2337,62 @@ const renderUpgradeModal = () => {
                 <button onClick={handleAddCabinet} className="text-xs font-bold text-blue-600">➕ 新增</button>
               </div>
               <div className="space-y-3 relative">
+              {quoteCabinets.length === 0 ? (
+                <div className="text-center py-4 text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">暂无空间柜体</div>
+              ) : (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={quoteCabinets.map(c => c.id)} strategy={verticalListSortingStrategy}>
                     {quoteCabinets.map((cab) => (
                       <SortableCabinetItem 
                         key={cab.id} 
                         cab={cab} 
-                        isActive={activeCabinetId === cab.id}
-                        onActivate={() => setActiveCabinetId(cab.id)}
+                        isActive={activeMode === 'cabinet' && activeCabinetId === cab.id}
+                        onActivate={() => { setActiveCabinetId(cab.id); setActiveMode('cabinet'); }}
                         onCopy={handleCopyCabinet}
                         onDelete={handleDeleteCabinet}
                       />
                     ))}
                   </SortableContext>
                 </DndContext>
+              )}
+            </div>
+
+            {/* 【新增】：左侧独立定制板件管理区 */}
+            <div className="mt-6 pt-5 border-t border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-black text-gray-400">🪵 定制板件</span>
+                <button onClick={handleAddPanel} className="text-xs font-bold text-blue-600 hover:text-blue-800">＋ 新增</button>
               </div>
+              <div className="space-y-3 relative">
+                {quotePanels.length === 0 ? (
+                  <div className="text-center py-4 text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">点击上方「＋新增」添加板件</div>
+                ) : (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePanelDragEnd}>
+                    <SortableContext items={quotePanels.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                      {quotePanels.map((panel, idx) => (
+                        <SortablePanelItem
+                          key={panel.id}
+                          panel={panel}
+                          indexLabel={String.fromCharCode(65 + idx)}
+                          isActive={activeMode === 'panel' && activePanelId === panel.id}
+                          onActivate={() => { setActivePanelId(panel.id); setActiveMode('panel'); }}
+                          onCopy={handleCopyPanel}
+                          onDelete={handleDeletePanel}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </div>
+            </div>
             </div>
           </div>
 
           {/* 右侧编辑区 */}
           <div className="flex-1 overflow-y-auto p-8 bg-gray-100 pb-40">
             <div className="max-w-4xl mx-auto space-y-6">
+            {activeMode === 'cabinet' && activeCabinet && (
+              <>
               {/* 尺寸基础 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black text-gray-800">📐 基础尺寸</h3><div className="text-xs font-bold bg-gray-100 px-3 py-1 rounded-full">算法: {currentCalcs.calcMethod}</div></div>
@@ -2525,6 +2709,21 @@ const renderUpgradeModal = () => {
                   </div>
                 )}
               </div>
+              </>
+            )}
+            
+            {activeMode === 'panel' && activePanel && (
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                <div className="flex justify-between items-center border-b pb-4 mb-4">
+                  <h3 className="font-black text-gray-900">🪵 定制板件编辑区（阶段三结构测试中）</h3>
+                  <span className="text-xs font-mono bg-gray-100 px-3 py-1 rounded-full text-gray-600">ID: {activePanel.id}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-gray-400 font-bold">当前板件名称：</span><span className="font-black">{activePanel.name}</span></div>
+                  <div><span className="text-gray-400 font-bold">最低计价面积快照：</span><span className="font-black text-emerald-600">{activePanel.snap_min_area} ㎡</span></div>
+                </div>
+              </div>
+            )}
               {/* 【新增】：订单附加费用引擎 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10 mt-6">
                 <div className="flex justify-between items-center border-b pb-4 mb-4">
@@ -2621,7 +2820,7 @@ const renderUpgradeModal = () => {
             <div><div className="text-[10px] text-gray-400">门板</div>¥{currentCalcs.doorPortionTotal.toFixed(0)}</div>
             
             {/* ✅ 台面价格显示条件：模块启用且金额大于0 */}
-            {activeCabinet.countertop && activeCabinet.countertop.enabled && Number(activeCabinet.countertop.subtotal) > 0 && (
+            {activeCabinet && activeCabinet.countertop && activeCabinet && activeCabinet.countertop.enabled && Number(activeCabinet.countertop.subtotal) > 0 && (
               <div>
                 <div className="text-[10px] text-gray-400">台面</div>
                 ¥{Number(activeCabinet.countertop.subtotal).toFixed(0)}
@@ -2629,7 +2828,7 @@ const renderUpgradeModal = () => {
             )}
             
             {/* ✅ 工艺价格显示条件：包含工艺数组且合计金额大于0 */}
-            {activeCabinet.upgrades && activeCabinet.upgrades.length > 0 && currentCalcs.upgradePortionTotal > 0 && (
+            {activeCabinet && activeCabinet.upgrades && activeCabinet && activeCabinet.upgrades.length > 0 && currentCalcs.upgradePortionTotal > 0 && (
               <div>
                 <div className="text-[10px] text-gray-400">工艺</div>
                 <span className="text-rose-600">¥{currentCalcs.upgradePortionTotal.toFixed(0)}</span>
