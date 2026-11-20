@@ -1432,20 +1432,52 @@ export default function App() {
             }
           };
         });
-        setQuoteCabinets(reconstructedCabinets);
-        setActiveCabinetId(reconstructedCabinets[0].id);
-      } else {
-        const fallbackId = 'cab-fallback-' + Date.now();
-        setQuoteCabinets([{ 
-          id: fallbackId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
-          cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [], material_type: 'panel',
-          // 【补上这里】：确保极端兜底新建的柜子也有台面默认属性
-          countertop: { ...DEFAULT_COUNTERTOP }
-        }]);
-        setActiveCabinetId(fallbackId);
-      }
-      setSalesOrigin('sales-history');
+        const rawPanels = Array.isArray(quote.custom_panels) ? quote.custom_panels : [];
+         const loadedPanels = rawPanels
+           .map((p, idx) => ({
+             ...p,
+             sort_order: p.sort_order ?? (idx + 1),
+             upgrades: Array.isArray(p.upgrades) ? [...p.upgrades].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) : []
+           }))
+           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      
+         setQuoteCabinets(reconstructedCabinets);
+         setActiveCabinetId(reconstructedCabinets[0].id);
+         setQuotePanels(loadedPanels);
+         setActivePanelId(loadedPanels.length > 0 ? loadedPanels[0].id : null);
+         setActiveMode('cabinet');
+       } else {
+         const rawPanels = Array.isArray(quote.custom_panels) ? quote.custom_panels : [];
+         const loadedPanels = rawPanels
+           .map((p, idx) => ({
+             ...p,
+             sort_order: p.sort_order ?? (idx + 1),
+             upgrades: Array.isArray(p.upgrades) ? [...p.upgrades].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) : []
+           }))
+           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      
+         if (loadedPanels.length > 0) {
+           // 纯定制板件订单：不生成多余柜体，直接进入板件编辑模式
+           setQuoteCabinets([]);
+           setActiveCabinetId(null);
+           setQuotePanels(loadedPanels);
+           setActivePanelId(loadedPanels[0].id);
+           setActiveMode('panel');
+         } else {
+           const fallbackId = 'cab-fallback-' + Date.now();
+           setQuoteCabinets([{ 
+             id: fallbackId, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
+             cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
+             door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: [], material_type: 'panel',
+             countertop: { ...DEFAULT_COUNTERTOP }
+           }]);
+           setActiveCabinetId(fallbackId);
+           setQuotePanels([]);
+           setActivePanelId(null);
+           setActiveMode('cabinet');
+         }
+       }
+       setSalesOrigin('sales-history');
       setCurrentView('sales');
       showToast('草稿已成功恢复！');
     } catch (err) {
@@ -1528,20 +1560,50 @@ export default function App() {
             countertop: normalizedCountertop
           };
         });
-      } else {
-        // 防空兜底
-        reconstructedCabinets = [{ 
-          id: 'cab-copy-fallback-' + Date.now(), sort_order: 1, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
-          cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
-          door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', door_material_remark: '', upgrades: [], material_type: 'panel',
-          countertop: { ...DEFAULT_COUNTERTOP }
-        }];
-      }
-
-      // 3. 将新草稿推入工作台
-      setQuoteCabinets(reconstructedCabinets);
-      setActiveCabinetId(reconstructedCabinets[0].id);
-
+        }
+  
+     // 【阶段八新增】：深拷贝定制板件及内部工艺，赋予全新独立 ID
+     const rawCopyPanels = Array.isArray(quote.custom_panels) ? JSON.parse(JSON.stringify(quote.custom_panels)) : [];
+     const copiedPanels = rawCopyPanels
+       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+       .map((p, idx) => ({
+         ...p,
+         id: 'panel-copy-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 1000),
+         sort_order: idx + 1,
+         upgrades: (p.upgrades || []).map((u, uIdx) => ({
+           ...u,
+           id: 'pupg-copy-' + Date.now() + '-' + idx + '-' + uIdx + '-' + Math.floor(Math.random() * 1000),
+           sort_order: uIdx
+         }))
+       }));
+  
+     // 3. 将新草稿推入工作台
+     if (reconstructedCabinets.length > 0) {
+       setQuoteCabinets(reconstructedCabinets);
+       setActiveCabinetId(reconstructedCabinets[0].id);
+       setQuotePanels(copiedPanels);
+       setActivePanelId(copiedPanels.length > 0 ? copiedPanels[0].id : null);
+       setActiveMode('cabinet');
+     } else if (copiedPanels.length > 0) {
+       // 原单为纯定制板件订单
+       setQuoteCabinets([]);
+       setActiveCabinetId(null);
+       setQuotePanels(copiedPanels);
+       setActivePanelId(copiedPanels[0].id);
+       setActiveMode('panel');
+     } else {
+       const fallbackCabId = 'cab-copy-fallback-' + Date.now();
+       setQuoteCabinets([{ 
+         id: fallbackCabId, sort_order: 1, space: '主卧', cabinetType: '衣柜', width: '', height: '', depth: '',
+         cabinet_mat_id: '', snap_cabinet_brand: '', snap_cabinet_color: '', cabinet_thickness: '18', cabinet_material_remark: '', snap_back_panel_spec: '9mm标准', cabinet_unit_adjustment: '', door_material_remark: '',
+         door_mat_id: '', snap_door_brand: '', snap_door_color: '', door_unit_adjustment: '', upgrades: [], material_type: 'panel',
+         countertop: { ...DEFAULT_COUNTERTOP }
+       }]);
+       setActiveCabinetId(fallbackCabId);
+       setQuotePanels([]);
+       setActivePanelId(null);
+       setActiveMode('cabinet');
+     }
       // 4. 重置主表信息：洗掉旧单号、清空电话、加注“副本”、状态重置为编辑中
       setQuoteInfo({
         quoteNo: generateQuoteNo(),
@@ -2032,26 +2094,41 @@ const handleRemovePanelUpgrade = (upgId) => {
     setIsLoading(true);
 
     try {
-      const countertopTotal = (countertop && countertop.enabled) ? (Number(countertop.subtotal) || 0) : 0;
-      // 【修改】：安全分离基础报价与附加费用，严格按照基数计算
-      const baseGrandTotal = quoteCabinets.reduce((sum, cab) => {
-        const cabBase = calculateCabinetDetails(cab).baseTotal;
-        const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
-        return sum + cabBase + cabCountertop;
-      }, 0);
-      
-      const surchargesTotal = (quoteInfo.surcharges || []).reduce((sum, item) => sum + calculateSurchargeAmount(item, baseGrandTotal), 0);
-      const finalGrandTotal = baseGrandTotal + surchargesTotal;
-
-      const quotePayload = {
-        quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
-        customer_phone: quoteInfo.customerPhone, delivery_address: quoteInfo.deliveryAddress,
-        status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
-        total_amount: finalGrandTotal, updated_at: new Date().toISOString(), // 使用加入附加费用后的终价
-        terms_content: quoteInfo.terms_content, terms_version: 'v1.0',
-        discount_final_price: parseFloat(quoteInfo.discountFinalPrice) || null,
-        surcharges: quoteInfo.surcharges // 【新增】：同步保存至 JSONB 字段
-      };
+      // 【阶段八更新】：空间柜体 + 独立定制板件统一核算并持久化保存
+       const cabinetBusinessTotal = quoteCabinets.reduce((sum, cab) => {
+         const cabBase = calculateCabinetDetails(cab).baseTotal;
+         const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
+         return sum + cabBase + cabCountertop;
+       }, 0);
+    
+       const normalizedPanels = (quotePanels || []).map((p, idx) => ({
+         ...p,
+         sort_order: idx + 1,
+         snap_min_area: (p.snap_min_area !== undefined && p.snap_min_area !== null && p.snap_min_area !== '')
+           ? parseFloat(p.snap_min_area)
+           : (parseFloat(rules.panel_min_area) || 0.1),
+         upgrades: (p.upgrades || []).map((u, uIdx) => ({ ...u, sort_order: uIdx }))
+       }));
+    
+       const panelBusinessTotal = normalizedPanels.reduce((sum, p) => {
+         const pCalc = calculatePanelDetails(p);
+         return sum + pCalc.panelBaseCost + pCalc.panelUpgradeCost;
+       }, 0);
+    
+       const baseGrandTotal = cabinetBusinessTotal + panelBusinessTotal;
+       const surchargesTotal = (quoteInfo.surcharges || []).reduce((sum, item) => sum + calculateSurchargeAmount(item, baseGrandTotal), 0);
+       const finalGrandTotal = baseGrandTotal + surchargesTotal;
+    
+       const quotePayload = {
+         quote_no: quoteInfo.quoteNo, customer_name: quoteInfo.customerName,
+         customer_phone: quoteInfo.customerPhone, delivery_address: quoteInfo.deliveryAddress,
+         status: quoteInfo.status === '编辑中' ? '已保存草稿' : quoteInfo.status,
+         total_amount: finalGrandTotal, updated_at: new Date().toISOString(),
+         terms_content: quoteInfo.terms_content, terms_version: 'v1.0',
+         discount_final_price: parseFloat(quoteInfo.discountFinalPrice) || null,
+         surcharges: quoteInfo.surcharges,
+         custom_panels: normalizedPanels // 【新增】：持久化保存定制板件完整快照
+       };
 
       let currentQuoteId = null;
       // 标记是否是第一次保存（如果是第一次，数据库里根本没有旧的柜体/工艺需要清理，从而避免空转引发报错）
