@@ -411,7 +411,7 @@ const SortableCabinetItem = ({ cab, isActive, onActivate, onCopy, onDelete }) =>
 // ==========================================
 // 【新增】：独立定制板件的高级拖拽组件
 // ==========================================
-const SortablePanelItem = ({ panel, indexLabel, isActive, onActivate, onCopy, onDelete }) => {
+const SortablePanelItem = ({ panel, isActive, onActivate, onCopy, onDelete }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: panel.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -439,7 +439,6 @@ const SortablePanelItem = ({ panel, indexLabel, isActive, onActivate, onCopy, on
       <div className="flex-1 cursor-pointer relative" onClick={onActivate}>
         <div className="flex justify-between items-start mb-1.5">
           <div className="font-bold text-sm text-gray-900 pr-14 truncate">
-            <span className="text-xs font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-1.5">{indexLabel}</span>
             {panel.name || '未命名板件'}
           </div>
           <div className="hidden group-hover:flex gap-1 absolute right-0 top-0 bg-white rounded p-1 shadow-sm border border-gray-100 z-10">
@@ -2548,7 +2547,7 @@ const renderUpgradeModal = () => {
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-black text-gray-400">🗄️ 空间柜体</span>
-                <button onClick={handleAddCabinet} className="text-xs font-bold text-blue-600">➕ 新增</button>
+                <button onClick={handleAddCabinet} className="text-xs font-bold text-blue-600 hover:text-blue-800">+ 新增</button>
               </div>
               <div className="space-y-3 relative">
               {quoteCabinets.length === 0 ? (
@@ -2575,19 +2574,18 @@ const renderUpgradeModal = () => {
             <div className="mt-6 pt-5 border-t border-gray-200">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-xs font-black text-gray-400">🪵 定制板件</span>
-                <button onClick={handleAddPanel} className="text-xs font-bold text-blue-600 hover:text-blue-800">＋ 新增</button>
+                <button onClick={handleAddPanel} className="text-xs font-bold text-blue-600 hover:text-blue-800">+ 新增</button>
               </div>
               <div className="space-y-3 relative">
                 {quotePanels.length === 0 ? (
-                  <div className="text-center py-4 text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">点击上方「＋新增」添加板件</div>
+                  <div className="text-center py-4 text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl">点击上方「+ 新增」添加板件</div>
                 ) : (
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePanelDragEnd}>
                     <SortableContext items={quotePanels.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                      {quotePanels.map((panel, idx) => (
+                      {quotePanels.map((panel) => (
                         <SortablePanelItem
                           key={panel.id}
                           panel={panel}
-                          indexLabel={String.fromCharCode(65 + idx)}
                           isActive={activeMode === 'panel' && activePanelId === panel.id}
                           onActivate={() => { setActivePanelId(panel.id); setActiveMode('panel'); }}
                           onCopy={handleCopyPanel}
