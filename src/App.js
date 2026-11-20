@@ -3051,6 +3051,164 @@ const renderUpgradeModal = () => {
                       </div>
                     )}
                   </div>
+                          {/* 4. 【阶段六新增】：所有定制板件费用汇总列表（Excel 紧凑表格风格） */}
+                 {(() => {
+                   const panelRows = quotePanels.map((p, idx) => {
+                     const calc = calculatePanelDetails(p);
+                     const label = idx < 26 ? String.fromCharCode(65 + idx) : `P${idx + 1}`;
+                     return { panel: p, calc, label };
+                   });
+                   const totalPanelQty = panelRows.reduce((sum, r) => sum + (Number(r.calc.qty) || 0), 0);
+                   const totalPanelArea = panelRows.reduce((sum, r) => sum + (Number(r.calc.totalBillableArea) || 0), 0);
+                   const allPanelsBaseTotal = panelRows.reduce((sum, r) => sum + (Number(r.calc.panelBaseCost) || 0), 0);
+        
+                   const mergedPanelUpgrades = aggregatePanelUpgrades(quotePanels);
+                   const allPanelsUpgradesTotal = mergedPanelUpgrades.reduce((sum, u) => sum + (Number(u.totalAmount) || 0), 0);
+                   const allPanelsCombinedTotal = allPanelsBaseTotal + allPanelsUpgradesTotal;
+        
+                   return (
+                     <>
+                       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50/70">
+                           <div className="flex items-center gap-2">
+                             <h3 className="font-black text-gray-900">📊 定制板件费用汇总</h3>
+                             <span className="text-xs text-gray-400 font-bold">共 {quotePanels.length} 项（点击行可切换编辑）</span>
+                           </div>
+                           <div className="text-xs font-bold text-gray-500">
+                             总计价面积: <span className="text-gray-900 font-black">{totalPanelArea.toFixed(3)} ㎡</span>
+                           </div>
+                         </div>
+        
+                         <div className="overflow-x-auto">
+                           <table className="w-full text-left border-collapse text-xs">
+                             <thead>
+                               <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold">
+                                 <th className="py-2.5 px-3 w-12 text-center">序号</th>
+                                 <th className="py-2.5 px-3">项目 / 尺寸(mm)</th>
+                                 <th className="py-2.5 px-3 w-20 text-center">开门方向</th>
+                                 <th className="py-2.5 px-3">材料</th>
+                                 <th className="py-2.5 px-3 w-24 text-right">计价面积</th>
+                                 <th className="py-2.5 px-3 w-24 text-right">单价</th>
+                                 <th className="py-2.5 px-3 w-16 text-right">数量</th>
+                                 <th className="py-2.5 px-3 w-28 text-right">基础小计</th>
+                               </tr>
+                             </thead>
+                             <tbody className="divide-y divide-gray-100">
+                               {panelRows.map(({ panel, calc, label }) => {
+                                 const isSelected = panel.id === activePanelId;
+                                 return (
+                                   <tr
+                                     key={panel.id}
+                                     onClick={() => { setActivePanelId(panel.id); setActiveMode('panel'); }}
+                                     className={`cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/70' : 'hover:bg-gray-50'}`}
+                                   >
+                                     <td className="py-2.5 px-3 text-center">
+                                       <span className={`inline-block font-mono font-black px-1.5 py-0.5 rounded text-[11px] ${isSelected ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                         {label}
+                                       </span>
+                                     </td>
+                                     <td className="py-2.5 px-3">
+                                       <div className="font-bold text-gray-900">{panel.name || '未命名板件'}</div>
+                                       <div className="text-[11px] font-mono text-gray-400">
+                                         {panel.width || 0} × {panel.height || 0}
+                                         {panel.remark && <span className="font-sans text-rose-500 ml-2">({panel.remark})</span>}
+                                       </div>
+                                     </td>
+                                     <td className="py-2.5 px-3 text-center font-bold text-gray-700">
+                                       {panel.open_direction || '-'}
+                                     </td>
+                                     <td className="py-2.5 px-3">
+                                       <div className="font-bold text-gray-800">{panel.snap_door_name || <span className="text-gray-400 font-normal">未选材料</span>}</div>
+                                       {panel.snap_door_surface_finish && (
+                                         <div className="text-[10px] text-gray-400">{panel.snap_door_surface_finish}</div>
+                                       )}
+                                     </td>
+                                     <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-800">
+                                       {calc.totalBillableArea.toFixed(3)} ㎡
+                                     </td>
+                                     <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-700">
+                                       ¥{calc.finalUnitPrice.toFixed(0)}
+                                     </td>
+                                     <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900">
+                                       {calc.qty}
+                                     </td>
+                                     <td className="py-2.5 px-3 text-right font-mono font-black text-gray-900">
+                                       ¥{calc.panelBaseCost.toFixed(2)}
+                                     </td>
+                                   </tr>
+                                 );
+                               })}
+                             </tbody>
+                             <tfoot>
+                               <tr className="bg-gray-50 border-t-2 border-gray-200 font-black text-gray-900">
+                                 <td colSpan="4" className="py-3 px-3 text-right text-gray-600">板件基础费用合计</td>
+                                 <td className="py-3 px-3 text-right font-mono">{totalPanelArea.toFixed(3)} ㎡</td>
+                                 <td className="py-3 px-3"></td>
+                                 <td className="py-3 px-3 text-right font-mono">{totalPanelQty} 块</td>
+                                 <td className="py-3 px-3 text-right font-mono text-sm text-gray-900">¥{allPanelsBaseTotal.toFixed(2)}</td>
+                               </tr>
+                             </tfoot>
+                           </table>
+                         </div>
+                       </div>
+        
+                       {/* 5. 【阶段六新增】：升级工艺与五金自动合并汇总版块（无工艺时自动隐藏） */}
+                       {mergedPanelUpgrades.length > 0 && (
+                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50/70">
+                             <div className="flex items-center gap-2">
+                               <h3 className="font-black text-gray-900">✨ 升级工艺与五金汇总</h3>
+                               <span className="text-xs text-gray-400 font-bold">相同工艺自动合并统计，独立核算不重复计价</span>
+                             </div>
+                           </div>
+        
+                           <div className="overflow-x-auto">
+                             <table className="w-full text-left border-collapse text-xs">
+                               <thead>
+                                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold">
+                                   <th className="py-2.5 px-4">升级项目</th>
+                                   <th className="py-2.5 px-4 w-32 text-right">合计数量</th>
+                                   <th className="py-2.5 px-4 w-32 text-right">单价</th>
+                                   <th className="py-2.5 px-4 w-32 text-right">小计</th>
+                                 </tr>
+                               </thead>
+                               <tbody className="divide-y divide-gray-100">
+                                 {mergedPanelUpgrades.map(item => (
+                                   <tr key={item.key} className="hover:bg-gray-50">
+                                     <td className="py-2.5 px-4 font-bold text-gray-900">{item.name}</td>
+                                     <td className="py-2.5 px-4 text-right font-mono font-bold text-gray-800">
+                                       {Number.isInteger(item.totalQty) ? item.totalQty : item.totalQty.toFixed(2)} {item.unit}
+                                     </td>
+                                     <td className="py-2.5 px-4 text-right font-mono font-bold text-gray-700">
+                                       {item.calculation_type === '人工直接输金额' ? '人工计价' : `¥${item.unitPrice.toFixed(2)} / ${item.unit}`}
+                                     </td>
+                                     <td className="py-2.5 px-4 text-right font-mono font-black text-gray-900">
+                                       ¥{item.totalAmount.toFixed(2)}
+                                     </td>
+                                   </tr>
+                                 ))}
+                               </tbody>
+                               <tfoot>
+                                 <tr className="bg-gray-50 border-t-2 border-gray-200 font-black text-gray-900">
+                                   <td colSpan="3" className="py-3 px-4 text-right text-gray-600">升级工艺与五金合计</td>
+                                   <td className="py-3 px-4 text-right font-mono text-sm text-gray-900">¥{allPanelsUpgradesTotal.toFixed(2)}</td>
+                                 </tr>
+                               </tfoot>
+                             </table>
+                           </div>
+                         </div>
+                       )}
+        
+                       {/* 定制板件业务总计条（基础费 + 工艺费，不含订单附加费） */}
+                       <div className="bg-gray-900 text-white px-6 py-4 rounded-2xl flex justify-between items-center shadow-sm">
+                         <div className="text-xs text-gray-300 font-bold">
+                           定制板件总计（基础费 ¥{allPanelsBaseTotal.toFixed(2)} + 升级工艺 ¥{allPanelsUpgradesTotal.toFixed(2)}）
+                         </div>
+                         <div className="text-lg font-black font-mono">¥{allPanelsCombinedTotal.toFixed(2)}</div>
+                       </div>
+                     </>
+                   );
+                 })()}
                 </>
               );
             })()}
