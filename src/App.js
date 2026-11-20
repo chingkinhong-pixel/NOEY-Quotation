@@ -2517,11 +2517,92 @@ const renderUpgradeModal = () => {
     const baseGrandTotal = cabinetBusinessTotal + panelBusinessTotal;
     const surchargesTotal = (quoteInfo.surcharges || []).reduce((sum, item) => sum + calculateSurchargeAmount(item, baseGrandTotal), 0);
     const grandTotal = baseGrandTotal + surchargesTotal; // 最终合并呈现
+    // 【阶段C抽离】：订单附加费用复用片段（柜体模式在底部显示，板件模式在右栏显示，共用同一套全订单数据与算法）
+    const surchargesSectionJSX = (
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10">
+        <div className="flex justify-between items-center border-b pb-4 mb-4">
+          <h3 className="font-black text-gray-900">📦 订单附加费用</h3>
+          <button onClick={() => setSurchargeModal({ ...surchargeModal, isOpen: true, editId: null })} className="bg-white border border-gray-200 text-gray-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm hover:bg-gray-50">
+            + 添加费用
+          </button>
+        </div>
 
+        {(!quoteInfo.surcharges || quoteInfo.surcharges.length === 0) ? null : (
+          <div className="space-y-3">
+            {quoteInfo.surcharges.map(sc => (
+              <div key={sc.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center hover:shadow-sm transition-shadow">
+                <div>
+                  <div className="font-bold text-sm text-gray-900">{sc.name}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {sc.calcType === 'fixed' && '固定金额'}
+                    {sc.calcType === 'unit' && `${sc.qty} ${sc.unit} × ¥${sc.amount} / ${sc.unit}`}
+                    {sc.calcType === 'percent' && `订单基础金额 × ${sc.percentage}%`}
+                    {sc.remark && <span className="ml-2 pl-2 border-l border-gray-300 text-rose-600">备注: {sc.remark}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm font-bold text-gray-900">¥{calculateSurchargeAmount(sc, baseGrandTotal).toFixed(2)}</div>
+                  <div className="flex gap-1">
+                    <button onClick={() => setSurchargeModal({ isOpen: true, editId: sc.id, name: sc.name, calcType: sc.calcType, amount: sc.amount, qty: sc.qty, unit: sc.unit, percentage: sc.percentage, remark: sc.remark })} className="text-blue-500 hover:text-blue-700 font-bold px-2">编辑</button>
+                    <button onClick={() => removeSurcharge(sc.id)} className="text-gray-400 hover:text-rose-600 font-bold px-2">✕</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="text-right pt-2 mt-2 border-t text-sm font-bold text-gray-900">附加费用合计 ¥{surchargesTotal.toFixed(2)}</div>
+          </div>
+        )}
+      </div>
+    );
     return (
       <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
         {renderUpgradeModal()}
         {renderCustomUpgradeModal()}
+        {/* 订单附加费用 专属弹窗（提升至顶层，确保双模式均正常弹出） */}
+        {surchargeModal.isOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+            <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col">
+              <h2 className="text-xl font-black mb-4">{surchargeModal.editId ? '📝 编辑附加费用' : '➕ 新增附加费用'} <span className="text-xs text-gray-400 font-normal ml-2">本费用应用于全单计算</span></h2>
+              <div className="space-y-4">
+                <div><label className="block text-xs font-bold text-gray-500 mb-1">费用名称</label><input required placeholder="例如：上楼费 / 搬运费 / 税费" value={surchargeModal.name} onChange={e=>setSurchargeModal({...surchargeModal, name: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">计价方式</label>
+                  <select value={surchargeModal.calcType} onChange={e=>setSurchargeModal({...surchargeModal, calcType: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white">
+                    <option value="fixed">固定金额</option>
+                    <option value="unit">数量 × 单价</option>
+                    <option value="percent">订单基础总额 × 百分比 (%)</option>
+                  </select>
+                </div>
+
+                {surchargeModal.calcType === 'fixed' && (
+                   <div><label className="block text-xs font-bold text-gray-500 mb-1">固定费用 (元)</label><input type="number" placeholder="输入金额" value={surchargeModal.amount} onChange={e=>setSurchargeModal({...surchargeModal, amount: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black text-rose-600 bg-gray-50 focus:bg-white" /></div>
+                )}
+                {surchargeModal.calcType === 'unit' && (
+                   <div className="grid grid-cols-3 gap-3">
+                     <div><label className="block text-xs font-bold text-gray-500 mb-1">数量</label><input type="number" value={surchargeModal.qty} onChange={e=>setSurchargeModal({...surchargeModal, qty: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black bg-gray-50 focus:bg-white" /></div>
+                     <div><label className="block text-xs font-bold text-gray-500 mb-1">单位</label><input placeholder="次/项/车" value={surchargeModal.unit} onChange={e=>setSurchargeModal({...surchargeModal, unit: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
+                     <div><label className="block text-xs font-bold text-gray-500 mb-1">单价(元)</label><input type="number" value={surchargeModal.amount} onChange={e=>setSurchargeModal({...surchargeModal, amount: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black text-rose-600 bg-gray-50 focus:bg-white" /></div>
+                   </div>
+                )}
+                {surchargeModal.calcType === 'percent' && (
+                   <div>
+                     <label className="block text-xs font-bold text-gray-500 mb-1">税点 / 费率百分比 (%)</label>
+                     <div className="flex items-center gap-2">
+                       <input type="number" step="0.1" placeholder="如 3" value={surchargeModal.percentage} onChange={e=>setSurchargeModal({...surchargeModal, percentage: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black text-rose-600 bg-gray-50 focus:bg-white" />
+                       <span className="font-bold text-gray-400">%</span>
+                     </div>
+                     <div className="text-[10px] text-gray-400 mt-1">注：当前订单基础金额约 ¥{baseGrandTotal.toFixed(0)}</div>
+                   </div>
+                )}
+                <div><label className="block text-xs font-bold text-gray-500 mb-1">备注说明 (可选)</label><input placeholder="特殊说明..." value={surchargeModal.remark} onChange={e=>setSurchargeModal({...surchargeModal, remark: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button onClick={() => setSurchargeModal({...surchargeModal, isOpen: false})} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold">取消</button>
+                <button onClick={handleSaveSurcharge} className="flex-1 bg-black text-white px-6 py-3 rounded-xl font-bold shadow-lg">保存费用</button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-6 shrink-0 shadow-sm z-20">
           <div className="flex items-center gap-6">
             <div className="font-black text-xl">NOEY<span className="font-light">QUOTATION</span></div>
@@ -2600,11 +2681,10 @@ const renderUpgradeModal = () => {
             </div>
           </div>
 
-          {/* 右侧编辑区 */}
-          <div className="flex-1 overflow-y-auto p-8 bg-gray-100 pb-40">
-            <div className="max-w-4xl mx-auto space-y-6">
-            {activeMode === 'cabinet' && activeCabinet && (
-              <>
+          {/* 右侧工作区：空间柜体沿用单栏滚动，定制板件启用三栏独立滚动 */}
+          {activeMode === 'cabinet' && activeCabinet && (
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-100 pb-40">
+              <div className="max-w-4xl mx-auto space-y-6">
               {/* 尺寸基础 */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-4 border-b pb-4"><h3 className="font-black text-gray-800">📐 基础尺寸</h3><div className="text-xs font-bold bg-gray-100 px-3 py-1 rounded-full">算法: {currentCalcs.calcMethod}</div></div>
@@ -2921,14 +3001,18 @@ const renderUpgradeModal = () => {
                   </div>
                 )}
               </div>
-              </>
-            )}
-            
-            {activeMode === 'panel' && activePanel && (() => {
-              const currentPanelCalcs = calculatePanelDetails(activePanel);
-              const panelFinalUnitPrice = currentPanelCalcs.finalUnitPrice;
-              return (
-                <>
+              {surchargesSectionJSX}
+              </div>
+            </div>
+          )}
+
+          {activeMode === 'panel' && activePanel && (() => {
+            const currentPanelCalcs = calculatePanelDetails(activePanel);
+            const panelFinalUnitPrice = currentPanelCalcs.finalUnitPrice;
+            return (
+              <div className="flex-1 flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden bg-gray-100">
+                {/* 区域 B：中间当前板件编辑区（约 55%，桌面端独立垂直滚动） */}
+                <div className="w-full xl:w-[55%] min-w-0 xl:h-full xl:overflow-y-auto p-6 pb-8 xl:pb-36 space-y-6">
                   {/* 1. 板件基础尺寸与属性 */}
                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                     <div className="flex justify-between items-center mb-4 border-b pb-4">
@@ -3132,6 +3216,10 @@ const renderUpgradeModal = () => {
                       </div>
                     )}
                   </div>
+                  </div>
+
+                {/* 区域 C：右侧全订单费用汇总区（约 45%，桌面端独立垂直滚动） */}
+                <div className="w-full xl:w-[45%] min-w-0 xl:h-full xl:overflow-y-auto p-6 pb-36 xl:border-l border-gray-200 bg-gray-50/70 space-y-5">
                           {/* 4. 【阶段六新增】：所有定制板件费用汇总列表（Excel 紧凑表格风格） */}
                  {(() => {
                    const panelRows = quotePanels.map((p, idx) => {
@@ -3290,96 +3378,11 @@ const renderUpgradeModal = () => {
                      </>
                    );
                  })()}
-                </>
-              );
-            })()}
-              {/* 【新增】：订单附加费用引擎 */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-black/10 mt-6">
-                <div className="flex justify-between items-center border-b pb-4 mb-4">
-                  <h3 className="font-black text-gray-900">📦 订单附加费用</h3>
-                  <button onClick={() => setSurchargeModal({ ...surchargeModal, isOpen: true, editId: null })} className="bg-white border border-gray-200 text-gray-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm hover:bg-gray-50">
-                    + 添加费用
-                  </button>
+                {surchargesSectionJSX}
                 </div>
-
-                {(!quoteInfo.surcharges || quoteInfo.surcharges.length === 0) ? null : (
-                  <div className="space-y-3">
-                    {quoteInfo.surcharges.map(sc => (
-                      <div key={sc.id} className="bg-gray-50 border p-3 rounded-xl flex justify-between items-center hover:shadow-sm transition-shadow">
-                        <div>
-                          <div className="font-bold text-sm text-gray-900">{sc.name}</div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {sc.calcType === 'fixed' && '固定金额'}
-                            {sc.calcType === 'unit' && `${sc.qty} ${sc.unit} × ¥${sc.amount} / ${sc.unit}`}
-                            {sc.calcType === 'percent' && `订单基础金额 × ${sc.percentage}%`}
-                            {/* 备注保持红色 */}
-                            {sc.remark && <span className="ml-2 pl-2 border-l border-gray-300 text-rose-600">备注: {sc.remark}</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {/* 【修复】：由 text-base font-black 改为 text-sm font-bold，降低视觉突兀感 */}
-                          <div className="text-sm font-bold text-gray-900">¥{calculateSurchargeAmount(sc, baseGrandTotal).toFixed(2)}</div>
-                          <div className="flex gap-1">
-                            <button onClick={() => setSurchargeModal({ isOpen: true, editId: sc.id, name: sc.name, calcType: sc.calcType, amount: sc.amount, qty: sc.qty, unit: sc.unit, percentage: sc.percentage, remark: sc.remark })} className="text-blue-500 hover:text-blue-700 font-bold px-2">编辑</button>
-                            <button onClick={() => removeSurcharge(sc.id)} className="text-gray-400 hover:text-rose-600 font-bold px-2">✕</button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {/* 【修复】：由 font-black 改为 font-bold text-sm */}
-                    <div className="text-right pt-2 mt-2 border-t text-sm font-bold text-gray-900">附加费用合计 ¥{surchargesTotal.toFixed(2)}</div>
-                  </div>
-                )}
               </div>
-
-              {/* 订单附加费用 专属弹窗 */}
-              {surchargeModal.isOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-                  <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col">
-                    <h2 className="text-xl font-black mb-4">{surchargeModal.editId ? '📝 编辑附加费用' : '➕ 新增附加费用'} <span className="text-xs text-gray-400 font-normal ml-2">本费用应用于全单计算</span></h2>
-                    <div className="space-y-4">
-                      <div><label className="block text-xs font-bold text-gray-500 mb-1">费用名称</label><input required placeholder="例如：上楼费 / 搬运费 / 税费" value={surchargeModal.name} onChange={e=>setSurchargeModal({...surchargeModal, name: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">计价方式</label>
-                        <select value={surchargeModal.calcType} onChange={e=>setSurchargeModal({...surchargeModal, calcType: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white">
-                          <option value="fixed">固定金额</option>
-                          <option value="unit">数量 × 单价</option>
-                          <option value="percent">订单基础总额 × 百分比 (%)</option>
-                        </select>
-                      </div>
-                      
-                      {/* 根据计算类型智能显示输入框 */}
-                      {surchargeModal.calcType === 'fixed' && (
-                         <div><label className="block text-xs font-bold text-gray-500 mb-1">固定费用 (元)</label><input type="number" placeholder="输入金额" value={surchargeModal.amount} onChange={e=>setSurchargeModal({...surchargeModal, amount: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black text-rose-600 bg-gray-50 focus:bg-white" /></div>
-                      )}
-                      {surchargeModal.calcType === 'unit' && (
-                         <div className="grid grid-cols-3 gap-3">
-                           <div><label className="block text-xs font-bold text-gray-500 mb-1">数量</label><input type="number" value={surchargeModal.qty} onChange={e=>setSurchargeModal({...surchargeModal, qty: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black bg-gray-50 focus:bg-white" /></div>
-                           <div><label className="block text-xs font-bold text-gray-500 mb-1">单位</label><input placeholder="次/项/车" value={surchargeModal.unit} onChange={e=>setSurchargeModal({...surchargeModal, unit: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
-                           <div><label className="block text-xs font-bold text-gray-500 mb-1">单价(元)</label><input type="number" value={surchargeModal.amount} onChange={e=>setSurchargeModal({...surchargeModal, amount: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black text-rose-600 bg-gray-50 focus:bg-white" /></div>
-                         </div>
-                      )}
-                      {surchargeModal.calcType === 'percent' && (
-                         <div>
-                           <label className="block text-xs font-bold text-gray-500 mb-1">税点 / 费率百分比 (%)</label>
-                           <div className="flex items-center gap-2">
-                             <input type="number" step="0.1" placeholder="如 3" value={surchargeModal.percentage} onChange={e=>setSurchargeModal({...surchargeModal, percentage: e.target.value})} className="w-full border-2 p-3 rounded-xl font-black text-rose-600 bg-gray-50 focus:bg-white" />
-                             <span className="font-bold text-gray-400">%</span>
-                           </div>
-                           <div className="text-[10px] text-gray-400 mt-1">注：当前订单基础金额约 ¥{baseGrandTotal.toFixed(0)}</div>
-                         </div>
-                      )}
-                      <div><label className="block text-xs font-bold text-gray-500 mb-1">备注说明 (可选)</label><input placeholder="特殊说明..." value={surchargeModal.remark} onChange={e=>setSurchargeModal({...surchargeModal, remark: e.target.value})} className="w-full border-2 p-3 rounded-xl font-bold bg-gray-50 focus:bg-white" /></div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                      <button onClick={() => setSurchargeModal({...surchargeModal, isOpen: false})} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold">取消</button>
-                      <button onClick={handleSaveSurcharge} className="flex-1 bg-black text-white px-6 py-3 rounded-xl font-bold shadow-lg">保存费用</button>
-                    </div>
-                  </div>
-                </div>
-              )}  
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
        {/* 底部悬浮算账条 */}
