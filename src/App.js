@@ -2427,12 +2427,18 @@ const renderUpgradeModal = () => {
       setQuoteInfo({ ...quoteInfo, surcharges: (quoteInfo.surcharges || []).filter(s => s.id !== id) });
     };
 
-    // 重新计算底部实时的基础总价与附加总价
-    const baseGrandTotal = quoteCabinets.reduce((sum, cab) => {
+    // 重新计算底部实时的基础总价与附加总价（空间柜体 + 独立定制板件统一核算）
+    const cabinetBusinessTotal = quoteCabinets.reduce((sum, cab) => {
       const cabBase = calculateCabinetDetails(cab).baseTotal;
       const cabCountertop = (cab.countertop && cab.countertop.enabled) ? (Number(cab.countertop.subtotal) || 0) : 0;
       return sum + cabBase + cabCountertop;
     }, 0);
+
+    const panelBaseTotal = (quotePanels || []).reduce((sum, p) => sum + calculatePanelDetails(p).panelBaseCost, 0);
+    const panelUpgradesTotal = (quotePanels || []).reduce((sum, p) => sum + calculatePanelDetails(p).panelUpgradeCost, 0);
+    const panelBusinessTotal = panelBaseTotal + panelUpgradesTotal;
+
+    const baseGrandTotal = cabinetBusinessTotal + panelBusinessTotal;
     const surchargesTotal = (quoteInfo.surcharges || []).reduce((sum, item) => sum + calculateSurchargeAmount(item, baseGrandTotal), 0);
     const grandTotal = baseGrandTotal + surchargesTotal; // 最终合并呈现
 
@@ -3320,6 +3326,13 @@ const renderUpgradeModal = () => {
               <div>
                 <div className="text-[10px] text-gray-400">工艺</div>
                 <span className="text-rose-600">¥{currentCalcs.upgradePortionTotal.toFixed(0)}</span>
+              </div>
+            )}
+            {/* ✅ 定制板件价格显示条件：存在板件且金额大于0 */}
+            {panelBusinessTotal > 0 && (
+              <div>
+                <div className="text-[10px] text-gray-400">板件</div>
+                <span>¥{panelBusinessTotal.toFixed(0)}</span>
               </div>
             )}
           </div>
