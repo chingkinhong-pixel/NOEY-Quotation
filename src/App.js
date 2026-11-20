@@ -1824,7 +1824,123 @@ const handleDeletePanel = (e, id) => {
   // ==========================================
   // 【核心引擎代码结束】
   // ==========================================
+// ==========================================
+  // 【新增】：独立定制板件计价引擎（与空间柜体引擎彻底隔离）
+  // ==========================================
+  const calculatePanelDetails = (panel) => {
+    const result = {
+      singleActualArea: 0,
+      singleBillableArea: 0,
+      totalBillableArea: 0,
+      minAreaUsed: 0.1,
+      qty: 0,
+      finalUnitPrice: 0,
+      panelBaseCost: 0,
+      panelUpgradeCost: 0,
+      panelTotalCost: 0,
+      calculatedUpgrades: []
+    };
+    if (!panel) return result;
 
+    const w = parseFloat(panel.width) || 0;
+    const h = parseFloat(panel.height) || 0;
+    const qty = Math.max(0, parseFloat(panel.qty) || 0);
+    // 优先读取板件自身保存的历史快照，兜底读取后台独立参数 panel_min_area（默认 0.1㎡）
+    const minArea = (panel.snap_min_area !== undefined && panel.snap_min_area !== null && panel.snap_min_area !== '')
+      ? parseFloat(panel.snap_min_area)
+      : (parseFloat(rules.panel_min_area) || 0.1);
+
+    result.qty = qty;
+    result.minAreaUsed = minArea;
+
+    // 1. 严格按单块独立套用最低计价面积
+    if (w > 0 && h > 0 && qty > 0) {
+      result.singleActualArea = (w * h) / 1000000;
+      result.singleBillableArea = Math.max(result.singleActualArea, minArea);
+      result.totalBillableArea = result.singleBillableArea * qty;
+    }
+
+    // 2. 板件基础费用（读取板件自身材料底价快照 + 人工调价）
+    const baseDoorPrice = parseFloat(panel.snap_door_base_price) || 0;
+    const adj = parseFloat(panel.door_unit_adjustment) || 0;
+    result.finalUnitPrice = baseDoorPrice + adj;
+    result.panelBaseCost = result.totalBillableArea * result.finalUnitPrice;
+
+    // 3. 板件专属升级工艺核算（与基础费用严格分离，防止重复计价）
+    let upgTotal = 0;
+    result.calculatedUpgrades = (panel.upgrades || []).map(upg => {
+      const inputQty = parseFloat(upg.input_quantity) || 0;
+      const snapOriginalPrice = parseFloat(upg.snap_original_unit_price) || 0;
+      const priceAdj = parseFloat(upg.unit_price_adjustment) || 0;
+      const snapFinalPrice = snapOriginalPrice + priceAdj;
+      const minQty = parseFloat(upg.minimum_quantity) || 0;
+
+      let calcQty = inputQty;
+      if (upg.calculation_type === '按柜宽自动算') {
+        const sysCalc = w / 1000;
+        calcQty = inputQty > 0 ? Math.max(inputQty, minQty) : sysCalc;
+      } else if (upg.upgrade_effect_type === 'replace') {
+        const baseArea = (upg.manual_door_area !== '' && upg.manual_door_area !== null && !isNaN(parseFloat(upg.manual_door_area)))
+          ? parseFloat(upg.manual_door_area)
+          : result.totalBillableArea;
+        calcQty = Math.max(baseArea, minQty);
+      } else if (upg.calculation_type !== '人工直接输金额' && upg.upgrade_effect_type !== 'manual') {
+        calcQty = Math.max(inputQty, minQty);
+      }
+
+      let finalAmount = 0;
+      if (upg.calculation_type === '人工直接输金额' || upg.upgrade_effect_type === 'manual') {
+        finalAmount = inputQty;
+        calcQty = 1;
+      } else if (upg.upgrade_effect_type === 'replace' && upg.replace_calculation_mode === 'full_price') {
+        finalAmount = calcQty * (snapFinalPrice - baseDoorPrice);
+      } else {
+        finalAmount = calcQty * snapFinalPrice;
+      }
+
+      upgTotal += finalAmount;
+      return {
+        ...upg,
+        calculatedQty: calcQty,
+        finalAmount,
+        snap_base_door_price: baseDoorPrice,
+        snap_final_unit_price: snapFinalPrice
+      };
+    });
+
+    result.panelUpgradeCost = upgTotal;
+    result.panelTotalCost = result.panelBaseCost + result.panelUpgradeCost;
+    return result;
+  };
+
+  // 【新增】：跨板件升级工艺自动合并统计函数（供阶段六汇总表使用）
+  const aggregatePanelUpgrades = (panels) => {
+    const map = new Map();
+    (panels || []).forEach(panel => {
+      const calcs = calculatePanelDetails(panel);
+      calcs.calculatedUpgrades.forEach(upg => {
+        const unitPrice = upg.snap_final_unit_price || 0;
+        const unit = upg.unit || '项';
+        const key = `${upg.name}__${unit}__${unitPrice.toFixed(2)}__${upg.calculation_type || ''}`;
+        if (map.has(key)) {
+          const existing = map.get(key);
+          existing.totalQty += Number(upg.calculatedQty || 0);
+          existing.totalAmount += Number(upg.finalAmount || 0);
+        } else {
+          map.set(key, {
+            key,
+            name: upg.name,
+            unit,
+            unitPrice,
+            calculation_type: upg.calculation_type,
+            totalQty: Number(upg.calculatedQty || 0),
+            totalAmount: Number(upg.finalAmount || 0)
+          });
+        }
+      });
+    });
+    return Array.from(map.values());
+  };
 
 const handleConfirmAddUpgrade = () => {
     const item = upgradeModal.selectedItem;
@@ -2728,7 +2844,8 @@ const renderUpgradeModal = () => {
             )}
             
             {activeMode === 'panel' && activePanel && (() => {
-              const panelFinalUnitPrice = (parseFloat(activePanel.snap_door_base_price) || 0) + (parseFloat(activePanel.door_unit_adjustment) || 0);
+              const currentPanelCalcs = calculatePanelDetails(activePanel);
+              const panelFinalUnitPrice = currentPanelCalcs.finalUnitPrice;
               return (
                 <>
                   {/* 1. 板件基础尺寸与属性 */}
@@ -2795,6 +2912,17 @@ const renderUpgradeModal = () => {
                         </select>
                       </div>
                     </div>
+                  {/* 【新增】：当前板件实时面积与基础费用核算条 */}
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap justify-between items-center text-xs bg-gray-50 px-4 py-2.5 rounded-xl">
+                      <div className="flex flex-wrap gap-4 text-gray-600 font-bold">
+                        <span>单块实际: <strong className="text-gray-900">{currentPanelCalcs.singleActualArea.toFixed(4)} ㎡</strong></span>
+                        <span>单块计价: <strong className="text-emerald-700">{currentPanelCalcs.singleBillableArea.toFixed(4)} ㎡</strong></span>
+                        <span>总计价面积: <strong className="text-black">{currentPanelCalcs.totalBillableArea.toFixed(3)} ㎡</strong></span>
+                      </div>
+                      <div className="font-black text-sm text-gray-900">
+                        板件基础小计: <span className="text-rose-600 ml-1">¥{currentPanelCalcs.panelBaseCost.toFixed(2)}</span>
+                      </div>
+                    </div>          
                   </div>
             
                   {/* 2. 板件材料选配（完全复用现有门板基础库 doors） */}
@@ -2912,17 +3040,14 @@ const renderUpgradeModal = () => {
                         >
                           <SortableContext items={(activePanel.upgrades || []).map(u => u.id)} strategy={verticalListSortingStrategy}>
                             {(activePanel.upgrades || []).map(upg => {
-                              const unitPrice = (parseFloat(upg.snap_original_unit_price) || 0) + (parseFloat(upg.unit_price_adjustment) || 0);
-                              const qty = Math.max(parseFloat(upg.input_quantity) || 0, parseFloat(upg.minimum_quantity) || 0);
-                              const previewCalc = {
-                                calculatedQty: upg.calculation_type === '人工直接输金额' ? 1 : qty,
-                                finalAmount: upg.calculation_type === '人工直接输金额' ? (parseFloat(upg.input_quantity) || 0) : qty * unitPrice,
-                                snap_base_door_price: 0
-                              };
-                              return <SortableUpgradeItem key={upg.id} upg={upg} calced={previewCalc} onRemove={handleRemovePanelUpgrade} />;
+                              const calced = currentPanelCalcs.calculatedUpgrades.find(u => u.id === upg.id) || { calculatedQty: 0, finalAmount: 0, snap_base_door_price: 0 };
+                              return <SortableUpgradeItem key={upg.id} upg={upg} calced={calced} onRemove={handleRemovePanelUpgrade} />;
                             })}
                           </SortableContext>
                         </DndContext>
+                        <div className="text-right pt-2 mt-2 border-t font-black text-rose-600">
+                          当前板件工艺小计 ¥{currentPanelCalcs.panelUpgradeCost.toFixed(2)}
+                        </div>
                       </div>
                     )}
                   </div>
