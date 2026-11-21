@@ -3238,10 +3238,10 @@ const renderUpgradeModal = () => {
                      <>
                        {/* ① 定制板件费用汇总 */}
                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                         <div className="px-5 py-3.5 border-b border-gray-200 flex justify-between items-center bg-gray-50/70">
-                           <h3 className="font-black text-sm text-gray-900">定制板件费用汇总</h3>
-                           <span className="text-xs text-gray-400 font-bold">共 {quotePanels.length} 项 · 点击行可编辑</span>
-                         </div>
+                         <div className="px-5 py-3.5 border-b border-gray-800 flex justify-between items-center bg-gray-900">
+                          <h3 className="font-black text-sm text-white">定制板件费用汇总</h3>
+                          <span className="text-xs text-gray-300 font-bold">共 {quotePanels.length} 项 · 点击行可编辑</span>
+                        </div>
         
                          <div className="overflow-x-auto">
                            <table className="w-full text-left border-collapse text-xs">
@@ -3320,9 +3320,9 @@ const renderUpgradeModal = () => {
                        {/* ② 升级工艺与五金汇总（所有板件均无工艺时自动隐藏） */}
                        {mergedPanelUpgrades.length > 0 && (
                          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                           <div className="px-5 py-3.5 border-b border-gray-200 flex justify-between items-center bg-gray-50/70">
-                             <h3 className="font-black text-sm text-gray-900">升级工艺与五金汇总</h3>
-                             <span className="text-xs text-gray-400 font-bold">跨板件自动合并</span>
+                           <div className="px-5 py-3.5 border-b border-gray-800 flex justify-between items-center bg-gray-900">
+                             <h3 className="font-black text-sm text-white">升级工艺与五金汇总</h3>
+                             <span className="text-xs text-gray-300 font-bold">跨板件自动合并</span>
                            </div>
         
                            <div className="overflow-x-auto">
@@ -3363,21 +3363,21 @@ const renderUpgradeModal = () => {
                          </div>
                        )}
         
-                       {/* ③ 定制板件总计（独立于全订单总价，清晰呈现构成） */}
-                       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 space-y-2.5 text-sm">
-                         <div className="flex justify-between items-center text-gray-600">
-                           <span className="font-bold">板件基础费用</span>
-                           <span className="font-mono font-bold text-gray-900">¥{allPanelsBaseTotal.toFixed(2)}</span>
-                         </div>
-                         <div className="flex justify-between items-center text-gray-600">
-                           <span className="font-bold">升级工艺与五金</span>
-                           <span className="font-mono font-bold text-gray-900">¥{allPanelsUpgradesTotal.toFixed(2)}</span>
-                         </div>
-                         <div className="pt-3 mt-1 border-t border-gray-200 flex justify-between items-center">
-                           <span className="font-black text-gray-900">定制板件总计</span>
-                           <span className="font-mono text-lg font-black text-gray-900">¥{allPanelsCombinedTotal.toFixed(2)}</span>
-                         </div>
-                       </div>
+                       {/* ③ 定制板件总计（独立于全订单总价，整体采用深蓝黑色视觉层次） */}
+                        <div className="bg-gray-900 text-white rounded-2xl shadow-sm border border-gray-800 p-5 space-y-2.5 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-gray-300">板件基础费用</span>
+                            <span className="font-mono font-bold text-white">¥{allPanelsBaseTotal.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-gray-300">升级工艺与五金</span>
+                            <span className="font-mono font-bold text-white">¥{allPanelsUpgradesTotal.toFixed(2)}</span>
+                          </div>
+                          <div className="pt-3 mt-1 border-t border-gray-700 flex justify-between items-center">
+                            <span className="font-black text-base text-white">定制板件总计</span>
+                            <span className="font-mono text-xl font-black text-white">¥{allPanelsCombinedTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
                      </>
                    );
                  })()}
